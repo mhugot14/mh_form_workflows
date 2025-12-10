@@ -339,7 +339,69 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
                 </div>
             </div>
         </div>
+<!-- ... SEKTION 4: Protokoll (Erweiterung) ... -->
+        
+        <!-- Diesen Block UNTER dem Checkbox div für Protokoll einfügen oder als neue Sektion -->
+        <!-- Wir nutzen hier data-target="protocol_wrapper", damit es aufgeht, wenn Checkbox aktiv -->
+        
+        <!-- ÄNDERUNG: Gib der Checkbox oben im Zeugnis-Bereich die Klasse "toggle-trigger" und data-target -->
+        <!-- <input type="checkbox" ... id="chk_protocol" class="toggle-trigger" data-target="protocol_wrapper"> -->
+        
+        <div id="protocol_wrapper" class="mh-form-section toggle-target" style="border-left: 5px solid #0073aa;">
+            <h4>4. Angaben zum Konferenzprotokoll</h4>
+            <p>Bitte wählen Sie den Typ der Konferenz, um die entsprechenden Felder anzuzeigen.</p>
 
+            <div class="radio-group">
+                <input type="radio" name="prot_type" value="berufsschule" id="pt_bs" class="toggle-trigger" data-target="prot_bs_fields" <?= $chk('prot_type', 'berufsschule') ?>>
+                <label for="pt_bs"><b>Berufsschule</b> (Teilzeit)</label>
+            </div>
+            
+            <div class="radio-group">
+                <input type="radio" name="prot_type" value="vollzeit" id="pt_vz" class="toggle-trigger" data-target="prot_vz_fields" <?= $chk('prot_type', 'vollzeit') ?>>
+                <label for="pt_vz"><b>Vollzeit</b> (Abgang / Überweisung)</label>
+            </div>
+
+            <!-- GEMEINSAME FELDER -->
+            <div class="mh-grid-row mh-grid-3" style="margin-top:20px;">
+                <div class="mh-input-group">
+                    <label>Konferenzdatum <span class="req">*</span></label>
+                    <input type="date" name="prot_date" value="<?= $val('prot_date') ?>">
+                </div>
+                <div class="mh-input-group">
+                    <label>Raum</label>
+                    <input type="text" name="prot_room" value="<?= $val('prot_room') ?>">
+                </div>
+                <div class="mh-input-group">
+                    <label>Vorsitzende/r <span class="req">*</span></label>
+                    <input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>">
+                </div>
+            </div>
+
+            <!-- SPEZIFISCH: VOLLZEIT -->
+            <div id="prot_vz_fields" class="mh-sub-group toggle-target">
+                <h5>Details Vollzeit</h5>
+                <div class="mh-grid-row mh-grid-2">
+                     <div class="mh-input-group">
+                        <label>Ende des Schulverhältnisses:</label>
+                        <input type="date" name="prot_end_school" value="<?= $val('prot_end_school') ?>">
+                    </div>
+                     <div class="mh-input-group" style="flex-direction: row !important; align-items: center;">
+                        <input type="checkbox" name="prot_check_compulsory" value="1" id="p_chk_c" <?= $chk('prot_check_comp', '1') ?> style="width:20px !important; margin:0 10px 0 0 !important;">
+                        <label for="p_chk_c" style="margin:0 !important;">Schulpflicht überprüft?</label>
+                    </div>
+                </div>
+                 <div class="mh-input-group">
+                    <label>Überwiesen an folgende Schule:</label>
+                    <input type="text" name="prot_transfer" value="<?= $val('prot_transfer') ?>">
+                </div>
+            </div>
+
+            <!-- SPEZIFISCH: BERUFSSCHULE -->
+            <div id="prot_bs_fields" class="mh-sub-group toggle-target">
+                <h5>Details Berufsschule</h5>
+                <p><i>Für die Berufsschule werden die Standardtexte und die Tabelle für nicht erreichte Abschlüsse generiert. Keine weiteren Eingaben hier nötig.</i></p>
+            </div>
+        </div>
         <div class="btn-group">
             <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular prüfen</button>
             <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>

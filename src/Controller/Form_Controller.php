@@ -44,69 +44,99 @@ class Form_Controller {
 		return ob_get_clean() ?: '';
 	}
 
+	/**
+	 * Verarbeitet den POST-Request beim Absenden.
+	 */
 	public function handle_submission(): void {
+		// 1. Security Check (Nonce)
 		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'mh_form_submit' ) ) {
-			wp_die( 'Sicherheitsprüfung fehlgeschlagen.' );
+			wp_die( 'Sicherheitsprüfung fehlgeschlagen (Nonce).' );
 		}
 
+		// Welcher Button wurde gedrückt? (check vs. pdf)
 		$mode = $_POST['submit_mode'] ?? 'check';
+
+		// 2. Das konkrete Formular-Model laden
 		$form = new Abmeldung_Student_Form();
+
+		// 3. Validieren
+		// $is_valid ist true, wenn keine Fehler gefunden wurden
 		$is_valid = $form->validate( $_POST );
 		
-		// Daten holen (entweder sauber oder raw input bei Fehler)
-		// Model->get_data() liefert nur saubere Daten. Bei Fehler wollen wir aber den User-Input behalten.
-		// Deshalb mergen wir POST für das Refilling, nutzen aber Model-Errors.
-		$raw_data = $_POST; 
-		$valid_data = $form->get_data(); // Für DB/PDF nutzen wir NUR das
+		// Daten holen
+		// raw_data: Was der User eingetippt hat (für Refill bei Fehlern)
+		// valid_data: Die sauberen, geprüften Daten aus dem Model (für DB/PDF)
+		$raw_data   = $_POST; 
+		$valid_data = $form->get_data();
+		$errors     = $form->get_errors();
 
-		// === MODUS: NUR PRÜFEN ===
-		if ( 'check' === $mode ) {
+		// === SZENARIO 1: "Nur Prüfen" ODER Validierungsfehler ===
+		// In beiden Fällen leiten wir zurück zum Formular und zeigen Boxen an.
+		if ( 'check' === $mode || ! $is_valid ) {
 			
-			// Zustand speichern für Redirect
+			// Status bestimmen: Erfolgreich nur, wenn valide UND Modus 'check' war
+			$is_success = ( $is_valid && 'check' === $mode );
+
+			// Zustand in Transient speichern (Flash Message Pattern)
+			// Key basiert auf User-ID, damit Sessions sich nicht mischen
 			$state = [
 				'data'    => $raw_data,
-				'errors'  => $form->get_errors(),
-				'success' => $is_valid
+				'errors'  => $errors,
+				'success' => $is_success
 			];
 
-			// Speichere für 60 Sekunden
-			set_transient( 'mh_fw_state_' . get_current_user_id(), $state, 60 );
+			set_transient( 'mh_fw_state_' . get_current_user_id(), $state, 60 ); // 60 Sek gültig
 
-			// Redirect zurück zum Formular (gleiche Seite)
+			// Redirect zurück zur gleichen Seite
 			wp_redirect( wp_get_referer() );
 			exit;
 		}
 
-		// === MODUS: PDF (Wenn Validierung OK) ===
-		if ( $is_valid ) {
-			// Speichern
-			$entry_id = $this->repository->create( [
-				'form_type' => $form->get_slug(),
-				'status'    => 'submitted',
-				'user_id'   => get_current_user_id(),
-				'form_data' => $valid_data
-			] );
+		// === SZENARIO 2: PDF Erstellen (Validierung war OK) ===
+		
+		// 4. In Datenbank speichern
+		$entry_id = $this->repository->create( [
+			'form_type' => $form->get_slug(),
+			'status'    => 'submitted',
+			'user_id'   => get_current_user_id(),
+			'form_data' => $valid_data
+		] );
 
-			// PDF Generieren (Kein Redirect, direkter Stream)
-			$data = $valid_data;
+		if ( 0 === $entry_id ) {
+			wp_die( 'Kritischer Fehler beim Speichern in die Datenbank.' );
+		}
+
+		// 5. PDF HTML Generieren
+		// Variable $data wird in den Templates verwendet
+		$data = $valid_data; 
+		
+		// A) Hauptformular (Seite 1)
+		ob_start();
+		if( file_exists( MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php' ) ) {
+			include MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php';
+		}
+		$final_html = ob_get_clean();
+
+		// B) Protokoll Anhängen (Seite 2 & 3), falls ausgewählt
+		// Wir prüfen auf den String '1', da wir es so im Model sanitised haben
+		if ( isset( $valid_data['protocol_attached'] ) && '1' === $valid_data['protocol_attached'] ) {
 			ob_start();
-			if( file_exists( MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php' ) ) {
-				include MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php';
+			if( file_exists( MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php' ) ) {
+				include MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php';
+			} else {
+				// Fallback, falls Datei fehlt (Debugging)
+				echo '<div style="page-break-before:always;">Fehler: Protokoll-Template nicht gefunden.</div>';
 			}
-			$pdf_html = ob_get_clean();
-
-			$this->pdf_generator->generate_and_stream( $entry_id, $pdf_html, 'Abmeldung_' . $valid_data['lastname'] );
-			exit;
-		} else {
-			// PDF gedrückt, aber Fehler -> Zurückleiten mit Fehlern
-			$state = [
-				'data'    => $raw_data,
-				'errors'  => $form->get_errors(),
-				'success' => false
-			];
-			set_transient( 'mh_fw_state_' . get_current_user_id(), $state, 60 );
-			wp_redirect( wp_get_referer() );
-			exit;
+			// HTML einfach an den bestehenden String anhängen
+			$final_html .= ob_get_clean();
 		}
+
+		// 6. PDF an Browser senden
+		// Dateiname generieren, z.B. Abmeldung_Mustermann_123.pdf
+		$filename = 'Abmeldung_' . sanitize_file_name( $valid_data['lastname'] );
+		
+		$this->pdf_generator->generate_and_stream( $entry_id, $final_html, $filename );
+		
+		exit; // Wichtig, damit WordPress hier aufhört
 	}
 }
