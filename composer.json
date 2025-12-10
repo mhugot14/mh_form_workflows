@@ -1,0 +1,24 @@
+{
+    "name": "mh/form-workflows",
+    "description": "Digitalisierung von Papierformularen und Workflows.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "Michael Hugot",
+            "email": "hugot@lebk-muenster.de"
+        }
+    ],
+    "require": {
+        "php": ">=8.0",
+        "dompdf/dompdf": "^2.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Mh\\FormWorkflows\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true
+    }
+}

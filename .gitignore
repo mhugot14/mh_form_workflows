@@ -1,0 +1,15 @@
+# Composer Dependencies
+/vendor/
+
+# NetBeans Projektdateien (optional, aber empfohlen für Teamarbeit)
+/nbproject/
+
+# OS Dateien
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# WordPress Standards (falls vorhanden)
+wp-config.php
