@@ -161,6 +161,3 @@ $date_fmt = function($field) use ($data) {
             <td></td><td></td>
         </tr>
     </table>
-
-</body>
-</html>

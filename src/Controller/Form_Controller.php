@@ -107,36 +107,32 @@ class Form_Controller {
 		}
 
 		// 5. PDF HTML Generieren
-		// Variable $data wird in den Templates verwendet
 		$data = $valid_data; 
 		
-		// A) Hauptformular (Seite 1)
+		// A) Hauptformular (startet mit <html><body>, aber wir haben </body></html> entfernt!)
 		ob_start();
 		if( file_exists( MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php' ) ) {
 			include MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php';
 		}
 		$final_html = ob_get_clean();
 
-		// B) Protokoll Anhängen (Seite 2 & 3), falls ausgewählt
-		// Wir prüfen auf den String '1', da wir es so im Model sanitised haben
+		// B) Protokoll Anhängen (Nur Inhalt, keine <html> Tags)
 		if ( isset( $valid_data['protocol_attached'] ) && '1' === $valid_data['protocol_attached'] ) {
 			ob_start();
 			if( file_exists( MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php' ) ) {
 				include MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php';
-			} else {
-				// Fallback, falls Datei fehlt (Debugging)
-				echo '<div style="page-break-before:always;">Fehler: Protokoll-Template nicht gefunden.</div>';
 			}
-			// HTML einfach an den bestehenden String anhängen
 			$final_html .= ob_get_clean();
 		}
 
+		// WICHTIG: Jetzt schließen wir das Dokument sauber ab!
+		$final_html .= '</body></html>';
+
 		// 6. PDF an Browser senden
-		// Dateiname generieren, z.B. Abmeldung_Mustermann_123.pdf
 		$filename = 'Abmeldung_' . sanitize_file_name( $valid_data['lastname'] );
 		
 		$this->pdf_generator->generate_and_stream( $entry_id, $final_html, $filename );
 		
-		exit; // Wichtig, damit WordPress hier aufhört
+		exit;
 	}
 }

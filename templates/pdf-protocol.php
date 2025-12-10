@@ -1,33 +1,46 @@
 <?php
 /**
- * View: PDF Protokoll Anhang (Seite 2 & 3)
+ * View: PDF Protokoll Anhang (Seite 2 & 3 des Gesamt-PDFs)
  */
 
-$x = '<span style="font-family: DejaVu Sans, sans-serif;">&#9746;</span>'; 
-$o = '<span style="font-family: DejaVu Sans, sans-serif;">&#9744;</span>'; 
 $esc = fn($field) => htmlspecialchars($data[$field] ?? '');
-$date_fmt = function($field) use ($data) {
-    $val = $data[$field] ?? ''; return empty($val) ? '................' : date('d.m.Y', strtotime($val));
-};
 $val_underline = fn($field) => !empty($data[$field]) ? '<b>'.htmlspecialchars($data[$field]).'</b>' : '........................................';
 
-// Header Logic
-$title = ($data['prot_type'] === 'vollzeit') 
-    ? 'Ergebnisprotokoll der Zeugniskonferenz Vollzeit<br><span style="font-size:12pt; font-weight:normal;">Abgang / Überweisung</span>' 
-    : 'Ergebnisprotokoll der Zeugniskonferenz Berufsschule<br><span style="font-size:12pt; font-weight:normal;">Halbjahr / Abschluss / Abgang</span>';
+// Helper für Datum
+$date_fmt = function($field) use ($data) {
+    $val = $data[$field] ?? ''; 
+    return empty($val) ? '................' : date('d.m.Y', strtotime($val));
+};
 
-// CSS Page Break
+// Logik für den Untertitel (Punkt 3)
+$subtitle = '';
+if ( isset($data['certificate']) && $data['certificate'] === 'ueberweisung' ) {
+    $subtitle = 'Überweisungszeugnis';
+} elseif ( isset($data['certificate']) && $data['certificate'] === 'abgang' ) {
+    $subtitle = 'Abgangszeugnis';
+} else {
+    $subtitle = 'Zeugnis'; 
+}
 ?>
+
+<!-- Neuer Start auf neuer Seite -->
 <div style="page-break-before: always;"></div>
 
-<!-- Header -->
-<div style="font-weight: bold; font-size: 14pt; text-align: left; margin-bottom: 20px;">
-    Ludwig-Erhard-Berufskolleg<br>Münster
-</div>
-<div class="header" style="text-decoration: underline; margin-bottom: 30px;"><?= $title ?></div>
+<!-- Seite 1 Label (Punkt 4) -->
+<div style="text-align: right; font-size: 10pt; margin-bottom: 10px;">Seite 1</div>
 
-<!-- Stammdaten Zeilen -->
-<table class="no-border" style="width:100%; margin-bottom: 20px;">
+<!-- Titel (Punkt 1 & 2: Kein Logo, keine Unterstreichung) -->
+<div style="font-weight: bold; font-size: 14pt; margin-bottom: 5px;">
+    Ergebnisprotokoll der Zeugniskonferenz Berufsschule
+</div>
+
+<!-- Untertitel (Punkt 3: Dynamisch) -->
+<div style="font-size: 12pt; margin-bottom: 25px;">
+    <?= $subtitle ?>
+</div>
+
+<!-- Stammdaten Tabelle -->
+<table class="no-border" style="width:100%; margin-bottom: 15px;">
     <tr>
         <td class="no-border" colspan="2">Schülername, Vorname: <b><?= $esc('lastname') ?>, <?= $esc('firstname') ?></b></td>
     </tr>
@@ -41,91 +54,73 @@ $title = ($data['prot_type'] === 'vollzeit')
     </tr>
     <tr>
         <td class="no-border">Raum: <?= $val_underline('prot_room') ?></td>
-        <td class="no-border">Ausgabedatum: ........................................</td>
+        <td class="no-border">Ausgabedatum: <?= $date_fmt('prot_issue_date') ?></td>
     </tr>
-
-    <?php if($data['prot_type'] === 'vollzeit'): ?>
-    <tr>
-        <td class="no-border">Ende des Schulverhältnisses: <?= $date_fmt('prot_end_school') ?></td>
-        <td class="no-border">
-            Schulpflicht überprüft? 
-            <?= ($data['prot_check_comp'] === '1' ? $x : $o) ?> Ja  
-            <?= ($data['prot_check_comp'] !== '1' ? $x : $o) ?> Nein
-        </td>
-    </tr>
-    <tr>
-        <td class="no-border" colspan="2">Er/Sie wird an folgende Schule überwiesen: <?= $val_underline('prot_transfer') ?></td>
-    </tr>
-    <?php endif; ?>
 </table>
 
-<!-- Notentabelle (Leergerüst für manuelle oder spätere Eintragung) -->
-<table style="margin-top: 10px; border: 1px solid black;">
+<!-- Notentabelle (Punkt 5: Gekürzt auf 11 Zeilen) -->
+<table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 15px;">
     <tr style="background:#eee; font-weight:bold;">
-        <th width="30%">Fach</th>
-        <th width="20%">Lehrkraft</th>
-        <th width="10%">Note</th>
-        <th width="10%">Fach<br>vorher<br>abg.?</th>
-        <th width="30%">Unterschrift Fachlehrer<br><small>bei vorher abgeschlossenem Fach: Unterschrift Klassenlehrer</small></th>
+        <th style="border:1px solid black; padding:4px;" width="30%">Fach</th>
+        <th style="border:1px solid black; padding:4px;" width="20%">Lehrkraft</th>
+        <th style="border:1px solid black; padding:4px;" width="10%">Note</th>
+        <th style="border:1px solid black; padding:4px;" width="10%">Fach<br>vorher<br>abg.?</th>
+        <th style="border:1px solid black; padding:4px;" width="30%">Unterschrift Fachlehrer<br><small>bei vorher abgeschlossenem Fach: Unterschrift Klassenlehrer</small></th>
     </tr>
-    <?php for($i=0; $i<14; $i++): ?>
+    <?php for($i=0; $i<11; $i++): ?>
     <tr>
-        <td style="height: 25px;">&nbsp;</td>
-        <td></td><td></td><td></td><td></td>
+        <td style="border:1px solid black; height: 22px;">&nbsp;</td>
+        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black;"></td>
     </tr>
     <?php endfor; ?>
 </table>
 
-<div style="text-align: center; font-size: 10pt; margin-top: 10px;">Seite 2</div>
-
-<!-- ================= SEITE 3 ================= -->
-<div style="page-break-before: always;"></div>
-
-<div style="text-align: center; margin-bottom: 20px;">Seite 3</div>
-<div style="font-weight: bold; text-decoration: underline; margin-bottom: 15px; font-size:12pt;"><?= $title ?></div>
-
+<!-- Beschlussfassung (Punkt 6) -->
 <div style="font-weight: bold; margin-bottom: 5px;">Beschlussfassung:</div>
-<p>Die Noten der Lernfeldfächer/Fächer wurden verglichen und festgestellt (s. Notenliste).</p>
-<p>Folgende Bemerkungen wurden beschlossen:</p>
-<div style="border-bottom: 1px solid black; margin-bottom: 25px; height: 20px;"></div>
-<div style="border-bottom: 1px solid black; margin-bottom: 25px; height: 20px;"></div>
-<div style="border-bottom: 1px solid black; margin-bottom: 40px; height: 20px;"></div>
+<p style="margin: 0 0 5px 0;">Die Noten der Lernfeldfächer/Fächer wurden verglichen und festgestellt (s. Notenliste).</p>
+<p style="margin: 0 0 5px 0;">Folgende Bemerkungen wurden beschlossen:</p>
 
-<?php if($data['prot_type'] === 'berufsschule'): ?>
-    <div style="font-weight: bold;">Für Berufsschulabschluss:</div>
-    <p>Folgende Schüler haben den Berufsschulabschluss <u>nicht</u> erreicht wg. einer ungenügenden oder wegen nicht ausreichenden Leistungen in zwei und mehr Fächern:</p>
-    
-    <table style="margin-bottom: 40px;">
-        <tr>
-            <th width="40%">Name, Vorname</th>
-            <th width="30%">Fächer</th>
-            <th width="30%">Nachprüfung möglich<br>Ja &nbsp;&nbsp;&nbsp; Nein</th>
-        </tr>
-        <!-- Da es hier nur um EINEN Schüler geht, tragen wir ihn vor ein, oder leer lassen? 
-             Prompt impliziert Einzelfall. Wir lassen Platz für manuelle Ergänzung. -->
-        <tr><td height="30">&nbsp;</td><td></td><td></td></tr>
-        <tr><td height="30">&nbsp;</td><td></td><td></td></tr>
-        <tr><td height="30">&nbsp;</td><td></td><td></td></tr>
-    </table>
-<?php endif; ?>
+<!-- HIER IST DIE ÄNDERUNG: Ausgabe der Bemerkungen aus dem Textfeld -->
+<div style="border: 1px solid #999; padding: 8px; min-height: 60px; margin-bottom: 20px; font-size: 10pt; background-color: #fafafa;">
+    <?php 
+        // nl2br sorgt dafür, dass Zeilenumbrüche im Textfeld auch im PDF neue Zeilen sind
+        $remarks = $esc('prot_remarks');
+        echo empty($remarks) ? '&nbsp;' : nl2br($remarks);
+    ?>
+</div>
 
-<!-- Unterschriften -->
-<table class="no-border" style="margin-top: 50px;">
+<!-- (Punkt 7: Bereich Berufsschulabschluss wurde entfernt) -->
+
+<!-- Unterschriften (Punkt 8, 9, 10) -->
+<table class="no-border" style="width:100%; margin-top: 30px;">
     <tr>
-        <td class="no-border" width="50%">Münster, den ........................................</td>
+        <!-- Punkt 8: Datum heute -->
+        <td class="no-border" width="50%" style="vertical-align: bottom; padding-bottom: 20px;">
+            Münster, den <?= date('d.m.Y') ?>
+        </td>
+        <!-- Punkt 8: Klassenleitung mit Slash + Kürzel -->
         <td class="no-border" width="50%" style="vertical-align: bottom;">
-            <div style="border-top: 1px solid black; width: 80%; float:right;">Klassenleitung</div>
+            <div style="border-top: 1px solid black; width: 90%; float:right; padding-top:2px;">
+                Klassenleitung / <?= $esc('teacher') ?>
+            </div>
         </td>
     </tr>
+    <tr><td colspan="2" class="no-border" height="30"></td></tr>
     <tr>
-        <td class="no-border" colspan="2" style="height: 30px;"></td>
-    </tr>
-    <tr>
+        <!-- Punkt 9: Protokoll mit Slash + Kürzel (Wiederverwendung teacher) -->
         <td class="no-border" width="50%" style="vertical-align: bottom;">
-            <div style="border-top: 1px solid black; width: 80%;">Protokoll</div>
+            <div style="border-top: 1px solid black; width: 90%; padding-top:2px;">
+                Protokoll / <?= $esc('teacher') ?>
+            </div>
         </td>
+        <!-- Punkt 10: Vorsitz mit Slash + Name -->
         <td class="no-border" width="50%" style="vertical-align: bottom;">
-            <div style="border-top: 1px solid black; width: 80%; float:right;">Vorsitz</div>
+            <div style="border-top: 1px solid black; width: 90%; float:right; padding-top:2px;">
+                Vorsitz / <?= $esc('prot_chair') ?>
+            </div>
         </td>
     </tr>
 </table>

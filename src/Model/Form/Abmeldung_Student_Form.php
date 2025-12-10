@@ -35,7 +35,9 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		$missed_ue_raw    = trim( (string) ( $data['missed_ue'] ?? '' ) );
 		$missed_hours = (int) $missed_hours_raw;
 		$missed_ue    = (int) $missed_ue_raw;
-
+                $prot_remarks = implode( "\n", array_map( 'sanitize_text_field', explode( "\n", $data['prot_remarks'] ?? '' ) ) ); // Textarea
+                $prot_issue_date = $this->sanitize_text( $data['prot_issue_date'] ?? '' );
+                 
 		// --- PFLICHTFELDER BASIS ---
 		if ( empty( $name ) ) $this->add_error( 'lastname', 'Nachname fehlt.' );
 		if ( empty( $firstname ) ) $this->add_error( 'firstname', 'Vorname fehlt.' );
@@ -44,6 +46,8 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( empty( $date_off ) ) $this->add_error( 'date_off', 'Abmeldedatum fehlt.' );
 		if ( empty( $reason ) ) $this->add_error( 'reason', 'Grund der Abmeldung auswählen.' );
 		if ( empty( $compulsory ) ) $this->add_error( 'compulsory', 'Angabe zur Schulpflicht fehlt.' );
+                if(empty($prot_date)) $prot_date = $date_off;
+                if(empty($prot_issue_date)) $prot_issue_date = $date_off;
 
 		// Conditional Logic Abmeldung
 		if ( 'schulwechsel' === $reason && empty( $new_school ) ) $this->add_error( 'new_school', 'Bitte Namen der neuen Schule angeben.' );
@@ -101,11 +105,13 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			// NEU: Protokoll Daten
 			'prot_type'           => $prot_type,
 			'prot_date'           => $prot_date,
+                        'prot_issue_date'     => $prot_issue_date,
 			'prot_chair'          => $prot_chair,
 			'prot_room'           => $prot_room,
 			'prot_end_school'     => $prot_end_school,
 			'prot_transfer'       => $prot_transfer,
 			'prot_check_comp'     => $prot_check_comp,
+                         'prot_remarks'        => $prot_remarks,
 		];
 
 		return empty( $this->errors );
