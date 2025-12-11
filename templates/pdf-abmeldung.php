@@ -74,7 +74,7 @@ $date_fmt = function($field) use ($data) {
 
     <table style="margin-top: 10px;">
         <tr>
-            <td width="50%" class="bg-gray"><b>Datum der Abmeldung</b> (Abmeldung bitte beifügen):</td>
+            <td width="50%" class="bg-gray"><b>Datum der Abmeldung/Ende des Schulverhältnisses</b> (Abmeldung bitte beifügen):</td>
             <td><b><?= $date_fmt('date_off') ?></b></td>
         </tr>
     </table>
@@ -94,7 +94,10 @@ $date_fmt = function($field) use ($data) {
 
     <!-- 2. SCHULPFLICHT -->
     <div style="font-weight: bold; margin-top: 10px;">Schulpflicht:</div>
-    <table>
+    
+    <!-- Tabelle 1: Die 4 Optionen (Oben) -->
+    <!-- style="margin-bottom: -1px" zieht die nächste Tabelle optisch ran und überlappt die Ränder -->
+    <table style="width: 100%; margin-bottom: -1px; border-bottom: none;">
         <tr>
             <td rowspan="4" class="section-num">2</td>
             <td><?= $chk('compulsory', 'fulfilled') ?> Die Schulpflicht ist erfüllt.</td>
@@ -112,12 +115,28 @@ $date_fmt = function($field) use ($data) {
             </td>
         </tr>
         <tr>
-            <td>
+            <!-- class="no-border-bottom" entfernt den unteren Rand der Zelle, damit es nicht doppelt dick wirkt -->
+            <td style="border-bottom: 1px solid black;">
                 <?= $chk('compulsory', 'bildungsgang') ?> Der/die SchülerIn wechselt in den Bildungsgang: <b><?= $esc('new_education_track') ?></b>
             </td>
         </tr>
     </table>
 
+    <!-- Tabelle 2: Laufbahn / Anschluss (Unten angeklebt) -->
+    <!-- style="margin-top: 0" sorgt für nahtlosen Anschluss -->
+    <table style="width: 100%; margin-top: 0; border-top: none;">
+        <tr>
+            <td style="font-weight: bold; border-top: none;">
+                Die weitere Laufbahn ist gesichert (Anschluss)?
+            </td>
+            <td style="width: 130px; border-top: none; border-left: 1px solid black;">
+                <?= $chk('future_secured', 'yes') ?> Ja 
+                &nbsp;&nbsp;&nbsp;
+                <?= $chk('future_secured', 'no') ?> Nein
+            </td>
+        </tr>
+    </table>
+	
     <!-- 3. ZEUGNIS -->
     <div style="font-weight: bold; margin-top: 10px;">Zeugnis: <small>(Zeugniskonferenzprotokoll bitte beifügen!)</small></div>
     <!-- Checkbox für Protokoll -->

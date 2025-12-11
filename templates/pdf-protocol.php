@@ -99,7 +99,7 @@ if ( isset($data['certificate']) && $data['certificate'] === 'ueberweisung' ) {
     <tr>
         <!-- Punkt 8: Datum heute -->
         <td class="no-border" width="50%" style="vertical-align: bottom; padding-bottom: 20px;">
-            Münster, den <?= date('d.m.Y') ?>
+            Münster, den <?= $date_fmt('prot_date') ?>
         </td>
         <!-- Punkt 8: Klassenleitung mit Slash + Kürzel -->
         <td class="no-border" width="50%" style="vertical-align: bottom;">
