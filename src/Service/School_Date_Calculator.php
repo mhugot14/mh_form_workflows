@@ -95,12 +95,15 @@ class School_Date_Calculator {
 
 		return false;
 	}
-
+/**
+	 * Prüft, ob das Datum in einem der Ferienzeiträume liegt.
+	 * Wir nutzen String-Vergleiche (Y-m-d), um Zeitzonen-Probleme zu vermeiden.
+	 */
 	private function is_school_holiday_nrw( DateTime $date ): bool {
-		$ts = $date->getTimestamp();
+		$current_ymd = $date->format( 'Y-m-d' );
 
 		// Zeiträume NRW (Format: YYYY-MM-DD Start bis Ende inkl.)
-		// Quelle: schulministerium.nrw (Beispielhaft 2024-2026)
+		// Quelle: schulministerium.nrw
 		$holidays = [
 			// Schuljahr 24/25
 			['2024-12-23', '2025-01-06'], // Weihnachten
@@ -110,13 +113,16 @@ class School_Date_Calculator {
 			['2025-10-13', '2025-10-25'], // Herbst
 			['2025-12-22', '2026-01-06'], // Weihnachten
 			
-			// Hier weitere ergänzen...
+			// Schuljahr 2026
+            ['2026-03-30', '2026-04-11'], // Ostern
+            ['2026-05-26', '2026-05-26'], // Pfingsten
+            ['2026-07-20', '2026-09-01'], // Sommer
 		];
 
 		foreach ( $holidays as $period ) {
-			$start = strtotime( $period[0] );
-			$end   = strtotime( $period[1] );
-			if ( $ts >= $start && $ts <= $end ) {
+			// Lexikalischer String-Vergleich funktioniert bei ISO-Datum (Y-m-d) korrekt
+			// "2025-12-22" >= "2025-12-22" ist true.
+			if ( $current_ymd >= $period[0] && $current_ymd <= $period[1] ) {
 				return true;
 			}
 		}
