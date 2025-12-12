@@ -1,6 +1,7 @@
 {
     "name": "mh/form-workflows",
     "description": "Digitalisierung von Papierformularen und Workflows.",
+    "version": "1.0.1",
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "authors": [

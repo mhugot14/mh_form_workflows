@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MH Form Workflows
  * Description: Digitalisierte Formularprozesse mit PDF-Generierung.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Michael Hugot
  * Text Domain: mh-form-workflows
  * Requires PHP: 8.0

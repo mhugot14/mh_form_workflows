@@ -21,7 +21,7 @@ $date_fmt = function($field) use ($data) {
 <html>
 <head>
 <style>
-    @page { margin: 2cm 1.5cm 2cm 1.5cm; } /* Ränder für A4 */
+    @page { margin: 1cm 1.5cm 1cm 1.5cm; } /* Ränder für A4 */
     body { font-family: Helvetica, sans-serif; font-size: 10pt; line-height: 1.3; }
     
     table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }

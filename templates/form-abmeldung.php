@@ -202,25 +202,17 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                            value="<?= $val('prot_issue_date') ?>"
                            style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
                 </div>
+				
 
                 <div class="mh-input-group"><label>Vorsitzende/r<span class="req">*</span></label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
             </div>
-            
+            <p><small>Die Daten werden auf den letzten Schultag gelegt. Sollte das Kündigungs-/Abmeldedatum <u>kein</u> Schultag sein, 
+					berechnet das Formular <u>beim Absenden</u> das neue Datum.</small></p>
             <div class="mh-grid-row mh-grid-2">
                  <div class="mh-input-group"><label>Raum<span class="req">*</span></label><input type="text" name="prot_room" value="<?= $val('prot_room') ?>"></div>
                  <div></div> 
             </div>
-            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:</label><textarea name="prot_remarks" style="width:100%;"><?= $val('prot_remarks') ?></textarea></div>
-
-            <div id="prot_vz_fields" class="mh-sub-group toggle-target">
-				<h5>Angaben zur Vollzeit-Ausschulung</h5>
-                <div class="mh-grid-row mh-grid-2">
-                     <div class="mh-input-group"><label>Ende Schulverhältnis:</label><input type="date" name="prot_end_school" value="<?= $val('prot_end_school') ?>"></div>
-                     <div class="mh-input-group"><div class="radio-group"><input type="checkbox" name="prot_check_compulsory" value="1" <?= $chk('prot_check_comp', '1') ?>> <label>Schulpflicht überprüft?</label></div></div>
-                </div>
-                 <div class="mh-input-group"><label>Überwiesen an Schule:</label><input type="text" name="prot_transfer" value="<?= $val('prot_transfer') ?>"></div>
-            </div>
-            
+            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:</label><textarea name="prot_remarks" style="width:100%;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
 
         <div class="btn-group">
