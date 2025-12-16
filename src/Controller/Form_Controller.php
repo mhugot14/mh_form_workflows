@@ -133,6 +133,7 @@ class Form_Controller {
 		] );
 
 		if ( 0 === $entry_id ) wp_die( 'Datenbankfehler.' );
+		  $valid_data['entry_id'] = $entry_id;
 
 		// 5. PDF Weiche
 		$data = $valid_data; 

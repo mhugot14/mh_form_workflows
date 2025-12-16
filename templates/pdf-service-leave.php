@@ -4,13 +4,19 @@
  */
 
 // Symbole
-$x = '<span style="font-family: DejaVu Sans, sans-serif;">&#9746;</span>'; 
-$o = '<span style="font-family: DejaVu Sans, sans-serif;">&#9744;</span>'; 
+$x = '<span style="font-family: DejaVu Sans, sans-serif; font-size: 10pt;">&#9746;</span>'; 
+$o = '<span style="font-family: DejaVu Sans, sans-serif; font-size: 12pt;">&#9744;</span>'; 
 $scissor = '<span style="font-family: DejaVu Sans, sans-serif; font-size: 16pt;">&#9988;</span>';
 
 // Helper
 $esc = fn($field) => htmlspecialchars($data[$field] ?? '');
 $chk = fn($val) => ( ($data['reason_key'] ?? '') === $val ) ? $x : $o;
+$footer_date = date('y-m-d');
+$footer_id   = $data['entry_id'] ?? 0;
+$footer_name = ($data['lastname'] ?? '') . '-' . ($data['firstname'] ?? '');
+// Bereinigen (Umlaute etc. sicherheitshalber entfernen für Dateinamen-Optik, falls gewünscht, oder roh lassen)
+// Hier nehmen wir es direkt, wie es auch im Controller gemacht wird:
+$footer_text = sprintf('LEBK Schulverwaltung: %s_%d_Befreiung_%s', $footer_date, $footer_id, $footer_name);
 
 // Datum formatieren
 $fmt_date = function($iso) {
@@ -40,149 +46,216 @@ $reasons_map = [
     'fb_br' => 'Fortbildung BR',
     'fb_schelf' => 'Fortbildung SchELF',
     'fb_schilf' => 'Fortbildung SchiLF',
-    'pruefung' => 'Vorprüfung / IHK',
+    'allg_br' => 'Allg. Einladungen der BR', // Neu
+    'pruefung' => 'Vorprüfung / Fachberater', // Neu benannt
+    'ihk' => 'IHK-Prüfungen', // Neu
     'jubilaeum' => 'Dienstjubiläum',
-    'geburt_tod' => 'Tod / Niederkunft',
-    'erkrankung_kind' => 'Erkrankung Kind/Ang.',
-    'sport' => 'Sport / Politisch',
-    'dienstunfall' => 'Dienstveranstaltung'
+    'geburt_tod' => 'Tod Angehörige/r',
+    'niederkunft' => 'Niederkunft Ehefrau/Partnerin',
+    'umzug' => 'Umzug',
+    'erkrankung_ange' => 'Schwere Erkrankung Angehörige',
+    'erkrankung_kind' => 'Erkrankung Kind u. 12',
+    'betreuung' => 'Erkr. Betreuungsperson (Kind u. 8)',
+    'pol_bildung' => 'Politische Bildung',
+    'sport' => 'Sport-Meisterschaften',
+    'sonstige_dringend' => 'Sonstige dringende Fälle',
+    'dienstunfall' => 'Dienstveranstaltung ohne Unterrichtsbefreiung'
 ];
 $reason_label = $reasons_map[$data['reason_key'] ?? ''] ?? 'Sonstiges';
 ?>
 <html>
 <head>
 <style>
-    @page { margin: 1cm; }
-    body { font-family: Helvetica, sans-serif; font-size: 10pt; line-height: 1.3; }
+    @page { margin: 1cm 1cm 0.5cm 1cm; }
+    body { font-family: Helvetica, sans-serif; font-size: 9pt; line-height: 1.1; }
     
-    table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-    td, th { border: 1px solid black; padding: 4px; vertical-align: middle; }
+    /* Layout */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 0px; }
+    td, th { border: 1px solid black; padding: 3px; vertical-align: top; }
     
     .no-border td { border: none; }
-    .header { font-weight: bold; font-size: 14pt; margin-bottom: 5px; }
-    .bg-gray { background-color: #eee; font-weight: bold; }
     
-    /* Box oben rechts */
-    .stamp-box {
-        border: 1px solid black;
-        width: 150px; height: 50px;
-        float: right;
-        font-size: 8pt; color: #666;
-        padding: 5px; margin-bottom: 10px;
-    }
+    /* Header Table Styles */
+    .th-blue { background-color: #B4C6E7; text-align: center; font-weight: bold; font-size: 10pt; height: 30px; vertical-align: middle; }
+    .th-blue-dark { background-color: #B4C6E7; text-align: center; font-weight: bold; border-top: 1px solid black; border-bottom: 1px solid black; margin: 5px -4px; padding: 2px 0; }
     
-    .check-row { margin-bottom: 1px; font-size: 9pt; }
-    .label-col { width: 25%; background: #f0f0f0; font-weight: bold; }
-
-    /* Styles für den Abreiß-Abschnitt */
-    .cut-line {
-        border-top: 3px dashed #666;
-        margin-top: 25px;
-        margin-bottom: 15px;
-        position: relative;
-        height: 10px;
-    }
-    .cut-icon {
-        position: absolute;
-        top: -15px; left: 30px;
-        background: white;
-        padding: 0 5px;
-    }
+    .check-row { margin-bottom: 3px; padding-left: 2px; }
+    .small-note { font-size: 7pt; line-height: 1; }
     
-    /* Blau hinterlegte Header im Abschnitt */
-    .bg-blue { background-color: #daeef3; font-weight: bold; text-align: center; } /* Helles Blau ähnlich Screenshot */
+    .label-col { width: 30%; background: #f0f0f0; font-weight: bold; }
+    
+    /* Boxen und Linien für Handschrift */
+    .write-line { border-bottom: 1px solid black; display: inline-block; width: 100%; height: 14px; }
+    
+    /* Schnittlinie */
+    .cut-line { border-top: 2px dashed #666; margin-top: 20px; margin-bottom: 10px; position: relative; height: 10px; }
+    .cut-icon { position: absolute; top: -12px; left: 10px; background: white; padding: 0 5px; font-size: 14pt; }
+	
+	/* Footer Style */
+    #footer {
+        position: fixed; 
+        bottom: -20px; 
+        left: 0px; 
+        right: 0px; 
+        height: 20px; 
+        color: #888;
+        font-size: 8pt;
+        text-align: right; /* Rechtsbündig sieht meist gut aus für Dateinamen */
+        padding-right: 0px;
+    }
 </style>
 </head>
 <body>
-
-    <!-- Header Bereich -->
-    <div class="stamp-box">Eingangsstempel</div>
-    
-    <div style="font-weight:bold; font-size:12pt; margin-bottom:5px;">
-        Ludwig-Erhard-Berufskolleg
+	<!-- Fußzeile -->
+    <div id="footer">
+        <?= $footer_text ?>
     </div>
-    <div class="header">Antrag auf Dienstbefreiung / Sonderurlaub</div>
-    
-    <p style="font-size:8pt; margin-bottom:5px;">
-        <i>Bitte zu jedem Antrag vor verbindlicher Anmeldung Rücksprache mit der Schulleitung nehmen!</i>
-    </p>
+	<h2>Antrag: Unterrichts- und Dienstbefreiung</h2>
+    <!-- Titel -->
+    <div style="margin-bottom: 5px;">
+        <span style="font-weight:bold; font-size:10pt;">
+            Bitte zu jedem <u style="font-weight:bold;">Antrag</u> vor verbindlicher Anmeldung Rücksprache mit der Schulleitung nehmen!
+        </span>
+        <!-- Logo Platzhalter links oben ist im Bild, hier Text -->
+    </div>
 
-    <!-- SEKTION 1: GRÜNDE -->
-    <table style="font-size: 9pt;">
-        <tr class="bg-gray">
-            <td width="33%">Dienstbefreiung</td>
-            <td width="33%">Unterrichtsbefreiung</td>
-            <td width="33%">Sonderurlaub / Unfall</td>
+    <!-- HAUPTTABELLE OBEN -->
+    <table style="font-size: 8pt;">
+        <!-- Kopfzeile -->
+        <tr>
+            <td width="23%" class="th-blue">Dienstbefreiung</td>
+            <td width="23%" class="th-blue">Unterrichtsbefreiung</td>
+            <td width="27%" class="th-blue">Sonderurlaub</td>
+            <td width="27%" class="th-blue">Genehmigungsvermerk<br>der Schulleitung</td>
         </tr>
-        <tr style="vertical-align: top;">
-            <td>
-                <div class="check-row"><?= $chk('krank_planbar') ?> Planbare Krankheit</div>
+        
+        <!-- Inhalt -->
+        <tr>
+            <!-- SPALTE 1: Dienstbefreiung -->
+            <td style="vertical-align: top;">
+                <div style="font-weight:bold; margin-bottom:5px;">
+                    zwingend Rücksprache <span style="font-weight:normal">mit der Schulleitung – auch für Konferenzen</span>
+                </div>
+                
+                <div class="check-row" style="margin-bottom:10px;">
+                    <?= $chk('krank_planbar') ?> Planbare Krankheitsangelegenheiten
+                </div>
+                
+                <div style="margin-bottom:2px;">besondere persönliche Ereignisse wie:</div>
                 <div class="check-row"><?= $chk('beerdigung') ?> Beerdigungen</div>
                 <div class="check-row"><?= $chk('einschulung') ?> Einschulung Kind</div>
-                <div class="check-row"><?= $chk('versorgung') ?> Versorgungsleist.</div>
-                <div class="check-row"><?= $chk('sonstige') ?> Sonstiges</div>
+                <div class="check-row"><?= $chk('sonstige') ?> anderer persönlicher Anlass</div>
+                <div class="check-row"><?= $chk('versorgung') ?> Versorgungsleistungen für Angehörige</div>
             </td>
-            <td>
-                <div class="check-row"><?= $chk('fb_br') ?> Fortbildung BR</div>
-                <div class="check-row"><?= $chk('fb_schelf') ?> Fortbildung SchELF</div>
-                <div class="check-row"><?= $chk('fb_schilf') ?> Fortbildung SchiLF</div>
-                <div class="check-row"><?= $chk('pruefung') ?> IHK / Vorprüfung</div>
+
+            <!-- SPALTE 2: Unterrichtsbefreiung -->
+            <td style="vertical-align: top; padding: 0;">
+                <div style="padding: 3px;">
+                    <div class="check-row"><?= $chk('fb_br') ?> Fortbildungen BR **</div>
+                    <div class="check-row"><?= $chk('fb_schelf') ?> Fortbildungen SchELF **</div>
+                    <div class="check-row"><?= $chk('fb_schilf') ?> Fortbildungen SchiLF</div>
+                    <div class="check-row"><?= $chk('allg_br') ?> allg. Einladungen der BR</div>
+                    <div class="check-row"><?= $chk('pruefung') ?> Vorprüfungstermine</div>
+                    <div class="check-row"><?= $chk('fachberater') ?> Fachberatertermine</div>
+                    <div class="check-row"><?= $chk('ihk') ?> IHK-Prüfungen</div>
+                    <div class="check-row"><?= $chk('sonstige_unt') ?> sonstige</div>
+                </div>
+                
+                <!-- Der blaue Block Dienstunfallschutz -->
+                <div class="th-blue-dark" style="margin-top:5px; border-left:0; border-right:0;">Dienstunfallschutz</div>
+                <div style="padding: 3px;">
+                    <div class="check-row"><?= $chk('dienstunfall') ?> Dienstveranstaltung ohne Unterrichtsbefreiung</div>
+                </div>
             </td>
-            <td>
-                <div class="check-row"><?= $chk('jubilaeum') ?> Dienstjubiläum</div>
-                <div class="check-row"><?= $chk('geburt_tod') ?> Tod / Niederkunft</div>
-                <div class="check-row"><?= $chk('erkrankung_kind') ?> Erkrankung Kind/Ang.</div>
-                <div class="check-row"><?= $chk('sport') ?> Sport / Politisch</div>
-                <hr style="margin:2px 0;">
-                <div class="check-row"><?= $chk('dienstunfall') ?> <b>Dienstveranstaltung</b><br>(Unfallschutz)</div>
+
+            <!-- SPALTE 3: Sonderurlaub -->
+            <td style="vertical-align: top;">
+                <div class="check-row"><?= $chk('jubilaeum') ?> Dienstjubiläen: 25/40/50 Jahre</div>
+                <div class="check-row"><?= $chk('geburt_tod') ?> Tod Angehörige/r*<br><span style="padding-left:18px;">(Eltern, Partner*in, Kinder)</span></div>
+                <div class="check-row"><?= $chk('niederkunft') ?> Niederkunft der Ehefrau/Lebenspartnerin*</div>
+                <div class="check-row"><?= $chk('umzug') ?> Umzug aus dienstlichem Grund</div>
+                <div class="check-row"><?= $chk('erkrankung_ange') ?> Schwere Erkrankung Angehörige/r*</div>
+                <div class="check-row"><?= $chk('erkrankung_kind') ?> Schwere Erkrankung eines Kindes unter 12 Jahren*</div>
+                <div class="check-row"><?= $chk('betreuung') ?> Schwere Erkrankung der Betreuungsperson eines Kindes unter 8 Jahren*</div>
+                <div class="check-row"><?= $chk('pol_bildung') ?> Politische Bildung</div>
+                <div class="check-row"><?= $chk('sport') ?> internationale Sport-Meisterschaften</div>
+                <div class="check-row"><?= $chk('sonstige_dringend') ?> Sonstige dringende Fälle*</div>
+            </td>
+
+            <!-- SPALTE 4: Genehmigung (Statisch) -->
+            <td style="vertical-align: top; padding-left: 10px;">
+                <div style="height:5px;"></div>
+                <div class="check-row"><?= $o ?> genehmigt</div>
+                <div class="check-row"><?= $o ?> nicht genehmigt</div>
+                <div class="check-row"><?= $o ?> bitte Rücksprache</div>
+                
+                <br>
+                Datum: __________________
+                <br><br><br>
+                <div style="border-top:1px solid black; width: 90%;"> (Unterschrift)</div>
+                <br>
+                <div style="border-bottom:1px dashed black; width:100%; margin: 5px 0;"></div>
+                
+                <div>Vertretung geplant:</div>
+                <div style="margin-top:5px;">
+                    <?= $o ?> ja &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <?= $o ?> nein
+                </div>
+                
+                <br>
+                Datum: __________________
+                <br><br><br>
+                <div style="border-top:1px solid black; width: 90%;"> (Unterschrift)</div>
             </td>
         </tr>
     </table>
+    
+    <div style="font-weight:bold; font-size:8pt; text-align:center; margin-top:2px;">
+        *der schriftliche Antrag kann ggf. nachgereicht werden ** genehmigter Dienstreiseantrag ist beizulegen
+    </div>
 
-    <!-- SEKTION 2: DETAILS -->
-    <table>
+    <!-- ANTRAGSTELLER DETAILS -->
+    <table style="margin-top: 5px;">
         <tr>
-            <td class="label-col">Antragsteller*in:</td>
+            <td width="35%" style="background:#fff;">Antragsteller*in <small>(Name, Vorname)</small></td>
             <td><b><?= $esc('lastname') ?>, <?= $esc('firstname') ?></b></td>
         </tr>
         <tr>
-            <td class="label-col">Datum / Zeitraum:</td>
+            <td>Befreiungsdatum/ -zeitraum <small>(von – bis)</small></td>
             <td><?= $date_range ?></td>
         </tr>
         <tr>
-            <td class="label-col">Zeit (Stunde/Uhrzeit):</td>
+            <td>von Stunde – bis Stunde <small>(einschließlich)</small></td>
             <td><?= $time_str ?></td>
         </tr>
         <tr>
-            <td class="label-col" colspan="2" style="border-bottom:none;">Grund für den Antrag / Erläuterung / Ggf. Anlagen:</td>
-        </tr>
-        <tr>
-            <td colspan="2" height="40" style="vertical-align: top; border-top:none;">
-                <?= nl2br($esc('reason_text')) ?>
-            </td>
-        </tr>
-        <tr>
-            <td class="label-col">Weitere Beteiligte:</td>
+            <td>weitere beteiligte Kolleginnen und Kollegen in einer Veranstaltung</td>
             <td><?= $esc('colleagues') ?></td>
         </tr>
         <tr>
-            <td class="label-col">Terminkollision mit:</td>
+            <td>Termin kollidiert mit schulinternem Termin -> welchem?</td>
             <td><?= $esc('collision') ?></td>
+        </tr>
+        <tr>
+            <td>Grund für den Antrag, ggf. Anlagen</td>
+            <td><?= $esc('reason_text') ?></td>
         </tr>
     </table>
 
-    <!-- Unterschriften oben -->
-    <p style="font-size:8pt; margin: 2px 0 5px 0;">Hinweise zur Vertretung bitte auf der Rückseite ergänzen. (Mind. 14 Tage vorher einreichen)</p>
-    <table class="no-border" style="margin-top: 5px;">
+    <div style="font-size:8pt; font-weight:bold; margin:3px 0;">
+        Hinweise für die Vertretungsplanung bitte auf der Rückseite ergänzen! Mindestens 14 Tage vorher bei der Schulleitung einreichen!
+    </div>
+
+    <!-- UNTERSCHRIFTEN -->
+    <table class="no-border" style="margin-top: 15px; width:100%;">
         <tr>
-            <td width="30%" style="border-bottom: 1px solid black; padding-bottom: 0;">Münster, <?= date('d.m.Y') ?></td>
-            <td width="10%"></td>
-            <td width="60%" style="border-bottom: 1px solid black; padding-bottom: 0;"></td>
+            <td width="30%" style="border-bottom: 1px solid black;">Münster, den <?= date('d.m.Y') ?></td>
+            <td width="5%"></td>
+            <td width="65%" style="border-bottom: 1px solid black;"></td>
         </tr>
         <tr>
-            <td style="font-size: 7pt; padding:0;">Datum</td>
+            <td style="font-size:8pt;">Datum</td>
             <td></td>
-            <td style="font-size: 7pt; padding:0;">Unterschrift Antragsteller*in</td>
+            <td style="font-size:8pt;">Unterschrift Antragsteller*in</td>
         </tr>
     </table>
 
@@ -191,70 +264,67 @@ $reason_label = $reasons_map[$data['reason_key'] ?? ''] ?? 'Sonstiges';
         <div class="cut-icon"><?= $scissor ?></div>
     </div>
 
-    <!-- ABSCHNITT (QUITTUNG) -->
-    <div style="font-weight: bold; margin-bottom: 5px;">
-        Abschnitt für Antragsteller*in 
-        <span style="font-weight: normal; float:right;">
-            Name, Vorname: <u><?= $esc('lastname') ?>, <?= $esc('firstname') ?></u> &nbsp;&nbsp;&nbsp;
-        </span>
+    <!-- ABSCHNITT UNTEN (QUITTUNG) -->
+    <div style="font-weight: bold; margin-bottom: 5px; font-size: 10pt;">
+        Abschnitt für Antragsteller*in &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+        Name, Vorname __________________________________________
     </div>
 
     <table style="margin-bottom: 0;">
         <tr>
-            <td width="40%">Befreiungsdatum/ -zeitraum (von – bis)</td>
+            <td width="40%">Befreiungsdatum/ -zeitraum <small>(von – bis)</small></td>
             <td width="60%"><b><?= $date_range ?></b></td>
         </tr>
         <tr>
-            <td>von Stunde – bis Stunde</td>
+            <td>von Stunde – bis Stunde <small>(einschließlich)</small></td>
             <td><?= $time_str ?></td>
         </tr>
         <tr>
             <td>Grund für den Antrag</td>
             <td>
-                <b><?= $reason_label ?></b>
+                <?= $reason_label ?>
                 <?php if(!empty($data['reason_text'])) echo ' (' . substr($esc('reason_text'), 0, 30) . '...)'; ?>
             </td>
         </tr>
     </table>
 
-    <!-- Genehmigungstabelle -->
     <table style="margin-top: -1px; width: 100%;">
-        <tr class="bg-blue">
+        <tr class="th-blue">
             <th width="30%">Genehmigungsvermerk</th>
             <th width="20%">Genehmigung</th>
             <th width="35%">Unterschrift</th>
             <th width="15%">Datum</th>
         </tr>
         <tr>
-            <td>Antrag an die Schulleitung:</td>
+            <td style="height:30px;">Antrag an die Schulleitung:</td>
             <td>ja &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; nein</td>
             <td></td>
             <td></td>
         </tr>
     </table>
 
-
     <!-- SEITE 2: VERTRETUNG -->
     <div style="page-break-before: always;"></div>
-
-    <div class="header" style="text-align: left;">Rückseite: Hinweise zur Vertretungsplanung</div>
     
-    <table style="margin-top: 20px;">
-        <tr class="bg-gray">
+    <!-- Logo Wiederholung oder Header -->
+    <div style="font-weight:bold; font-size:12pt; margin-bottom:10px;">Rückseite: Hinweise zur Vertretungsplanung</div>
+
+    <table style="margin-top: 10px;">
+        <tr class="th-blue">
             <th width="20%">Datum</th>
-            <th width="20%">Lerngruppe / Klasse</th>
+            <th width="20%">Lerngruppe</th>
             <th width="10%">Stunde</th>
-            <th width="50%">Vertretungshinweise / Aufgaben</th>
+            <th width="50%">Vertretungshinweise</th>
         </tr>
         <?php 
         $rows = $data['sub_rows'] ?? [];
-        $rows_to_print = max(count($rows), 8); 
+        $rows_to_print = max(count($rows), 10); 
         for($i = 0; $i < $rows_to_print; $i++): 
             $r = $rows[$i] ?? [];
-            $d_date = !empty($r['date']) ? date('d.m.', strtotime($r['date'])) : '';
+            $d_date = !empty($r['date']) ? date('d.m. y', strtotime($r['date'])) : '';
         ?>
         <tr>
-            <td style="height: 25px;"><?= $d_date ?></td>
+            <td style="height: 28px;"><?= $d_date ?></td>
             <td><?= htmlspecialchars($r['group'] ?? '') ?></td>
             <td><?= htmlspecialchars($r['hour'] ?? '') ?></td>
             <td><?= htmlspecialchars($r['info'] ?? '') ?></td>

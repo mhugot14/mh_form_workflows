@@ -63,43 +63,51 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
             </div>
         <?php endif; ?>
 
-        <!-- SEKTION 1: ART DES ANTRAGS -->
-        <div class="mh-section" style="<?= isset($form_errors['category']) ? 'border:2px solid #d63638;' : '' ?>">
-            <h3>Art des Antrags (Bitte wählen) <span class="req">*</span></h3>
+      <!-- SEKTION 1: ART DES ANTRAGS (Angepasst an PDF) -->
+        <div class="mh-section">
+            <h3>Art des Antrags <span class="req">*</span></h3>
             <div class="reason-grid">
                 
-                <!-- Spalte 1 -->
+                <!-- Spalte 1: Dienstbefreiung -->
                 <div class="reason-col">
                     <h4>Dienstbefreiung</h4>
-                    <p style="font-size:0.8em; margin-bottom:10px; color:#666;">Zwingend Rücksprache mit Schulleitung!</p>
-                    <hr style="margin: 5px 0 10px 0; border:0; border-top:1px solid #eee;">
-                    
+                    <p style="font-size:0.8em; color:#666; margin-bottom:5px;">Rücksprache Schulleitung!</p>
                     <div class="mh-radio-row"><input type="radio" name="reason_key" value="krank_planbar" <?= $chk('reason_key', 'krank_planbar') ?> onclick="setCat('dienst')"> <label>Planbare Krankheit</label></div>
                     <div class="mh-radio-row"><input type="radio" name="reason_key" value="beerdigung" <?= $chk('reason_key', 'beerdigung') ?> onclick="setCat('dienst')"> <label>Beerdigungen</label></div>
                     <div class="mh-radio-row"><input type="radio" name="reason_key" value="einschulung" <?= $chk('reason_key', 'einschulung') ?> onclick="setCat('dienst')"> <label>Einschulung Kind</label></div>
-                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="versorgung" <?= $chk('reason_key', 'versorgung') ?> onclick="setCat('dienst')"> <label>Versorgungsleist. Angehörige</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="versorgung" <?= $chk('reason_key', 'versorgung') ?> onclick="setCat('dienst')"> <label>Versorgung Angehörige</label></div>
                     <div class="mh-radio-row"><input type="radio" name="reason_key" value="sonstige" <?= $chk('reason_key', 'sonstige') ?> onclick="setCat('dienst')"> <label>Anderer Anlass</label></div>
                 </div>
 
-                <!-- Spalte 2 -->
+                <!-- Spalte 2: Unterrichtsbefreiung -->
                 <div class="reason-col">
                     <h4>Unterrichtsbefreiung</h4>
-                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="fb_br" <?= $chk('reason_key', 'fb_br') ?> onclick="setCat('unterricht')"> <label>Fortbildung BR</label></div>
-                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="fb_schelf" <?= $chk('reason_key', 'fb_schelf') ?> onclick="setCat('unterricht')"> <label>Fortbildung SchELF</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="fb_br" <?= $chk('reason_key', 'fb_br') ?> onclick="setCat('unterricht')"> <label>Fortbildung BR **</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="fb_schelf" <?= $chk('reason_key', 'fb_schelf') ?> onclick="setCat('unterricht')"> <label>Fortbildung SchELF **</label></div>
                     <div class="mh-radio-row"><input type="radio" name="reason_key" value="fb_schilf" <?= $chk('reason_key', 'fb_schilf') ?> onclick="setCat('unterricht')"> <label>Fortbildung SchiLF</label></div>
-                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="pruefung" <?= $chk('reason_key', 'pruefung') ?> onclick="setCat('unterricht')"> <label>Vorprüfung / IHK / Fachberater</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="allg_br" <?= $chk('reason_key', 'allg_br') ?> onclick="setCat('unterricht')"> <label>Einladung BR</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="pruefung" <?= $chk('reason_key', 'pruefung') ?> onclick="setCat('unterricht')"> <label>Vorprüfung / Termine</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="fachberater" <?= $chk('reason_key', 'fachberater') ?> onclick="setCat('unterricht')"> <label>Fachberater</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="ihk" <?= $chk('reason_key', 'ihk') ?> onclick="setCat('unterricht')"> <label>IHK-Prüfungen</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="sonstige_unt" <?= $chk('reason_key', 'sonstige_unt') ?> onclick="setCat('unterricht')"> <label>Sonstige</label></div>
+                    
+                    <h4 style="margin-top:10px; background:#B4C6E7; padding:2px; text-align:center; color:#000;">Dienstunfallschutz</h4>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="dienstunfall" <?= $chk('reason_key', 'dienstunfall') ?> onclick="setCat('unfall')"> <label>Dienstveranstaltung (ohne U-Befr.)</label></div>
                 </div>
 
-                <!-- Spalte 3 -->
+                <!-- Spalte 3: Sonderurlaub -->
                 <div class="reason-col">
-                    <h4>Sonderurlaub / Unfall</h4>
+                    <h4>Sonderurlaub</h4>
                     <div class="mh-radio-row"><input type="radio" name="reason_key" value="jubilaeum" <?= $chk('reason_key', 'jubilaeum') ?> onclick="setCat('sonder')"> <label>Dienstjubiläum</label></div>
-                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="geburt_tod" <?= $chk('reason_key', 'geburt_tod') ?> onclick="setCat('sonder')"> <label>Tod / Niederkunft</label></div>
-                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="erkrankung_kind" <?= $chk('reason_key', 'erkrankung_kind') ?> onclick="setCat('sonder')"> <label>Erkrankung Kind/Ang.</label></div>
-                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="sport" <?= $chk('reason_key', 'sport') ?> onclick="setCat('sonder')"> <label>Sport / Politische Bildung</label></div>
-                    
-                    <hr style="margin: 10px 0; border:0; border-top:1px solid #ddd;">
-                    <div class="mh-radio-row" style="background:#eef; padding:5px; border-radius:4px;"><input type="radio" name="reason_key" value="dienstunfall" <?= $chk('reason_key', 'dienstunfall') ?> onclick="setCat('unfall')"> <label><b>Dienstveranstaltung</b><br>(Unfallschutz)</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="geburt_tod" <?= $chk('reason_key', 'geburt_tod') ?> onclick="setCat('sonder')"> <label>Tod Angehörige*</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="niederkunft" <?= $chk('reason_key', 'niederkunft') ?> onclick="setCat('sonder')"> <label>Niederkunft Frau/Partnerin*</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="umzug" <?= $chk('reason_key', 'umzug') ?> onclick="setCat('sonder')"> <label>Umzug dienstl.</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="erkrankung_ange" <?= $chk('reason_key', 'erkrankung_ange') ?> onclick="setCat('sonder')"> <label>Schwere Erkr. Angehörige*</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="erkrankung_kind" <?= $chk('reason_key', 'erkrankung_kind') ?> onclick="setCat('sonder')"> <label>Erkr. Kind (< 12)*</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="betreuung" <?= $chk('reason_key', 'betreuung') ?> onclick="setCat('sonder')"> <label>Erkr. Betreuer (< 8)*</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="pol_bildung" <?= $chk('reason_key', 'pol_bildung') ?> onclick="setCat('sonder')"> <label>Politische Bildung</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="sport" <?= $chk('reason_key', 'sport') ?> onclick="setCat('sonder')"> <label>Sport-Meistersch.</label></div>
+                    <div class="mh-radio-row"><input type="radio" name="reason_key" value="sonstige_dringend" <?= $chk('reason_key', 'sonstige_dringend') ?> onclick="setCat('sonder')"> <label>Sonstige dringende*</label></div>
                 </div>
             </div>
             <input type="hidden" name="category" id="input_category" value="<?= $val('category') ?>">
