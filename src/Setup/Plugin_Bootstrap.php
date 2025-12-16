@@ -6,6 +6,8 @@ namespace Mh\FormWorkflows\Setup;
 
 use Mh\FormWorkflows\Controller\Form_Controller;
 use Mh\FormWorkflows\Repository\Submission_Repository;
+use Mh\FormWorkflows\Repository\Class_Repository;   // <-- NEU
+use Mh\FormWorkflows\Repository\Teacher_Repository; // <-- NEU
 use Mh\FormWorkflows\Service\Pdf_Generator;
 
 /**
@@ -34,11 +36,19 @@ class Plugin_Bootstrap {
 		global $wpdb;
 
 		// 1. Services & Repositories instanziieren
-		$submission_repository = new Submission_Repository( $wpdb );
-		$pdf_generator         = new Pdf_Generator();
+		$submission_repo = new Submission_Repository( $wpdb );
+		$class_repo      = new Class_Repository( $wpdb );     // <-- NEU: Stammdaten
+		$teacher_repo    = new Teacher_Repository( $wpdb );   // <-- NEU: Stammdaten
+		$pdf_generator   = new Pdf_Generator();
 
-		// 2. Controller instanziieren und Abhängigkeiten injizieren
-		$form_controller = new Form_Controller( $submission_repository, $pdf_generator );
+		// 2. Controller instanziieren und ALLE 4 Abhängigkeiten injizieren
+		// WICHTIG: Die Reihenfolge muss exakt zum __construct im Form_Controller passen!
+		$form_controller = new Form_Controller( 
+			$submission_repo, 
+			$class_repo, 
+			$teacher_repo, 
+			$pdf_generator 
+		);
 
 		// 3. Hooks registrieren
 		// Gutenberg Block Registrierung
@@ -63,18 +73,28 @@ class Plugin_Bootstrap {
 		// damit man ihn im Editor findet.
 		register_block_type( 'mh/form-workflow', [
 			'api_version'     => 3,
-			'title'           => 'MH Formular Workflow', // <-- Der Name im Editor
-			'icon'            => 'pdf',                 // <-- Ein Icon (z.B. 'forms', 'feedback')
+			'title'           => 'MH Formular Workflow',
+			'icon'            => 'pdf',
 			'category'        => 'widgets',
 			'editor_script'   => null, 
 			'render_callback' => function( $attributes ) {
-				// Dependency Injection "Manuell" für den Render-Context
+				// Dependency Injection "Manuell" für den Render-Context (Frontend/Editor)
 				global $wpdb;
 				
 				// Achtung: Namespaces beachten bei new ...
-				$repo       = new \Mh\FormWorkflows\Repository\Submission_Repository( $wpdb );
-				$pdf        = new \Mh\FormWorkflows\Service\Pdf_Generator();
-				$controller = new \Mh\FormWorkflows\Controller\Form_Controller( $repo, $pdf );
+				// Hier müssen wir EBENFALLS alle 4 Dependencies erzeugen
+				$sub_repo     = new \Mh\FormWorkflows\Repository\Submission_Repository( $wpdb );
+				$class_repo   = new \Mh\FormWorkflows\Repository\Class_Repository( $wpdb );     // <-- NEU
+				$teacher_repo = new \Mh\FormWorkflows\Repository\Teacher_Repository( $wpdb );   // <-- NEU
+				$pdf          = new \Mh\FormWorkflows\Service\Pdf_Generator();
+				
+				// Controller erstellen
+				$controller = new \Mh\FormWorkflows\Controller\Form_Controller( 
+					$sub_repo, 
+					$class_repo, 
+					$teacher_repo, 
+					$pdf 
+				);
 				
 				return $controller->render_form( $attributes );
 			}
