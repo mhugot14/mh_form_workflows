@@ -106,7 +106,9 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             </div>
             <div class="mh-grid-row mh-grid-2">
                 <div class="mh-input-group"><label>Status</label><div class="mh-fake-input"><span id="status_display">...</span><input type="hidden" name="is_minor" id="input_is_minor" value="<?= $val('is_minor') ?>"></div></div>
-                <div class="mh-input-group"><label>Datum der Abmeldung / Kündigung <span class="req">*</span><span class="mh-info-icon" data-tooltip="Datum des Endes des Schulverhältnisses.">?</span></label><input type="date" name="date_off" id="field_date_off" required value="<?= $val('date_off') ?: date('Y-m-d') ?>"></div>
+                <div class="mh-input-group"><label>Datum der Abmeldung / Kündigung <span class="req">*</span><span class="mh-info-icon" 
+				data-tooltip="Datum des Endes des Schulverhältnisses. Das Formular berechnet basierend auf dem Datum das Zeugnisdatum (letzter Schultag)
+				und Konferenzdatum.">?</span></label><input type="date" name="date_off" id="field_date_off" required value="<?= $val('date_off') ?: date('Y-m-d') ?>"></div>
             </div>
         </div>
 
@@ -185,8 +187,11 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                 
                 <!-- DATUM MIT MARKIERUNG -->
                 <div class="mh-input-group">
-                    <label>Konferenzdatum<span class="req">*</span></label>
-                    <input type="date" name="prot_date" id="field_prot_date" readonly 
+                    <label>Konferenzdatum<span class="req">*</span>
+					<span class="mh-info-icon" 
+				data-tooltip="Das Konferenzdatum wird der Einfachheit halber auf das Zeugnisdatum gesetzt. Es sollte kein Wochenende sein.">?</span>
+                    </label>
+						<input type="date" name="prot_date" id="field_prot_date" readonly 
                            value="<?= $val('prot_date') ?>"
                            style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
                     <?php if ( ! empty( $form_data['prot_was_corrected'] ) ): ?>
@@ -197,22 +202,28 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                 </div>
 
                 <div class="mh-input-group">
-                    <label>Ausgabedatum<span class="req">*</span></label>
+                    <label>Ausgabedatum<span class="req">*</span><span class="mh-info-icon" 
+				data-tooltip="Wird automatisch berechnet. Es ist der letzte Schultag in Abhängigkeit vom oben angegebenen Datum zum Ende des Schulverhältnisses/Kündigung.">?</span></label>
                     <input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly 
                            value="<?= $val('prot_issue_date') ?>"
                            style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
                 </div>
 				
 
-                <div class="mh-input-group"><label>Vorsitzende/r<span class="req">*</span></label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
+                <div class="mh-input-group"><label>Vorsitzende/r<span class="req">*</span>
+					<span class="mh-info-icon" 
+				data-tooltip="Der/die Vorsitzende ist in der Regel die Abteilungsleitung.">?</span>
+					</label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
             </div>
             <p><small>Die Daten werden auf den letzten Schultag gelegt. Sollte das Kündigungs-/Abmeldedatum <u>kein</u> Schultag sein, 
 					berechnet das Formular <u>beim Absenden</u> das neue Datum.</small></p>
             <div class="mh-grid-row mh-grid-2">
-                 <div class="mh-input-group"><label>Raum<span class="req">*</span></label><input type="text" name="prot_room" value="<?= $val('prot_room') ?>"></div>
+                 <div class="mh-input-group"><label>Raum<span class="req">*</span><span class="mh-info-icon" 
+				data-tooltip="Gib hier eine Raumnummer oder das LZ (Lehrerzimmer) an.">?</span></label><input type="text" name="prot_room" value="<?= $val('prot_room') ?>"></div>
                  <div></div> 
             </div>
-            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:</label><textarea name="prot_remarks" style="width:100%;"><?= $val('prot_remarks') ?></textarea></div>            
+            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" 
+				data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
 
         <div class="btn-group">
