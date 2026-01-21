@@ -122,22 +122,47 @@ $date_fmt = function($field) use ($data) {
         </tr>
     </table>
 
-    <!-- Tabelle 2: Laufbahn / Anschluss (Unten angeklebt) -->
-    <!-- style="margin-top: 0" sorgt für nahtlosen Anschluss -->
-    <table style="width: 100%; margin-top: 0; border-top: none;">
+   <!-- 3. ANSCHLUSSPERSPEKTIVE -->
+    <div style="font-weight: bold; margin-top: 10px;">Anschlussperspektive:</div>
+    <div style="font-size: 8pt; margin-bottom: 2px;">Auszufüllen für folgende Bildungsgänge: AV, BFI, BFII, HH, KA, WG</div>
+
+    <table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
+        <!-- ZEILE 1: PERSPEKTIVE VORHANDEN -->
         <tr>
-            <td style="font-weight: bold; border-top: none;">
-                Die weitere Laufbahn ist gesichert (Anschluss)?
+            <td rowspan="2" class="section-num" style="border:1px solid black; width:30px; text-align:center;">3</td>
+            <td style="border:1px solid black; padding: 5px;">
+                <?= $chk('perspective', 'exists') ?> <b>Es liegt eine konkrete Anschlussperspektive vor.</b>
+                
+                <!-- Unterpunkte eingerückt -->
+                <div style="margin-left: 20px; margin-top: 5px; font-size: 9pt;">
+                    <div style="margin-bottom: 2px;">
+                        <?= $chk('perspective_detail', 'ausbildung') ?> unterschriebener Ausbildungsvertrag
+                    </div>
+                    <div style="margin-bottom: 2px;">
+                        <?= $chk('perspective_detail', 'schule') ?> Aufnahmebestätigung einer anderen Schule
+                    </div>
+                    <div style="margin-bottom: 2px;">
+                        <?= $chk('perspective_detail', 'studium') ?> schriftliche Zusage eines Studienplatzes
+                    </div>
+                    <div style="margin-bottom: 2px;">
+                        <?= $chk('perspective_detail', 'fsj') ?> schriftliche Zusage eines FSJ, FÖJ oder BFD
+                    </div>
+                    <div>
+                        <?= $chk('perspective_detail', 'sonstiges') ?> sonstiges: 
+                        <?php if($data['perspective_detail'] === 'sonstiges') echo '<u>' . $esc('perspective_other') . '</u>'; ?>
+                    </div>
+                </div>
             </td>
-            <td style="width: 130px; border-top: none; border-left: 1px solid black;">
-                <?= $chk('future_secured', 'yes') ?> Ja 
-                &nbsp;&nbsp;&nbsp;
-                <?= $chk('future_secured', 'no') ?> Nein
+        </tr>
+        <!-- ZEILE 2: KEINE PERSPEKTIVE -->
+        <tr>
+            <td style="border:1px solid black; padding: 5px;">
+                <?= $chk('perspective', 'none') ?> <b>Es liegt keine konkrete Anschlussperspektive vor.</b>
             </td>
         </tr>
     </table>
 	
-    <!-- 3. ZEUGNIS -->
+    <!-- 4. ZEUGNIS -->
     <div style="font-weight: bold; margin-top: 10px;">Zeugnis: <small>(Zeugniskonferenzprotokoll bitte beifügen!)</small></div>
     <!-- Checkbox für Protokoll -->
     <div style="margin-bottom: 5px;">
