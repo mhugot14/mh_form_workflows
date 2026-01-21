@@ -266,11 +266,14 @@ $reason_label = $reasons_map[$data['reason_key'] ?? ''] ?? 'Sonstiges';
 
     <!-- ABSCHNITT UNTEN (QUITTUNG) -->
     <div style="font-weight: bold; margin-bottom: 5px; font-size: 10pt;">
-        Abschnitt für Antragsteller*in &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-        Name, Vorname __________________________________________
+        Abschnitt für Antragsteller*in
     </div>
 
     <table style="margin-bottom: 0;">
+		 <tr>
+			 <td width="40%" style="font-size:11pt;"><b>Antragssteller/in</b> </td>
+            <td width="60%" style="font-size:11pt;"><b><?= $esc('lastname') ?>, <?= $esc('firstname') ?></b></td>
+        </tr>
         <tr>
             <td width="40%">Befreiungsdatum/ -zeitraum <small>(von – bis)</small></td>
             <td width="60%"><b><?= $date_range ?></b></td>
@@ -288,16 +291,21 @@ $reason_label = $reasons_map[$data['reason_key'] ?? ''] ?? 'Sonstiges';
         </tr>
     </table>
 
+    <!-- Genehmigungstabelle -->
     <table style="margin-top: -1px; width: 100%;">
         <tr class="th-blue">
             <th width="30%">Genehmigungsvermerk</th>
-            <th width="20%">Genehmigung</th>
+            <!-- colspan="2" verbindet die Überschrift über Ja und Nein -->
+            <th width="20%" colspan="2">Genehmigung</th>
             <th width="35%">Unterschrift</th>
             <th width="15%">Datum</th>
         </tr>
         <tr>
             <td style="height:30px;">Antrag an die Schulleitung:</td>
-            <td>ja &nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp; nein</td>
+            <!-- Hier die zwei getrennten Spalten -->
+            <td width="10%" style="text-align: center;">ja</td>
+            <td width="10%" style="text-align: center;">nein</td>
+            <!-- Restliche leere Spalten -->
             <td></td>
             <td></td>
         </tr>
