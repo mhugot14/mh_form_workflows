@@ -105,7 +105,8 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                 <div class="mh-input-group"><label>Klassenlehrer/in (Kürzel) <span class="req">*</span></label><input type="text" name="teacher" required class="<?= $err_cls('teacher') ?>" value="<?= $val('teacher') ?>"></div>
             </div>
             <div class="mh-grid-row mh-grid-2">
-                <div class="mh-input-group"><label>Status</label><div class="mh-fake-input"><span id="status_display">...</span><input type="hidden" name="is_minor" id="input_is_minor" value="<?= $val('is_minor') ?>"></div></div>
+                <div class="mh-input-group"><label>Status<span class="mh-info-icon" 
+				data-tooltip="Hier wird ermittelt ob die Person minderjährig bei Schuljahresbeginn (01.08.) war.">?</span></label><div class="mh-fake-input"><span id="status_display">...</span><input type="hidden" name="is_minor" id="input_is_minor" value="<?= $val('is_minor') ?>"></div></div>
                 <div class="mh-input-group"><label>Datum der Abmeldung / Kündigung <span class="req">*</span><span class="mh-info-icon" 
 				data-tooltip="Datum des Endes des Schulverhältnisses. Das Formular berechnet basierend auf dem Datum das Zeugnisdatum (letzter Schultag)
 				und Konferenzdatum.">?</span></label><input type="date" name="date_off" id="field_date_off" required value="<?= $val('date_off') ?: date('Y-m-d') ?>"></div>
@@ -139,27 +140,47 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             <div id="bg_details" class="mh-sub-group toggle-target"><div class="mh-input-group"><label>Name des Bildungsgangs <span class="req">*</span></label><input type="text" name="new_education_track" value="<?= $val('new_education_track') ?>"></div></div>
         </div>
 		
-		<!-- NEUE SEKTION: LAUFBAHN / ANSCHLUSS -->
+	<!-- SEKTION: ANSCHLUSSPERSPEKTIVE -->
         <div class="mh-form-section">
-            <h4 style="margin-bottom:10px;">Laufbahn / Anschluss <span class="req">*</span></h4>
+            <h4 style="margin-bottom:5px;">3. Anschlussperspektive <span class="req">*</span></h4>
+            <p style="font-size:0.85em; color:#666; margin-bottom:15px;">
+                Auszufüllen für folgende Bildungsgänge: AV, BFI, BFII, HH, KA, WG
+            </p>
             
-            <div class="mh-input-group" style="margin:0 !important;">
-                <label style="font-weight:normal; margin-bottom:10px;">
-                    Die weitere Laufbahn des Schülers / der Schülerin ist gesichert (Anschluss)?
-                </label>
-                
-                <div style="display:flex; gap: 30px;">
-                    <div class="radio-group">
-                        <input type="radio" name="future_secured" value="yes" id="fs_yes" required <?= $chk('future_secured', 'yes') ?>> 
-                        <label for="fs_yes"><b>Ja</b></label>
-                    </div>
-                    
-                    <div class="radio-group">
-                        <input type="radio" name="future_secured" value="no" id="fs_no" <?= $chk('future_secured', 'no') ?>> 
-                        <label for="fs_no"><b>Nein</b></label>
-                    </div>
+            <!-- OPTION A: Es liegt vor -->
+            <div class="mh-input-group" style="margin-bottom: 5px !important;">
+                <div class="radio-group">
+                    <input type="radio" name="perspective" value="exists" id="p_exists" class="toggle-trigger" data-target="perspective_details_wrap" required <?= $chk('perspective', 'exists') ?>> 
+                    <label for="p_exists"><b>Es liegt eine konkrete Anschlussperspektive vor.</b></label>
                 </div>
-				<div><small>Ist dies nicht der Fall, wird der Name zur Nachverfolgung an die Agentur für Arbeit weitergegeben.</small></div>
+            </div>
+
+            <!-- DETAILS (Klappt auf wenn A gewählt) -->
+            <div id="perspective_details_wrap" class="mh-sub-group toggle-target" style="background:#f0f0f0;">
+                <div class="radio-group"><input type="radio" name="perspective_detail" value="ausbildung" <?= $chk('perspective_detail', 'ausbildung') ?>> <label>unterschriebener Ausbildungsvertrag</label></div>
+                <div class="radio-group"><input type="radio" name="perspective_detail" value="schule" <?= $chk('perspective_detail', 'schule') ?>> <label>Aufnahmebestätigung einer anderen Schule</label></div>
+                <div class="radio-group"><input type="radio" name="perspective_detail" value="studium" <?= $chk('perspective_detail', 'studium') ?>> <label>schriftliche Zusage eines Studienplatzes</label></div>
+                <div class="radio-group"><input type="radio" name="perspective_detail" value="fsj" <?= $chk('perspective_detail', 'fsj') ?>> <label>schriftliche Zusage eines FSJ, FÖJ oder BFD</label></div>
+                
+                <div class="radio-group" style="align-items: center;">
+                    <input type="radio" name="perspective_detail" value="sonstiges" class="toggle-trigger" data-target="p_other_wrap" <?= $chk('perspective_detail', 'sonstiges') ?>> 
+                    <label>sonstiges:</label>
+                </div>
+                <!-- Textfeld für Sonstiges -->
+                <div id="p_other_wrap" class="toggle-target" style="margin-left: 25px; margin-top:5px;">
+                    <input type="text" name="perspective_other" placeholder="Bitte angeben..." style="width:100%;" value="<?= $val('perspective_other') ?>">
+                </div>
+            </div>
+
+            <!-- OPTION B: Keine Perspektive -->
+            <div class="mh-input-group" style="margin-top: 15px;">
+                <div class="radio-group">
+                    <input type="radio" name="perspective" value="none" id="p_none" class="toggle-trigger" <?= $chk('perspective', 'none') ?>> 
+                    <label for="p_none"><b>Es liegt KEINE konkrete Anschlussperspektive vor.</b></label>
+                </div>
+                <div style="margin-left: 28px; font-size: 0.85em; color: #d63638;">
+                    (Name wird zur Nachverfolgung an die Agentur für Arbeit weitergegeben)
+                </div>
             </div>
         </div>
 

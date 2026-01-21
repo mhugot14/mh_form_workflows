@@ -73,7 +73,9 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		$prot_transfer   = $this->sanitize_text( $data['prot_transfer'] ?? '' );
 		$prot_check_comp = isset( $data['prot_check_compulsory'] ) ? '1' : '0';
 
-		$future_secured = $this->sanitize_text( $data['future_secured'] ?? '' );
+		$perspective        = $this->sanitize_text( $data['perspective'] ?? '' ); 
+        $perspective_detail = $this->sanitize_text( $data['perspective_detail'] ?? '' );
+        $perspective_other  = $this->sanitize_text( $data['perspective_other'] ?? '' );
 
 		// --- 2. VALIDIERUNG (Pflichtfelder wiederhergestellt!) ---
 		if ( empty( $name ) ) $this->add_error( 'lastname', 'Nachname fehlt.' );
@@ -84,9 +86,23 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( empty( $date_off ) ) $this->add_error( 'date_off', 'Datum der Abmeldung fehlt.' );
 		if ( empty( $reason ) ) $this->add_error( 'reason', 'Grund der Abmeldung auswählen.' );
 		if ( empty( $compulsory ) ) $this->add_error( 'compulsory', 'Angabe zur Schulpflicht fehlt.' );
-		if ( empty( $future_secured ) ) {
-            $this->add_error( 'future_secured', 'Angabe zur weiteren Laufbahn fehlt.' );
+		
+		  // PFLICHTFELD: Anschluss
+        if ( empty( $perspective ) ) {
+            $this->add_error( 'perspective', 'Bitte Angaben zur Anschlussperspektive machen.' );
         }
+
+        // Wenn "Vorhanden" (exists), muss ein Detail gewählt sein
+        if ( 'exists' === $perspective ) {
+            if ( empty( $perspective_detail ) ) {
+                $this->add_error( 'perspective_detail', 'Bitte Art der Anschlussperspektive auswählen (Ausbildungsvertrag, Schule, etc.).' );
+            }
+            // Optional: Wenn "Sonstiges", muss Text da sein
+            if ( 'sonstiges' === $perspective_detail && empty( $perspective_other ) ) {
+                $this->add_error( 'perspective_other', 'Bitte bei "Sonstiges" eine Angabe machen.' );
+            }
+        }
+		
 		// Conditional Logic
 		if ( 'schulwechsel' === $reason && empty( $new_school ) ) $this->add_error( 'new_school', 'Bitte Namen der neuen Schule angeben.' );
 		if ( 'av_klasse' === $compulsory && empty( $av_date_start ) ) $this->add_error( 'av_date_start', 'AV-Klasse: Startdatum fehlt.' );
@@ -139,7 +155,9 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			'prot_end_school'     => $prot_end_school,
 			'prot_transfer'       => $prot_transfer,
 			'prot_check_comp'     => $prot_check_comp,
-			'future_secured'      => $future_secured,
+			'perspective'        => $perspective,
+            'perspective_detail' => $perspective_detail,
+            'perspective_other'  => $perspective_other,
 		];
 
 		return empty( $this->errors );
