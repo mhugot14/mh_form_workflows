@@ -142,7 +142,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 		
 	<!-- SEKTION: ANSCHLUSSPERSPEKTIVE -->
         <div class="mh-form-section">
-            <h4 style="margin-bottom:5px;">3. Anschlussperspektive <span class="req">*</span></h4>
+            <h4 style="margin-bottom:5px;">Anschlussperspektive <span class="req">*</span></h4>
             <p style="font-size:0.85em; color:#666; margin-bottom:15px;">
                 Auszufüllen für folgende Bildungsgänge: AV, BFI, BFII, HH, KA, WG
             </p>
