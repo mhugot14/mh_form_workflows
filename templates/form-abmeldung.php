@@ -193,8 +193,24 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                 <div class="mh-input-group"><label>Fehlstunden Gesamt <span class="req">*</span></label><input type="number" name="missed_hours" value="<?= $val('missed_hours') ?>"></div>
                 <div class="mh-input-group"><label>Unentschuldigt <span class="req">*</span></label><input type="number" name="missed_ue" value="<?= $val('missed_ue') ?>"></div>
             </div>
+            <!-- SEKTION PROTOKOLL TOGGLE -->
             <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px;">
-                <div class="radio-group"><input type="checkbox" name="protocol_attached" value="1" id="chk_protocol" class="toggle-trigger" data-target="protocol_wrapper" <?= $chk('protocol_attached', '1') ?>> <label for="chk_protocol" style="font-weight:bold;">Zeugniskonferenzprotokoll beifügen</label></div>
+                <div class="radio-group">
+                    <input type="checkbox" 
+                           name="protocol_attached" 
+                           value="1" 
+                           id="chk_protocol" 
+                           class="toggle-trigger" 
+                           data-target="protocol_wrapper" 
+                           <?php 
+                               // LOGIK: 
+                               // Ist checked, wenn:
+                               // 1. $form_data leer ist (Frischer Seitenaufruf)
+                               // 2. ODER wenn es im $form_data explizit als '1' drin steht (nach Reload)
+                               echo ( empty($form_data) || (isset($form_data['protocol_attached']) && $form_data['protocol_attached'] == '1') ) ? 'checked' : ''; 
+                           ?>>
+                    <label for="chk_protocol" style="font-weight:bold;">Zeugniskonferenzprotokoll beifügen</label>
+                </div>
             </div>
         </div>
 
@@ -248,8 +264,8 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         </div>
 
         <div class="btn-group">
-            <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular prüfen</button>
             <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
+            <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
         </div>
     </form>
 </div>

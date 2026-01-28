@@ -72,7 +72,7 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
                 <!-- Spalte 1: Dienstbefreiung -->
                 <div class="reason-col">
                     <h4>Dienstbefreiung</h4>
-                    <p style="font-size:0.8em; color:#666; margin-bottom:5px;"><b>Zwingend Rücksprache</b> Schulleitung - auch bei Koferenzen.</p>
+                    <p style="font-size:0.8em; color:#666; margin-bottom:5px;"><b>Zwingend Rücksprache</b> Schulleitung - auch bei Konferenzen.</p>
                     <div class="mh-radio-row"><input type="radio" name="reason_key" value="krank_planbar" <?= $chk('reason_key', 'krank_planbar') ?> onclick="setCat('dienst')"> <label>Planbare Krankheitsangelegenheiten</label></div>
                     <p style="font-size:0.8em; color:#666; margin-bottom:5px; margin-top:10px;">Besondere persönliche Ereignisse, wie:</p>
 					<div class="mh-radio-row"><input type="radio" name="reason_key" value="beerdigung" <?= $chk('reason_key', 'beerdigung') ?> onclick="setCat('dienst')"> <label>Beerdigungen</label></div>
