@@ -264,9 +264,9 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         </div>
 
         <div class="btn-group">
-            <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular prüfen</button>
-            <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
-        </div>
+          <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
+            <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
+         </div>
     </form>
 </div>
 
