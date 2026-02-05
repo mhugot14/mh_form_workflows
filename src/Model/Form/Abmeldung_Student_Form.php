@@ -108,16 +108,26 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( 'av_klasse' === $compulsory && empty( $av_date_start ) ) $this->add_error( 'av_date_start', 'AV-Klasse: Startdatum fehlt.' );
 		if ( 'bildungsgang' === $compulsory && empty( $education_track ) ) $this->add_error( 'new_education_track', 'Bitte Bildungsgang angeben.' );
 		
-		if ( 'ueberweisung' === $certificate ) {
-			if ( '' === $missed_hours_raw ) $this->add_error( 'missed_hours', 'Bitte Gesamtfehlstunden angeben.' );
-			if ( $missed_ue > $missed_hours ) $this->add_error( 'missed_ue', 'Unentschuldigte Stunden können nicht höher sein als Gesamtfehlstunden.' );
-		}
 
 		if ( '1' === $protocol ) {
 			if ( empty( $prot_type ) ) $this->add_error( 'prot_type', 'Bitte Typ für Protokoll wählen.' );
 			// Wir prüfen hier prot_date (das korrigierte), nicht raw. Wenn leer -> Fehler.
 			if ( empty( $prot_date ) ) $this->add_error( 'prot_date', 'Konferenzdatum fehlt.' );
 			if ( empty( $prot_chair ) ) $this->add_error( 'prot_chair', 'Vorsitzende/r fehlt.' );
+			if ( '' === $missed_hours_raw ) {
+				$this->add_error( 'missed_hours', 'Bitte Gesamtfehlstunden angeben (ggf. 0).' );
+			}
+			if ( '' === $missed_ue_raw ) {
+				$this->add_error( 'missed_ue', 'Bitte unentschuldigte Stunden angeben (ggf. 0).' );
+			}
+            
+            // Plausibilität (Unentschuldigt <= Gesamt)
+			if ( is_numeric( $missed_hours_raw ) && is_numeric( $missed_ue_raw ) ) {
+				if ( $missed_ue > $missed_hours ) {
+					$this->add_error( 'missed_ue', 'Unentschuldigte Stunden können nicht höher sein als Gesamtfehlstunden.' );
+				}
+			}
+			
 		}
 
 
