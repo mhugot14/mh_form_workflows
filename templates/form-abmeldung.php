@@ -178,22 +178,29 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                     <input type="radio" name="perspective" value="none" id="p_none" class="toggle-trigger" <?= $chk('perspective', 'none') ?>> 
                     <label for="p_none"><b>Es liegt KEINE konkrete Anschlussperspektive vor.</b></label>
                 </div>
-                <div style="margin-left: 28px; font-size: 0.85em; color: #d63638;">
+                <div style="margin-left: 28px; font-size: 0.85em; color: #6f6f6f;">
                     (Name wird zur Nachverfolgung an die Agentur für Arbeit weitergegeben)
                 </div>
             </div>
         </div>
 
         <!-- SEKTION 4: Zeugnis -->
-        <div class="mh-form-section">
-            <h4>Zeugnis</h4>
-            <div class="radio-group"><input type="radio" name="certificate" value="abgang" id="z_ab" class="toggle-trigger" <?= $chk('certificate', 'abgang') ?>> <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small>(Ohne Abschluss)</small></label></div>
-            <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" class="toggle-trigger" data-target="missed_wrapper" <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb Schulstufe)</small></label></div>
-            <div id="missed_wrapper" class="mh-grid-row mh-grid-2 toggle-target mh-sub-group">
-                <div class="mh-input-group"><label>Fehlstunden Gesamt <span class="req">*</span></label><input type="number" name="missed_hours" value="<?= $val('missed_hours') ?>"></div>
-                <div class="mh-input-group"><label>Unentschuldigt <span class="req">*</span></label><input type="number" name="missed_ue" value="<?= $val('missed_ue') ?>"></div>
+        <div class="mh-form-section" style="<?= isset($form_errors['certificate']) ? 'border:2px solid #d63638;' : '' ?>">
+            <h4 style="<?= isset($form_errors['certificate']) ? 'color:#d63638;' : '' ?>">
+                3. Zeugnis <span class="req">*</span>
+            </h4>
+            
+            <div class="radio-group">
+                <input type="radio" name="certificate" value="abgang" id="z_ab" required <?= $chk('certificate', 'abgang') ?>>
+                <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small style="color:#666;">(Ohne Abschluss)</small></label>
             </div>
-            <!-- SEKTION PROTOKOLL TOGGLE -->
+            
+            <div class="radio-group">
+                <input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>>
+                <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small style="color:#666;">(Wechsel innerhalb Schulstufe)</small></label>
+            </div>
+
+            <!-- PROTOKOLL TOGGLE -->
             <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px;">
                 <div class="radio-group">
                     <input type="checkbox" 
@@ -203,10 +210,6 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                            class="toggle-trigger" 
                            data-target="protocol_wrapper" 
                            <?php 
-                               // LOGIK: 
-                               // Ist checked, wenn:
-                               // 1. $form_data leer ist (Frischer Seitenaufruf)
-                               // 2. ODER wenn es im $form_data explizit als '1' drin steht (nach Reload)
                                echo ( empty($form_data) || (isset($form_data['protocol_attached']) && $form_data['protocol_attached'] == '1') ) ? 'checked' : ''; 
                            ?>>
                     <label for="chk_protocol" style="font-weight:bold;">Zeugniskonferenzprotokoll beifügen</label>
@@ -214,53 +217,81 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             </div>
         </div>
 
-        <!-- SEKTION 5: Protokoll (Optimiert & Gelb Markiert) -->
+        <!-- SEKTION 5: Protokoll (Bereinigt) -->
         <div id="protocol_wrapper" class="mh-form-section toggle-target mh-collapsible-section" style="border-left: 5px solid #0073aa;">
-            <h4>Angaben zum Konferenzprotokoll</h4>
-            <div class="radio-group"><input type="radio" name="prot_type" value="berufsschule" id="pt_bs" class="toggle-trigger" data-target="prot_bs_fields" <?= $chk('prot_type', 'berufsschule') ?>> <label><b>Teilzeit</b> (u.a. Berufsschule)</label></div>
-            <div class="radio-group"><input type="radio" name="prot_type" value="vollzeit" id="pt_vz" class="toggle-trigger" data-target="prot_vz_fields" <?= $chk('prot_type', 'vollzeit') ?>> <label><b>Vollzeit</b></label></div>
+            <h4>4. Angaben zum Konferenzprotokoll</h4>
+            
+            <!-- Typ Auswahl (ohne Toggle-Funktion, da keine Unterbereiche mehr existieren) -->
+            <div class="radio-group"><input type="radio" name="prot_type" value="berufsschule" id="pt_bs" <?= $chk('prot_type', 'berufsschule') ?>> <label for="pt_bs"><b>Teilzeit</b> (u.a. Berufsschule)</label></div>
+            <div class="radio-group"><input type="radio" name="prot_type" value="vollzeit" id="pt_vz" <?= $chk('prot_type', 'vollzeit') ?>> <label for="pt_vz"><b>Vollzeit</b></label></div>
 
+            <!-- Stammdaten Zeile -->
             <div class="mh-grid-row mh-grid-3" style="margin-top:20px;">
-                
-                <!-- DATUM MIT MARKIERUNG -->
                 <div class="mh-input-group">
-                    <label>Konferenzdatum<span class="req">*</span>
-					<span class="mh-info-icon" 
-				data-tooltip="Das Konferenzdatum wird der Einfachheit halber auf das Zeugnisdatum gesetzt. Es sollte kein Wochenende sein.">?</span>
+                    <label>Konferenzdatum <span class="req">*</span>
+                        <span class="mh-info-icon" data-tooltip="Das Konferenzdatum wird der Einfachheit halber auf das Zeugnisdatum gesetzt. Es sollte kein Wochenende sein.">?</span>
                     </label>
-						<input type="date" name="prot_date" id="field_prot_date" readonly 
+                    <input type="date" name="prot_date" id="field_prot_date" readonly 
                            value="<?= $val('prot_date') ?>"
                            style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
+                    
                     <?php if ( ! empty( $form_data['prot_was_corrected'] ) ): ?>
-                        <div style="font-size:0.8em; color:#b7791f; margin-top:3px; font-weight:bold;">
-                            ℹ️ Korrigiert auf Schultag.
-                        </div>
+                        <div style="font-size:0.8em; color:#b7791f; margin-top:3px; font-weight:bold;">ℹ️ Korrigiert auf Schultag.</div>
                     <?php endif; ?>
                 </div>
 
                 <div class="mh-input-group">
-                    <label>Ausgabedatum<span class="req">*</span><span class="mh-info-icon" 
-				data-tooltip="Wird automatisch berechnet. Es ist der letzte Schultag in Abhängigkeit vom oben angegebenen Datum zum Ende des Schulverhältnisses/Kündigung.">?</span></label>
+                    <label>Ausgabedatum <span class="req">*</span>
+                        <span class="mh-info-icon" data-tooltip="Wird automatisch berechnet. Es ist der letzte Schultag in Abhängigkeit vom oben angegebenen Datum zum Ende des Schulverhältnisses/Kündigung.">?</span>
+                    </label>
                     <input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly 
                            value="<?= $val('prot_issue_date') ?>"
                            style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
                 </div>
-				
 
-                <div class="mh-input-group"><label>Vorsitzende/r<span class="req">*</span>
-					<span class="mh-info-icon" 
-				data-tooltip="Der/die Vorsitzende ist in der Regel die Abteilungsleitung.">?</span>
-					</label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
+                <div class="mh-input-group">
+                    <label>Vorsitzende/r <span class="req">*</span>
+                        <span class="mh-info-icon" data-tooltip="Der/die Vorsitzende ist in der Regel die Abteilungsleitung.">?</span>
+                    </label>
+                    <input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>">
+                </div>
             </div>
-            <p><small>Die Daten werden auf den letzten Schultag gelegt. Sollte das Kündigungs-/Abmeldedatum <u>kein</u> Schultag sein, 
-					berechnet das Formular <u>beim Absenden</u> das neue Datum.</small></p>
+            
+            <p style="margin-bottom:15px; font-size:0.85em; color:#666;">
+                <small>Die Daten werden auf den letzten Schultag gelegt. Sollte das Kündigungs-/Abmeldedatum <u>kein</u> Schultag sein, berechnet das Formular <u>beim Absenden</u> das neue Datum.</small>
+            </p>
+
+            <!-- Raum & Fehlstunden Block -->
             <div class="mh-grid-row mh-grid-2">
-                 <div class="mh-input-group"><label>Raum<span class="req">*</span><span class="mh-info-icon" 
-				data-tooltip="Gib hier eine Raumnummer oder das LZ (Lehrerzimmer) an.">?</span></label><input type="text" name="prot_room" value="<?= $val('prot_room') ?>"></div>
-                 <div></div> 
+                 <div class="mh-input-group">
+                     <label>Raum <span class="req">*</span>
+                        <span class="mh-info-icon" data-tooltip="Gib hier eine Raumnummer oder das LZ (Lehrerzimmer) an.">?</span>
+                     </label>
+                     <input type="text" name="prot_room" value="<?= $val('prot_room') ?>">
+                 </div>
+                 
+                 <!-- HIER SIND DIE FEHLSTUNDEN JETZT -->
+                 <!-- Wir verschachteln ein Grid im Grid für die zwei Zahlen -->
+                 <div class="mh-grid-row mh-grid-2" style="margin-bottom:0 !important; gap: 10px !important;">
+                    <div class="mh-input-group">
+                        <label>Fehlstunden <span class="req">*</span></label>
+                        <input type="number" name="missed_hours" value="<?= $val('missed_hours') ?>">
+                    </div>
+                    <div class="mh-input-group">
+                        <label>Unentschuldigt <span class="req">*</span></label>
+                        <input type="number" name="missed_ue" value="<?= $val('missed_ue') ?>">
+                    </div>
+                 </div>
             </div>
-            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" 
-				data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%;"><?= $val('prot_remarks') ?></textarea></div>            
+
+            <div class="mh-input-group">
+                <label>Beschlussfassung / Bemerkungen: 
+                    <span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span>
+                </label>
+                <textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea>
+            </div> 
+            
+            <!-- Die alten Vollzeit/Teilzeit Detail-Divs sind hier GELÖSCHT -->           
         </div>
 
         <div class="btn-group">

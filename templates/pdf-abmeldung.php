@@ -167,8 +167,7 @@ $date_fmt = function($field) use ($data) {
                             <span class="small-text" style="padding-left:15px;">(Der/die SchülerIn wechselt innerhalb derselben Schulstufe die Schule.)</span>
                         </td>
                         <td width="35%" style="text-align:right;">
-                            Fehlstunden: <b><?= $esc('missed_hours') ?></b><br>
-                            davon unentschuldigt: <b><?= $esc('missed_ue') ?></b>
+                           
                         </td>
                     </tr>
                 </table>
