@@ -6,8 +6,8 @@ namespace Mh\FormWorkflows\Setup;
 
 use Mh\FormWorkflows\Controller\Form_Controller;
 use Mh\FormWorkflows\Repository\Submission_Repository;
-use Mh\FormWorkflows\Repository\Class_Repository;   // <-- NEU
-use Mh\FormWorkflows\Repository\Teacher_Repository; // <-- NEU
+use Mh\FormWorkflows\Repository\Class_Repository;
+use Mh\FormWorkflows\Repository\Teacher_Repository;
 use Mh\FormWorkflows\Service\Pdf_Generator;
 
 /**
@@ -18,9 +18,12 @@ use Mh\FormWorkflows\Service\Pdf_Generator;
 class Plugin_Bootstrap {
 
 	/**
+	 * @var Form_Controller Speichert den Controller für Admin-Callbacks.
+	 */
+	private Form_Controller $form_controller;
+
+	/**
 	 * Startet das Plugin.
-	 *
-	 * @return void
 	 */
 	public function init(): void {
 		$this->load_dependencies();
@@ -28,22 +31,18 @@ class Plugin_Bootstrap {
 
 	/**
 	 * Instanziiert Klassen und registriert Hooks.
-	 * (Manuelle Dependency Injection).
-	 *
-	 * @return void
 	 */
 	private function load_dependencies(): void {
 		global $wpdb;
 
-		// 1. Services & Repositories instanziieren
+		// 1. Repositories & Services
 		$submission_repo = new Submission_Repository( $wpdb );
-		$class_repo      = new Class_Repository( $wpdb );     // <-- NEU: Stammdaten
-		$teacher_repo    = new Teacher_Repository( $wpdb );   // <-- NEU: Stammdaten
+		$class_repo      = new Class_Repository( $wpdb );
+		$teacher_repo    = new Teacher_Repository( $wpdb );
 		$pdf_generator   = new Pdf_Generator();
 
-		// 2. Controller instanziieren und ALLE 4 Abhängigkeiten injizieren
-		// WICHTIG: Die Reihenfolge muss exakt zum __construct im Form_Controller passen!
-		$form_controller = new Form_Controller( 
+		// 2. Controller instanziieren und in Property speichern
+		$this->form_controller = new Form_Controller( 
 			$submission_repo, 
 			$class_repo, 
 			$teacher_repo, 
@@ -51,64 +50,125 @@ class Plugin_Bootstrap {
 		);
 
 		// 3. Hooks registrieren
-		// Gutenberg Block Registrierung
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		
-		// AJAX / Formular Handling
-		add_action( 'admin_post_mh_submit_form', [ $form_controller, 'handle_submission' ] );
-		add_action( 'admin_post_nopriv_mh_submit_form', [ $form_controller, 'handle_submission' ] );
+		// Formular Handling (POST)
+		add_action( 'admin_post_mh_submit_form', [ $this->form_controller, 'handle_submission' ] );
+		add_action( 'admin_post_nopriv_mh_submit_form', [ $this->form_controller, 'handle_submission' ] );
 		
-		// Shortcode für den Render-Controller (als Fallback/Block Callback)
-		add_shortcode( 'mh_form_workflow', [ $form_controller, 'render_form' ] );
-		// NEU: Dashboard Actions (Download/Delete via GET Request)
-		// Wir nutzen 'template_redirect' oder 'init' für GET requests, bevor HTML gesendet wird.
-		// Aber 'admin_post' ist sauberer, wenn wir admin-post.php nutzen würden. 
-		// Da wir Links im Frontend haben wollen, nutzen wir einen Hook, der früh feuert:
-		add_action( 'init', function() use ($form_controller) {
-			if ( isset( $_GET['mh_action'] ) ) {
-				$form_controller->handle_dashboard_action();
+		// Admin Menü & Settings
+		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
+		add_action( 'admin_init', [ $this, 'register_settings' ] );
+
+		// Admin Aktionen (Löschen/Download)
+		add_action( 'admin_init', function() {
+			if ( isset( $_GET['mh_admin_action'] ) ) {
+				$this->form_controller->handle_admin_action();
 			}
 		});
+
+		// Dashboard Aktionen für User (Download/Delete)
+		add_action( 'init', function() {
+			if ( isset( $_GET['mh_action'] ) ) {
+				$this->form_controller->handle_dashboard_action();
+			}
+		});
+		add_action( 'admin_init', function() {
+            if ( isset( $_POST['bulk_ids'] ) && (isset($_POST['action']) || isset($_POST['action2'])) ) {
+                $this->form_controller->handle_admin_bulk_action();
+            }
+        });
 		
-		// NEU: Shortcode für das Dashboard
-		add_shortcode( 'mh_my_submissions', [ $form_controller, 'render_dashboard' ] );
+		add_shortcode( 'mh_form_workflow', [ $this->form_controller, 'render_form' ] );
+		add_shortcode( 'mh_my_submissions', [ $this->form_controller, 'render_dashboard' ] );
 	}
 
 	/**
-	 * Registriert den Gutenberg Block (PHP-Side).
-	 *
-	 * @return void
+	 * Registriert das Admin-Menü.
+	 */
+	public function add_admin_menu(): void {
+		add_menu_page(
+			'MH Formulare',
+			'MH Formulare',
+			'manage_options',
+			'mh-form-admin-list',
+			[ $this->form_controller, 'render_admin_dashboard' ],
+			'dashicons-clipboard',
+			30
+		);
+
+		add_submenu_page(
+			'mh-form-admin-list',
+			'Alle Einsendungen',
+			'Alle Einsendungen',
+			'manage_options',
+			'mh-form-admin-list',
+			[ $this->form_controller, 'render_admin_dashboard' ]
+		);
+
+		add_submenu_page(
+			'mh-form-admin-list',
+			'Einstellungen',
+			'Einstellungen',
+			'manage_options',
+			'mh-form-workflows-settings',
+			[ $this, 'render_settings_page' ]
+		);
+	}
+
+	/**
+	 * Registriert die Plugin-Einstellungen.
+	 */
+	public function register_settings(): void {
+		register_setting( 'mh_fw_settings_group', 'mh_fw_settings' );
+	}
+
+	/**
+	 * Rendert die Einstellungsseite.
+	 */
+	public function render_settings_page(): void {
+		$options = get_option( 'mh_fw_settings', [] );
+		?>
+		<div class="wrap">
+			<h1>MH Form Workflows - Einstellungen</h1>
+			<form method="post" action="options.php">
+				<?php settings_fields( 'mh_fw_settings_group' ); ?>
+				<table class="form-table">
+					<tr>
+						<th>Seite für Schüler-Abmeldung</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_abmeldung_student_v1]',
+								'selected' => $options['page_id_abmeldung_student_v1'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+						</td>
+					</tr>
+					<tr>
+						<th>Seite für Dienstbefreiung</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_service_leave_v1]',
+								'selected' => $options['page_id_service_leave_v1'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+						</td>
+					</tr>
+				</table>
+				<?php submit_button(); ?>
+			</form>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Registriert den Gutenberg Block.
 	 */
 	public function register_blocks(): void {
-		
-		// Wir geben dem Block Attribute mit (Titel, Icon, Kategorie), 
-		// damit man ihn im Editor findet.
 		register_block_type( 'mh/form-workflow', [
 			'api_version'     => 3,
-			'title'           => 'MH Formular Workflow',
-			'icon'            => 'pdf',
-			'category'        => 'widgets',
-			'editor_script'   => null, 
 			'render_callback' => function( $attributes ) {
-				// Dependency Injection "Manuell" für den Render-Context (Frontend/Editor)
-				global $wpdb;
-				
-				// Achtung: Namespaces beachten bei new ...
-				// Hier müssen wir EBENFALLS alle 4 Dependencies erzeugen
-				$sub_repo     = new \Mh\FormWorkflows\Repository\Submission_Repository( $wpdb );
-				$class_repo   = new \Mh\FormWorkflows\Repository\Class_Repository( $wpdb );     // <-- NEU
-				$teacher_repo = new \Mh\FormWorkflows\Repository\Teacher_Repository( $wpdb );   // <-- NEU
-				$pdf          = new \Mh\FormWorkflows\Service\Pdf_Generator();
-				
-				// Controller erstellen
-				$controller = new \Mh\FormWorkflows\Controller\Form_Controller( 
-					$sub_repo, 
-					$class_repo, 
-					$teacher_repo, 
-					$pdf 
-				);
-				
-				return $controller->render_form( $attributes );
+				return $this->form_controller->render_form( $attributes );
 			}
 		]);
 	}

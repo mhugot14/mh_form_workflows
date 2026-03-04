@@ -60,6 +60,7 @@ class Form_Controller {
 			// Sicherheit: Nur laden, wenn es dem User gehört und der Typ stimmt
 			if ($entry && (int)$entry['user_id'] === get_current_user_id() && $entry['form_type'] === $form_type) {
 				$form_data = $entry['form_data'];
+				$form_data['id'] = $entry['id'];
 				// Wir markieren für die View, dass wir im "Wiederherstellungs-Modus" sind
 				$form_data['is_reloaded'] = true; 
 			}
@@ -120,15 +121,27 @@ class Form_Controller {
 		}
 
 		// 4. Speichern
-		$entry_id = $this->repository->create( [
+		// Prüfen, ob wir eine ID zum Updaten haben
+		$submission_id = (int)( $_POST['submission_id'] ?? 0 );
+		$current_user_id = get_current_user_id();
+
+		$db_data = [
 			'form_type' => $form->get_slug(),
 			'status'    => 'submitted',
-			'user_id'   => get_current_user_id(),
+			'user_id'   => $current_user_id,
 			'form_data' => $valid_data
-		] );
+		];
+
+		if ( $submission_id > 0 ) {
+			// UPDATE statt Create
+			$this->repository->update( $submission_id, $db_data, $current_user_id );
+			$entry_id = $submission_id;
+		} else {
+			// NEU ANLEGEN
+			$entry_id = $this->repository->create( $db_data );
+		}
 
 		if ( 0 === $entry_id ) wp_die( 'Datenbankfehler.' );
-		  $valid_data['entry_id'] = $entry_id;
 
 		// 5. PDF Weiche
 		$data = $valid_data; 
@@ -158,19 +171,18 @@ class Form_Controller {
 
 		// Dateinamen generieren
 		// Format Wunsch: Datum(JJ-MM-TT)_LNR_Befreiung_Nachname-Vorname
-		
-		$lastname  = sanitize_file_name( $valid_data['lastname'] ?? 'Unbekannt' );
-		$firstname = sanitize_file_name( $valid_data['firstname'] ?? '' );
-		$today_str = date('y-m-d'); // y = 2-stelliges Jahr (25), m = Monat, d = Tag
-		
-		if ( 'service_leave_v1' === $form_type_slug ) {
-			// Beispiel: 25-12-16_105_Befreiung_Mustermann-Max
-			$filename = sprintf( '%s_%d_Befreiung_%s-%s', $today_str, $entry_id, $lastname, $firstname );
-		} else {
-			// Fallback für Abmeldung (oder auch anpassen, wenn gewünscht)
-			$filename = 'Abmeldung_' . $lastname . '_' . $firstname;
-		}
-		
+		// Wir nutzen updated_at (oder NOW, da wir gerade speichern)
+    $current_date = date('y-m-d'); 
+    
+    // Wenn wir eine ID haben (Update), nutzen wir diese, sonst die neue entry_id
+    $lnr = $submission_id > 0 ? $submission_id : $entry_id;
+
+    $filename = sprintf('%s_%d_%s%s', 
+        $current_date, 
+        $lnr, 
+        ('service_leave_v1' === $form_type_slug ? 'Befreiung_' : 'Abmeldung_'),
+        sanitize_file_name($valid_data['lastname'])
+    );
 		// PDF Streamen
 		$this->pdf_generator->generate_and_stream( $entry_id, $final_html, $filename );
 		
@@ -179,47 +191,36 @@ class Form_Controller {
 	/**
 	 * Render Methode für das User-Dashboard [mh_my_submissions]
 	 */
-	public function render_dashboard(): string {
-		if ( ! is_user_logged_in() ) {
-			return '<p>Bitte anmelden, um die Übersicht zu sehen.</p>';
-		}
+	    public function render_dashboard(): string {
+        if ( ! is_user_logged_in() ) return '<p>Bitte anmelden.</p>';
 
-		$user_id = get_current_user_id();
-		$submissions = $this->repository->get_submissions_by_user( $user_id );
-		
-		// Daten nach Schuljahren gruppieren
-		// Schuljahr-Wechsel ist immer am 01.08.
-		$grouped = [];
-		foreach ( $submissions as $sub ) {
-			// created_at string zu Timestamp
-			$ts = strtotime( $sub['created_at'] );
-			$year = (int)date( 'Y', $ts );
-			$month = (int)date( 'n', $ts );
-			
-			// Wenn Monat < 8 (Jan-Juli), gehört es zum Schuljahr, das im Vorjahr begann
-			if ( $month < 8 ) {
-				$school_year = ($year - 1) . '/' . substr((string)$year, -2);
-			} else {
-				$school_year = $year . '/' . substr((string)($year + 1), -2);
-			}
-			
-			// JSON decoden für die Anzeige (Name, Art)
-			if ( is_string( $sub['form_data'] ) ) {
-				$sub['data'] = json_decode( $sub['form_data'], true );
-			} else {
-				$sub['data'] = $sub['form_data']; // Falls Repository es schon array liefert
-			}
-			
-			$grouped[ $school_year ][] = $sub;
-		}
+        $user_id = get_current_user_id();
+        $submissions = $this->repository->get_submissions_by_user( $user_id );
+        
+        // URLs für alle bekannten Typen vorbereiten
+        $urls = [
+            'service_leave_v1'     => $this->get_url_for_form_type('service_leave_v1'),
+            'abmeldung_student_v1' => $this->get_url_for_form_type('abmeldung_student_v1'),
+            'abmeldung'            => $this->get_url_for_form_type('abmeldung_student_v1'), // Alias
+        ];
 
-		// Nachrichten abfangen (z.B. "Gelöscht")
-		$msg = isset($_GET['mh_msg']) ? sanitize_text_field($_GET['mh_msg']) : '';
+        // Gruppierung nach Schuljahr
+        $grouped = [];
+        foreach ( $submissions as $sub ) {
+            $ts = strtotime( $sub['created_at'] );
+            $year = (int)date( 'Y', $ts );
+            $month = (int)date( 'n', $ts );
+            $school_year = ($month < 8) ? ($year - 1) . '/' . substr((string)$year, -2) : $year . '/' . substr((string)($year + 1), -2);
+            
+            $sub['data'] = is_string($sub['form_data']) ? json_decode($sub['form_data'], true) : $sub['form_data'];
+            $grouped[ $school_year ][] = $sub;
+        }
 
-		ob_start();
-		include MH_FW_PLUGIN_DIR . 'templates/dashboard-user.php';
-		return ob_get_clean() ?: '';
-	}
+        ob_start();
+        // WICHTIG: Hier stellen wir sicher, dass $urls und $grouped für das Template sichtbar sind
+        include MH_FW_PLUGIN_DIR . 'templates/dashboard-user.php';
+        return ob_get_clean() ?: '';
+    }
 
 	/**
 	 * Handelt Aktionen aus dem Dashboard (Download, Delete)
@@ -291,4 +292,92 @@ class Form_Controller {
 			exit;
 		}
 	}
+	/**
+	 * Render Methode für das Admin-Dashboard im Backend
+	 */
+	public function render_admin_dashboard(): void {
+		if ( ! current_user_can( 'manage_options' ) ) return;
+
+		// Filter aus der URL holen und sanitisieren
+		$filters = [
+			'start_date' => sanitize_text_field( $_GET['start_date'] ?? '' ),
+			'end_date'   => sanitize_text_field( $_GET['end_date'] ?? '' ),
+			'user_id'    => sanitize_text_field( $_GET['user_id'] ?? '' ),
+			'form_type'  => sanitize_text_field( $_GET['form_type'] ?? '' ),
+		];
+
+		// Daten holen
+		$submissions = $this->repository->get_filtered_submissions( $filters );
+		$submitters  = $this->repository->get_distinct_submitters();
+		
+		foreach ( $submissions as &$sub ) {
+			$sub['data'] = is_string($sub['form_data']) ? json_decode($sub['form_data'], true) : $sub['form_data'];
+		}
+
+		include MH_FW_PLUGIN_DIR . 'templates/dashboard-admin.php';
+	}
+
+	/**
+	 * Handelt Admin-Aktionen (Löschen/Download)
+	 */
+	public function handle_admin_action(): void {
+		if ( ! current_user_can( 'manage_options' ) ) wp_die('Keine Berechtigung');
+
+		$action = $_GET['mh_admin_action'] ?? '';
+		$id     = (int)($_GET['id'] ?? 0);
+
+		check_admin_referer( 'mh_admin_action_' . $id );
+
+		if ( 'delete' === $action ) {
+			$this->repository->delete_as_admin( $id );
+			wp_redirect( admin_url( 'admin.php?page=mh-form-admin-list&mh_msg=deleted' ) );
+			exit;
+		}
+
+		if ( 'download' === $action ) {
+            // Wir nutzen die gleiche Logik wie im User-Dashboard
+			$_GET['mh_action'] = 'download'; // "Fake" den User-Download-Trigger
+            $this->handle_dashboard_action(); 
+            exit;
+		}
+	}
+	
+	/**
+	 * Verarbeitet Mehrfachaktionen (Bulk Actions)
+	 */
+	public function handle_admin_bulk_action(): void {
+		if ( ! current_user_can( 'manage_options' ) ) wp_die( 'Keine Berechtigung' );
+
+		// Sicherheitsprüfung
+		check_admin_referer( 'bulk-submissions' );
+
+		$action = $_POST['action'] ?? $_POST['action2'] ?? '';
+		$ids    = array_map( 'intval', $_POST['bulk_ids'] ?? [] );
+
+		if ( 'delete' === $action && ! empty( $ids ) ) {
+			$count = $this->repository->delete_multiple( $ids );
+			wp_redirect( admin_url( 'admin.php?page=mh-form-admin-list&mh_msg=bulk_deleted&count=' . $count ) );
+			exit;
+		}
+	}
+	
+	/**
+     * Holt die URL für einen Formular-Typ aus den Admin-Einstellungen.
+     */
+    private function get_url_for_form_type(string $type): string {
+        $options = get_option( 'mh_fw_settings', [] );
+        
+        // Wir mappen hier zur Sicherheit auch alte oder kurze Typen auf die neuen Keys
+        $key = 'page_id_' . $type;
+        if ($type === 'abmeldung') $key = 'page_id_abmeldung_student_v1'; // Fallback für alte Testdaten
+
+        $page_id = (int)($options[$key] ?? 0);
+
+        if ($page_id > 0) {
+            $url = get_permalink($page_id);
+            return $url ? $url : '';
+        }
+
+        return ''; 
+    }
 }

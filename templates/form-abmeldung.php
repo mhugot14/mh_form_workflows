@@ -90,6 +90,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 
     <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST" id="mh-abmeldung-form">
         <input type="hidden" name="action" value="mh_submit_form">
+		<input type="hidden" name="submission_id" value="<?= $val('id') ?>">
         <?php wp_nonce_field( 'mh_form_submit' ); ?>
 
         <!-- SEKTION 1: Stammdaten -->

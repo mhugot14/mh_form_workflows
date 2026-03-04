@@ -54,6 +54,7 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
     <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST">
         <input type="hidden" name="action" value="mh_submit_form">
         <input type="hidden" name="form_type" value="service_leave_v1">
+		<input type="hidden" name="submission_id" value="<?= $val('id') ?>">
         <?php wp_nonce_field( 'mh_form_submit' ); ?>
 
         <?php if (!empty($form_errors)): ?>
