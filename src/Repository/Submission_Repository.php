@@ -45,22 +45,38 @@ class Submission_Repository implements Submission_Repository_Interface {
 	}
 
 	public function get_by_id( int $id ): ?array {
-		$query = $this->db->prepare(
-			"SELECT * FROM {$this->table_name} WHERE id = %d",
-			$id
+    $row = $this->db->get_row( $this->db->prepare( 
+        "SELECT * FROM {$this->table_name} WHERE id = %d", 
+        $id 
+    ), ARRAY_A );
+
+    if ( $row && !empty($row['form_data']) ) {
+        // Falls es noch ein JSON-String ist, decoden
+        if ( is_string($row['form_data']) ) {
+            $row['form_data'] = json_decode($row['form_data'], true);
+        }
+    }
+    return $row;
+}
+	/**
+	 * Holt alle Einsendungen eines bestimmten Users, sortiert nach Datum (neu oben).
+	 */
+	public function get_submissions_by_user( int $user_id ): array {
+		return $this->db->get_results( $this->db->prepare(
+			"SELECT * FROM {$this->table_name} WHERE user_id = %d ORDER BY created_at DESC",
+			$user_id
+		), ARRAY_A );
+	}
+
+	/**
+	 * Löscht einen Eintrag (nur wenn er dem User gehört).
+	 */
+	public function delete_submission( int $entry_id, int $user_id ): bool {
+		$deleted = $this->db->delete(
+			$this->table_name,
+			[ 'id' => $entry_id, 'user_id' => $user_id ], // Where
+			[ '%d', '%d' ] // Formate
 		);
-
-		$row = $this->db->get_row( $query, ARRAY_A );
-
-		if ( null === $row ) {
-			return null;
-		}
-		
-		// JSON decode form_data zurück zu Array
-		if ( isset( $row['form_data'] ) ) {
-			$row['form_data'] = json_decode( $row['form_data'], true );
-		}
-
-		return $row;
+		return $deleted !== false && $deleted > 0;
 	}
 }

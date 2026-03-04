@@ -60,6 +60,18 @@ class Plugin_Bootstrap {
 		
 		// Shortcode für den Render-Controller (als Fallback/Block Callback)
 		add_shortcode( 'mh_form_workflow', [ $form_controller, 'render_form' ] );
+		// NEU: Dashboard Actions (Download/Delete via GET Request)
+		// Wir nutzen 'template_redirect' oder 'init' für GET requests, bevor HTML gesendet wird.
+		// Aber 'admin_post' ist sauberer, wenn wir admin-post.php nutzen würden. 
+		// Da wir Links im Frontend haben wollen, nutzen wir einen Hook, der früh feuert:
+		add_action( 'init', function() use ($form_controller) {
+			if ( isset( $_GET['mh_action'] ) ) {
+				$form_controller->handle_dashboard_action();
+			}
+		});
+		
+		// NEU: Shortcode für das Dashboard
+		add_shortcode( 'mh_my_submissions', [ $form_controller, 'render_dashboard' ] );
 	}
 
 	/**
