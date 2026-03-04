@@ -78,6 +78,7 @@ class Plugin_Bootstrap {
                 $this->form_controller->handle_admin_bulk_action();
             }
         });
+		add_action('wp_ajax_mh_get_students', [$this->form_controller, 'ajax_get_students']);
 		
 		add_shortcode( 'mh_form_workflow', [ $this->form_controller, 'render_form' ] );
 		add_shortcode( 'mh_my_submissions', [ $this->form_controller, 'render_dashboard' ] );

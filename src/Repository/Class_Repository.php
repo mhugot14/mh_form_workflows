@@ -6,30 +6,33 @@ namespace Mh\FormWorkflows\Repository;
 
 use wpdb;
 
+/**
+ * Class Class_Repository
+ * 
+ * Liest Klassendaten aus der Tabelle des webuntisAnalyser Plugins.
+ */
 class Class_Repository {
 
 	private string $table_name;
 
 	public function __construct( private wpdb $db ) {
-		// Zugriff auf die Tabelle des Webuntis-Plugins!
 		$this->table_name = $this->db->prefix . 'wa_classes';
 	}
 
 	/**
 	 * Holt alle Klassen, die aktiv sind und einen Klassenlehrer haben.
-	 * Damit filtern wir z.B. "DIENST" oder Raum-Reservierungen raus.
+	 * Inklusive wu_id für den AJAX-Match und is_fulltime für die Formular-Logik.
 	 *
 	 * @return array
 	 */
 	public function get_real_classes(): array {
-		// Sicherheitscheck: Existiert die Tabelle überhaupt?
+		// Sicherheitscheck: Existiert die Tabelle?
 		if ( $this->db->get_var( "SHOW TABLES LIKE '{$this->table_name}'" ) !== $this->table_name ) {
 			return [];
 		}
 
-		// Wir filtern: Muss aktiv sein UND muss einen Lehrer haben.
-		// (Je nach Import ist ein leerer Lehrer NULL oder ein leerer String)
-		$query = "SELECT * 
+		// Wir holen wu_id (für Schüler-Match), name (Anzeige) und is_fulltime (Logik)
+		$query = "SELECT wu_id, name, is_fulltime 
                   FROM {$this->table_name} 
                   WHERE is_active = 1 
                   AND teacher_1 != '' 

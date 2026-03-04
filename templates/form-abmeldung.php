@@ -1,68 +1,68 @@
 <?php
+/**
+ * View: Schüler-Abmeldung (Intelligente Version mit WebUntis-Anbindung)
+ */
+
 // Helper
 $val = fn($key) => isset($form_data[$key]) ? esc_attr($form_data[$key]) : '';
 $err_cls = fn($key) => isset($form_errors[$key]) ? 'mh-error-field' : ( isset($form_data[$key]) && $is_success ? 'mh-valid-field' : '' );
 $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ? 'checked' : '';
 
-// Extrahiere spezielle Warnung aus Errors
+// Lehrer-Name für Autofüllung
+$current_user = wp_get_current_user();
+$teacher_default = trim($current_user->first_name . ' ' . $current_user->last_name) ?: $current_user->display_name;
+
+// Warnung extrahieren
 $warning_msg = '';
 if ( isset( $form_errors['date_autocorrect'] ) ) {
     $warning_msg = $form_errors['date_autocorrect'];
-    unset( $form_errors['date_autocorrect'] ); // Damit es unten nicht doppelt rot erscheint
+    unset( $form_errors['date_autocorrect'] );
 }
 ?>
 
 <style>
-    /* CSS RESET & LAYOUT */
+    /* CSS RESET & LAYOUT (Erhalten & Erweitert) */
     .mh-form-wrapper { max-width: 900px; margin: 0 auto; box-sizing: border-box; font-family: inherit; }
     .mh-form-wrapper * { box-sizing: border-box !important; float: none !important; position: static !important; }
+    .mh-form-wrapper .mh-info-icon { position: relative !important; }
+    .mh-form-wrapper .mh-info-icon:hover::after { position: absolute !important; }
     
-    /* Layout Sektionen */
     .mh-form-section { background: #f9f9f9; border: 1px solid #ccc; padding: 20px; margin-bottom: 25px; border-radius: 4px; width: 100% !important; display: block !important; }
     .mh-form-section h4 { margin-top: 0 !important; margin-bottom: 20px !important; border-bottom: 1px solid #ddd !important; padding-bottom: 10px; color: #333; }
 
-    /* Grid */
     .mh-grid-row { display: grid !important; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important; gap: 20px !important; margin-bottom: 15px !important; width: 100% !important; }
     .mh-grid-2 { grid-template-columns: 1fr 1fr !important; }
     .mh-grid-3 { grid-template-columns: 1fr 1fr 1fr !important; }
     @media (max-width: 768px) { .mh-grid-2, .mh-grid-3 { grid-template-columns: 1fr !important; } }
 
-    /* Input Groups */
     .mh-input-group { display: flex !important; flex-direction: column !important; width: 100% !important; margin: 0 !important; border: none !important; padding: 0 !important; }
     .mh-input-group label { display: block !important; width: 100% !important; margin: 0 0 5px 0 !important; font-weight: bold; line-height: 1.4 !important; height: auto !important; }
     
-    /* Inputs */
-    .mh-input-group input[type="text"], .mh-input-group input[type="date"], .mh-input-group input[type="number"], .mh-input-group select, .mh-input-group textarea {
-        display: block !important; width: 100% !important; height: 40px !important; padding: 6px 12px !important; margin: 0 !important; border: 1px solid #aaa !important; background-color: #fff !important; border-radius: 4px !important; font-size: 15px !important; box-shadow: none !important;
+    .mh-input-group input, .mh-input-group select, .mh-input-group textarea {
+        display: block !important; width: 100% !important; height: 40px !important; padding: 6px 12px !important; margin: 0 !important; border: 1px solid #aaa !important; background-color: #fff !important; border-radius: 4px !important; font-size: 15px !important;
     }
     .mh-input-group textarea { height: auto !important; }
     .mh-input-group input[readonly] { background-color: #e9e9e9 !important; color: #555 !important; cursor: not-allowed; }
     .mh-fake-input { display: flex !important; align-items: center; height: 40px; width: 100%; background: #e9e9e9; border: 1px solid #aaa; border-radius: 4px; padding: 0 10px; color: #555; }
 
-    /* Radio/Checkbox */
     .radio-group { display: flex !important; flex-direction: row !important; align-items: flex-start !important; margin-bottom: 8px !important; gap: 10px !important; }
     .radio-group input { width: 18px !important; height: 18px !important; margin-top: 4px !important; flex-shrink: 0; }
     .radio-group label { font-weight: normal !important; margin: 0 !important; display: inline-block !important; }
 
-    /* Messages */
-    .mh-error-box { background: #fff; border-left: 5px solid #d63638; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .mh-success-box { background: #fff; border-left: 5px solid #46b450; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    .mh-warning-box { background: #fff8e5; border-left: 5px solid #e5a912; padding: 20px; margin-bottom: 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-    
+    .mh-error-box { background: #fff; border-left: 5px solid #d63638; padding: 20px; margin-bottom: 30px; }
+    .mh-success-box { background: #fff; border-left: 5px solid #46b450; padding: 20px; margin-bottom: 30px; }
+    .mh-warning-box { background: #fff8e5; border-left: 5px solid #e5a912; padding: 20px; margin-bottom: 30px; }
     .mh-error-field { border-color: #d63638 !important; background-color: #fff5f5 !important; }
     
-    /* Misc */
     .mh-sub-group { margin-left: 28px; padding: 15px; border-left: 3px solid #ddd; background: #fff; margin-bottom: 15px; margin-top: 5px; }
     .req { color: #d63638; font-weight: bold; margin-left: 3px; }
     .mh-hidden { display: none !important; }
     .btn-group { margin-top: 30px; display: flex; gap: 15px; flex-wrap: wrap; }
     .btn-group button { height: auto !important; padding: 12px 24px !important; cursor: pointer; }
     
-    /* Tooltip */
-    .mh-info-icon { display: inline-block; width: 18px; height: 18px; background: #0073aa; color: #fff; border-radius: 50%; text-align: center; line-height: 18px; font-size: 12px; font-weight: bold; cursor: help; margin-left: 5px; position: relative !important; }
+    .mh-info-icon { display: inline-block; width: 18px; height: 18px; background: #0073aa; color: #fff; border-radius: 50%; text-align: center; line-height: 18px; font-size: 12px; font-weight: bold; cursor: help; margin-left: 5px; }
     .mh-info-icon:hover::after { content: attr(data-tooltip); position: absolute; bottom: 25px; left: -100px; width: 250px; padding: 10px; background: #333; color: #fff; font-size: 12px; font-weight: normal; line-height: 1.4; border-radius: 4px; z-index: 9999; }
     
-    /* Theme Text Transform Override */
     .mh-form-wrapper input, .mh-form-wrapper select, .mh-form-wrapper label, .mh-form-wrapper span, .mh-form-wrapper div { text-transform: none !important; font-variant: normal !important; }
 </style>
 
@@ -72,7 +72,6 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         <div class="mh-success-box"><h3 style="margin-top:0; color:#46b450;">✅ Prüfung erfolgreich!</h3></div>
     <?php endif; ?>
 
-    <!-- WARNUNG (GELB) -->
     <?php if ( ! empty( $warning_msg ) ): ?>
         <div class="mh-warning-box">
              <h3 style="margin-top:0; color:#b7791f;">⚠️ Hinweis zur Datumsänderung:</h3>
@@ -80,7 +79,6 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         </div>
     <?php endif; ?>
 
-    <!-- FEHLER (ROT) -->
     <?php if ( ! empty( $form_errors ) ): ?>
         <div class="mh-error-box">
              <h3 style="margin-top:0; color:#d63638;">❌ Bitte korrigieren:</h3>
@@ -90,31 +88,73 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 
     <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST" id="mh-abmeldung-form">
         <input type="hidden" name="action" value="mh_submit_form">
-		<input type="hidden" name="submission_id" value="<?= $val('id') ?>">
+        <input type="hidden" name="form_type" value="abmeldung_student_v1">
+        <input type="hidden" name="submission_id" value="<?= $val('id') ?>">
+        
+        <!-- NEU: Flag für Vollzeit-Logik -->
+        <input type="hidden" name="is_fulltime_class" id="is_fulltime_class" value="<?= $val('is_fulltime_class') ?>">
+
         <?php wp_nonce_field( 'mh_form_submit' ); ?>
 
-        <!-- SEKTION 1: Stammdaten -->
+        <!-- NEU: SEKTION 0: Auswahl aus Stammdaten -->
         <div class="mh-form-section">
-            <h4>Schülerdaten</h4>
-            <div class="mh-grid-row mh-grid-3">
-                <div class="mh-input-group"><label>Nachname <span class="req">*</span></label><input type="text" name="lastname" required class="<?= $err_cls('lastname') ?>" value="<?= $val('lastname') ?>"></div>
-                <div class="mh-input-group"><label>Vorname <span class="req">*</span></label><input type="text" name="firstname" required class="<?= $err_cls('firstname') ?>" value="<?= $val('firstname') ?>"></div>
-                <div class="mh-input-group"><label>Geburtsdatum <span class="req">*</span></label><input type="date" name="dob" id="field_dob" required class="<?= $err_cls('dob') ?>" value="<?= $val('dob') ?>"></div>
-            </div>
+            <h4>Klassen- & Schülerwahl</h4>
             <div class="mh-grid-row mh-grid-2">
-                <div class="mh-input-group"><label>Klasse <span class="req">*</span></label><input type="text" name="class_name" required class="<?= $err_cls('class_name') ?>" value="<?= $val('class_name') ?>"></div>
-                <div class="mh-input-group"><label>Klassenlehrer/in (Kürzel) <span class="req">*</span></label><input type="text" name="teacher" required class="<?= $err_cls('teacher') ?>" value="<?= $val('teacher') ?>"></div>
-            </div>
-            <div class="mh-grid-row mh-grid-2">
-                <div class="mh-input-group"><label>Status<span class="mh-info-icon" 
-				data-tooltip="Hier wird ermittelt ob die Person minderjährig bei Schuljahresbeginn (01.08.) war.">?</span></label><div class="mh-fake-input"><span id="status_display">...</span><input type="hidden" name="is_minor" id="input_is_minor" value="<?= $val('is_minor') ?>"></div></div>
-                <div class="mh-input-group"><label>Datum der Abmeldung / Kündigung <span class="req">*</span><span class="mh-info-icon" 
-				data-tooltip="Datum des Endes des Schulverhältnisses. Das Formular berechnet basierend auf dem Datum das Zeugnisdatum (letzter Schultag)
-				und Konferenzdatum.">?</span></label><input type="date" name="date_off" id="field_date_off" required value="<?= $val('date_off') ?: date('Y-m-d') ?>"></div>
+                <div class="mh-input-group">
+                    <label>Klasse <span class="req">*</span></label>
+                    <select name="class_wu_id" id="mh_class_select" required>
+                        <option value="">-- Bitte wählen --</option>
+                        <?php if(!empty($classes_list)): foreach($classes_list as $c): ?>
+                            <option value="<?= $c['wu_id'] ?>" 
+                                    data-fulltime="<?= $c['is_fulltime'] ?>" 
+                                    data-name="<?= esc_attr($c['name']) ?>"
+                                    <?= selected($val('class_wu_id'), $c['wu_id']) ?>>
+                                <?= esc_html($c['name']) ?>
+                            </option>
+                        <?php endforeach; endif; ?>
+                    </select>
+                    <input type="hidden" name="class_name" id="class_name_hidden" value="<?= $val('class_name') ?>">
+                </div>
+
+                <div class="mh-input-group">
+                    <label>Schüler*in <span class="req">*</span></label>
+                    <select name="student_wu_id" id="mh_student_select" required <?= empty($val('student_wu_id')) ? 'disabled' : '' ?>>
+                        <option value="">-- Erst Klasse wählen --</option>
+                        <?php if(!empty($val('student_wu_id'))): ?>
+                             <option value="<?= $val('student_wu_id') ?>" selected><?= $val('lastname') ?>, <?= $val('firstname') ?></option>
+                        <?php endif; ?>
+                    </select>
+                    <input type="hidden" name="lastname" id="student_lastname" value="<?= $val('lastname') ?>">
+                    <input type="hidden" name="firstname" id="student_firstname" value="<?= $val('firstname') ?>">
+                </div>
             </div>
         </div>
 
-        <!-- SEKTION 2: Grund -->
+        <!-- SEKTION 1: Stammdaten (Erhalten & Lehrer Autofill) -->
+        <div class="mh-form-section">
+            <h4>Schülerdaten</h4>
+            <div class="mh-grid-row mh-grid-3">
+                <div class="mh-input-group"><label>Nachname <span class="req">*</span></label><input type="text" name="lastname_manual" id="display_lastname" readonly class="<?= $err_cls('lastname') ?>" value="<?= $val('lastname') ?>"></div>
+                <div class="mh-input-group"><label>Vorname <span class="req">*</span></label><input type="text" name="firstname_manual" id="display_firstname" readonly class="<?= $err_cls('firstname') ?>" value="<?= $val('firstname') ?>"></div>
+                <div class="mh-input-group">
+                    <label>Geburtsdatum <span class="req">*</span></label>
+                    <input type="date" name="dob" id="field_dob" required class="<?= $err_cls('dob') ?>" value="<?= $val('dob') ?>" max="<?= date('Y-m-d') ?>">
+                </div>
+            </div>
+            <div class="mh-grid-row mh-grid-2">
+                <div class="mh-input-group"><label>Klasse (Anzeige)</label><input type="text" id="display_classname" readonly value="<?= $val('class_name') ?>"></div>
+                <div class="mh-input-group">
+                    <label>Klassenlehrer/in (angemeldet) <span class="req">*</span></label>
+                    <input type="text" name="teacher" required readonly value="<?= $val('teacher') ?: $teacher_default ?>">
+                </div>  
+            </div>
+            <div class="mh-grid-row mh-grid-2">
+                <div class="mh-input-group"><label>Status <span class="mh-info-icon" data-tooltip="Ermittelt Volljährigkeit zum Stichtag 01.08.">?</span></label><div class="mh-fake-input"><span id="status_display">...</span><input type="hidden" name="is_minor" id="input_is_minor" value="<?= $val('is_minor') ?>"></div></div>
+                <div class="mh-input-group"><label>Datum der Abmeldung <span class="req">*</span></label><input type="date" name="date_off" id="field_date_off" required value="<?= $val('date_off') ?: date('Y-m-d') ?>"></div>
+            </div>
+        </div>
+
+        <!-- SEKTION 2: Grund (Erhalten) -->
         <div class="mh-form-section">
             <h4>Grund der Abmeldung <span class="req">*</span></h4>
             <div class="radio-group"><input type="radio" name="reason" value="schulwechsel" id="r_wechsel" class="toggle-trigger" data-target="new_school_wrap" required <?= $chk('reason', 'schulwechsel') ?>> <label for="r_wechsel">Schulwechsel (Name & Ort der aufnehmenden Schule)</label></div>
@@ -125,12 +165,11 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             <div class="radio-group"><input type="radio" name="reason" value="abmeldung" id="r_abm" class="toggle-trigger" <?= $chk('reason', 'abmeldung') ?>> <label for="r_abm">Abmeldung</label></div>
         </div>
 
-        <!-- SEKTION 3: Schulpflicht -->
+        <!-- SEKTION 3: Schulpflicht (Erhalten) -->
         <div class="mh-form-section">
             <h4>Schulpflicht <span class="req">*</span></h4>
             <div class="radio-group"><input type="radio" name="compulsory" value="fulfilled" id="c_full" class="toggle-trigger" required <?= $chk('compulsory', 'fulfilled') ?>> <label for="c_full">Die Schulpflicht ist erfüllt.</label></div>
             <div class="radio-group"><input type="radio" name="compulsory" value="not_fulfilled" id="c_not" class="toggle-trigger" <?= $chk('compulsory', 'not_fulfilled') ?>> <label for="c_not">Die Schulpflicht ist NICHT erfüllt (Schulpflichtverfolgung...).</label></div>
-            
             <div class="radio-group"><input type="radio" name="compulsory" value="av_klasse" id="c_av" class="toggle-trigger" data-target="av_details" <?= $chk('compulsory', 'av_klasse') ?>> <label for="c_av">Wechsel in AV-Klasse</label></div>
             <div id="av_details" class="mh-sub-group toggle-target"><div class="mh-grid-row mh-grid-3">
                 <div class="mh-input-group"><label>Zum Datum <span class="req">*</span></label><input type="date" name="av_date_start" value="<?= $val('av_date_start') ?>"></div>
@@ -141,162 +180,71 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             <div id="bg_details" class="mh-sub-group toggle-target"><div class="mh-input-group"><label>Name des Bildungsgangs <span class="req">*</span></label><input type="text" name="new_education_track" value="<?= $val('new_education_track') ?>"></div></div>
         </div>
 		
-	<!-- SEKTION: ANSCHLUSSPERSPEKTIVE -->
-        <div class="mh-form-section">
-            <h4 style="margin-bottom:5px;">Anschlussperspektive <span class="req">*</span></h4>
-            <p style="font-size:0.85em; color:#666; margin-bottom:15px;">
-                Auszufüllen für folgende Bildungsgänge: AV, BFI, BFII, HH, KA, WG
-            </p>
+        <!-- SEKTION: ANSCHLUSSPERSPEKTIVE (Bedingt Pflicht) -->
+        <div id="section_perspective" class="mh-form-section">
+            <h4 style="margin-bottom:5px;">Anschlussperspektive <span class="req" id="perspective_req">*</span></h4>
+            <p style="font-size:0.85em; color:#666; margin-bottom:15px;">Auszufüllen für Vollzeit-Bildungsgänge.</p>
             
-            <!-- OPTION A: Es liegt vor -->
             <div class="mh-input-group" style="margin-bottom: 5px !important;">
                 <div class="radio-group">
-                    <input type="radio" name="perspective" value="exists" id="p_exists" class="toggle-trigger" data-target="perspective_details_wrap" required <?= $chk('perspective', 'exists') ?>> 
+                    <input type="radio" name="perspective" value="exists" id="p_exists" class="toggle-trigger" data-target="perspective_details_wrap" <?= $chk('perspective', 'exists') ?>> 
                     <label for="p_exists"><b>Es liegt eine konkrete Anschlussperspektive vor.</b></label>
                 </div>
             </div>
 
-            <!-- DETAILS (Klappt auf wenn A gewählt) -->
             <div id="perspective_details_wrap" class="mh-sub-group toggle-target" style="background:#f0f0f0;">
                 <div class="radio-group"><input type="radio" name="perspective_detail" value="ausbildung" <?= $chk('perspective_detail', 'ausbildung') ?>> <label>unterschriebener Ausbildungsvertrag</label></div>
                 <div class="radio-group"><input type="radio" name="perspective_detail" value="schule" <?= $chk('perspective_detail', 'schule') ?>> <label>Aufnahmebestätigung einer anderen Schule</label></div>
                 <div class="radio-group"><input type="radio" name="perspective_detail" value="studium" <?= $chk('perspective_detail', 'studium') ?>> <label>schriftliche Zusage eines Studienplatzes</label></div>
                 <div class="radio-group"><input type="radio" name="perspective_detail" value="fsj" <?= $chk('perspective_detail', 'fsj') ?>> <label>schriftliche Zusage eines FSJ, FÖJ oder BFD</label></div>
-                
-                <div class="radio-group" style="align-items: center;">
-                    <input type="radio" name="perspective_detail" value="sonstiges" class="toggle-trigger" data-target="p_other_wrap" <?= $chk('perspective_detail', 'sonstiges') ?>> 
-                    <label>sonstiges:</label>
-                </div>
-                <!-- Textfeld für Sonstiges -->
-                <div id="p_other_wrap" class="toggle-target" style="margin-left: 25px; margin-top:5px;">
-                    <input type="text" name="perspective_other" placeholder="Bitte angeben..." style="width:100%;" value="<?= $val('perspective_other') ?>">
-                </div>
+                <div class="radio-group" style="align-items: center;"><input type="radio" name="perspective_detail" value="sonstiges" class="toggle-trigger" data-target="p_other_wrap" <?= $chk('perspective_detail', 'sonstiges') ?>> <label>sonstiges:</label></div>
+                <div id="p_other_wrap" class="toggle-target" style="margin-left: 25px; margin-top:5px;"><input type="text" name="perspective_other" placeholder="Bitte angeben..." style="width:100%;" value="<?= $val('perspective_other') ?>"></div>
             </div>
 
-            <!-- OPTION B: Keine Perspektive -->
             <div class="mh-input-group" style="margin-top: 15px;">
-                <div class="radio-group">
-                    <input type="radio" name="perspective" value="none" id="p_none" class="toggle-trigger" <?= $chk('perspective', 'none') ?>> 
-                    <label for="p_none"><b>Es liegt KEINE konkrete Anschlussperspektive vor.</b></label>
-                </div>
-                <div style="margin-left: 28px; font-size: 0.85em; color: #6f6f6f;">
-                    (Name wird zur Nachverfolgung an die Agentur für Arbeit weitergegeben)
-                </div>
+                <div class="radio-group"><input type="radio" name="perspective" value="none" id="p_none" class="toggle-trigger" <?= $chk('perspective', 'none') ?>> <label for="p_none"><b>Es liegt KEINE konkrete Anschlussperspektive vor.</b></label></div>
+                <div style="margin-left: 28px; font-size: 0.85em; color: #6f6f6f;">(Name wird zur Nachverfolgung an die Agentur für Arbeit weitergegeben)</div>
             </div>
         </div>
 
-        <!-- SEKTION 4: Zeugnis -->
+        <!-- SEKTION 4: Zeugnis (Ohne Fehlstunden) -->
         <div class="mh-form-section" style="<?= isset($form_errors['certificate']) ? 'border:2px solid #d63638;' : '' ?>">
-            <h4 style="<?= isset($form_errors['certificate']) ? 'color:#d63638;' : '' ?>">
-                3. Zeugnis <span class="req">*</span>
-            </h4>
-            
-            <div class="radio-group">
-                <input type="radio" name="certificate" value="abgang" id="z_ab" required <?= $chk('certificate', 'abgang') ?>>
-                <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small style="color:#666;">(Ohne Abschluss)</small></label>
-            </div>
-            
-            <div class="radio-group">
-                <input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>>
-                <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small style="color:#666;">(Wechsel innerhalb Schulstufe)</small></label>
-            </div>
+            <h4>3. Zeugnis <span class="req">*</span></h4>
+            <div class="radio-group"><input type="radio" name="certificate" value="abgang" id="z_ab" required <?= $chk('certificate', 'abgang') ?>> <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small>(Ohne Abschluss)</small></label></div>
+            <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb Schulstufe)</small></label></div>
 
-            <!-- PROTOKOLL TOGGLE -->
             <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px;">
                 <div class="radio-group">
-                    <input type="checkbox" 
-                           name="protocol_attached" 
-                           value="1" 
-                           id="chk_protocol" 
-                           class="toggle-trigger" 
-                           data-target="protocol_wrapper" 
-                           <?php 
-                               // LOGIK: 
-                               // Ist checked, wenn:
-                               // 1. $form_data leer ist (Frischer Seitenaufruf)
-                               // 2. ODER wenn es im $form_data explizit als '1' drin steht (nach Reload)
-                               echo ( empty($form_data) || (isset($form_data['protocol_attached']) && $form_data['protocol_attached'] == '1') ) ? 'checked' : ''; 
-                           ?>>
+                    <input type="checkbox" name="protocol_attached" value="1" id="chk_protocol" class="toggle-trigger" data-target="protocol_wrapper" <?php echo ( empty($form_data) || (isset($form_data['protocol_attached']) && $form_data['protocol_attached'] == '1') ) ? 'checked' : ''; ?>>
                     <label for="chk_protocol" style="font-weight:bold;">Zeugniskonferenzprotokoll beifügen</label>
                 </div>
             </div>
         </div>
 
-        <!-- SEKTION 5: Protokoll (Bereinigt) -->
+        <!-- SEKTION 5: Protokoll (Inkl. Fehlstunden) -->
         <div id="protocol_wrapper" class="mh-form-section toggle-target mh-collapsible-section" style="border-left: 5px solid #0073aa;">
             <h4>4. Angaben zum Konferenzprotokoll</h4>
-            
-            <!-- Typ Auswahl (ohne Toggle-Funktion, da keine Unterbereiche mehr existieren) -->
             <div class="radio-group"><input type="radio" name="prot_type" value="berufsschule" id="pt_bs" <?= $chk('prot_type', 'berufsschule') ?>> <label for="pt_bs"><b>Teilzeit</b> (u.a. Berufsschule)</label></div>
             <div class="radio-group"><input type="radio" name="prot_type" value="vollzeit" id="pt_vz" <?= $chk('prot_type', 'vollzeit') ?>> <label for="pt_vz"><b>Vollzeit</b></label></div>
 
-            <!-- Stammdaten Zeile -->
             <div class="mh-grid-row mh-grid-3" style="margin-top:20px;">
                 <div class="mh-input-group">
-                    <label>Konferenzdatum <span class="req">*</span>
-                        <span class="mh-info-icon" data-tooltip="Das Konferenzdatum wird der Einfachheit halber auf das Zeugnisdatum gesetzt. Es sollte kein Wochenende sein.">?</span>
-                    </label>
-                    <input type="date" name="prot_date" id="field_prot_date" readonly 
-                           value="<?= $val('prot_date') ?>"
-                           style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
-                    
-                    <?php if ( ! empty( $form_data['prot_was_corrected'] ) ): ?>
-                        <div style="font-size:0.8em; color:#b7791f; margin-top:3px; font-weight:bold;">ℹ️ Korrigiert auf Schultag.</div>
-                    <?php endif; ?>
+                    <label>Konferenzdatum <span class="req">*</span></label>
+                    <input type="date" name="prot_date" id="field_prot_date" readonly value="<?= $val('prot_date') ?>" style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
+                    <?php if ( ! empty( $form_data['prot_was_corrected'] ) ): ?><div style="font-size:0.8em; color:#b7791f; margin-top:3px; font-weight:bold;">ℹ️ Korrigiert auf Schultag.</div><?php endif; ?>
                 </div>
-
-                <div class="mh-input-group">
-                    <label>Ausgabedatum <span class="req">*</span>
-                        <span class="mh-info-icon" data-tooltip="Wird automatisch berechnet. Es ist der letzte Schultag in Abhängigkeit vom oben angegebenen Datum zum Ende des Schulverhältnisses/Kündigung.">?</span>
-                    </label>
-                    <input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly 
-                           value="<?= $val('prot_issue_date') ?>"
-                           style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
-                </div>
-
-                <div class="mh-input-group">
-                    <label>Vorsitzende/r <span class="req">*</span>
-                        <span class="mh-info-icon" data-tooltip="Der/die Vorsitzende ist in der Regel die Abteilungsleitung.">?</span>
-                    </label>
-                    <input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>">
-                </div>
+                <div class="mh-input-group"><label>Ausgabedatum <span class="req">*</span></label><input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly value="<?= $val('prot_issue_date') ?>" style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>"></div>
+                <div class="mh-input-group"><label>Vorsitzende/r <span class="req">*</span></label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
             </div>
             
-            <p style="margin-bottom:15px; font-size:0.85em; color:#666;">
-                <small>Die Daten werden auf den letzten Schultag gelegt. Sollte das Kündigungs-/Abmeldedatum <u>kein</u> Schultag sein, berechnet das Formular <u>beim Absenden</u> das neue Datum.</small>
-            </p>
-
-            <!-- Raum & Fehlstunden Block -->
             <div class="mh-grid-row mh-grid-2">
-                 <div class="mh-input-group">
-                     <label>Raum <span class="req">*</span>
-                        <span class="mh-info-icon" data-tooltip="Gib hier eine Raumnummer oder das LZ (Lehrerzimmer) an.">?</span>
-                     </label>
-                     <input type="text" name="prot_room" value="<?= $val('prot_room') ?>">
-                 </div>
-                 
-                 <!-- HIER SIND DIE FEHLSTUNDEN JETZT -->
-                 <!-- Wir verschachteln ein Grid im Grid für die zwei Zahlen -->
+                 <div class="mh-input-group"><label>Raum <span class="req">*</span></label><input type="text" name="prot_room" value="<?= $val('prot_room') ?>"></div>
                  <div class="mh-grid-row mh-grid-2" style="margin-bottom:0 !important; gap: 10px !important;">
-                    <div class="mh-input-group">
-                        <label>Fehlstunden <span class="req">*</span></label>
-                        <input type="number" name="missed_hours" value="<?= $val('missed_hours') ?>">
-                    </div>
-                    <div class="mh-input-group">
-                        <label>Unentschuldigt <span class="req">*</span></label>
-                        <input type="number" name="missed_ue" value="<?= $val('missed_ue') ?>">
-                    </div>
+                    <div class="mh-input-group"><label>Fehlstunden <span class="req">*</span></label><input type="number" name="missed_hours" value="<?= $val('missed_hours') ?>"></div>
+                    <div class="mh-input-group"><label>Unentschuldigt <span class="req">*</span></label><input type="number" name="missed_ue" value="<?= $val('missed_ue') ?>"></div>
                  </div>
             </div>
-
-            <div class="mh-input-group">
-                <label>Beschlussfassung / Bemerkungen: 
-                    <span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span>
-                </label>
-                <textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea>
-            </div> 
-            
-            <!-- Die alten Vollzeit/Teilzeit Detail-Divs sind hier GELÖSCHT -->           
+            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:</label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
 
         <div class="btn-group">
@@ -308,88 +256,108 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    const classSelect = document.getElementById('mh_class_select');
+    const studentSelect = document.getElementById('mh_student_select');
+    const perspectiveSection = document.getElementById('section_perspective');
+    const isFulltimeInput = document.getElementById('is_fulltime_class');
+    const classHidden = document.getElementById('class_name_hidden');
+    const displayClass = document.getElementById('display_classname');
+
+    // 1. AJAX & UI LOGIK BEI KLASSENWAHL
+    classSelect.addEventListener('change', function() {
+        const classId = this.value;
+        const opt = this.options[this.selectedIndex];
+        const isFulltime = opt.dataset.fulltime === "1";
+        
+        // UI Update
+        classHidden.value = opt.dataset.name || '';
+        if(displayClass) displayClass.value = opt.dataset.name || '';
+
+        // Anschlussperspektive steuern
+        if (isFulltime) {
+            perspectiveSection.style.opacity = "1";
+            perspectiveSection.style.pointerEvents = "auto";
+            isFulltimeInput.value = "1";
+            document.getElementById('perspective_req').style.display = "inline";
+            perspectiveSection.querySelectorAll('input').forEach(i => i.disabled = false);
+        } else {
+            perspectiveSection.style.opacity = "0.4";
+            perspectiveSection.style.pointerEvents = "none";
+            isFulltimeInput.value = "0";
+            document.getElementById('perspective_req').style.display = "none";
+            perspectiveSection.querySelectorAll('input').forEach(i => { i.disabled = true; i.checked = false; });
+        }
+
+        // AJAX Schüler laden
+        if (!classId) { studentSelect.disabled = true; return; }
+        studentSelect.innerHTML = '<option>Lade Schüler...</option>';
+        studentSelect.disabled = true;
+
+        const formData = new FormData();
+        formData.append('action', 'mh_get_students');
+        formData.append('class_id', classId);
+        formData.append('nonce', '<?php echo wp_create_nonce("mh_form_nonce"); ?>');
+
+        fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                studentSelect.innerHTML = '<option value="">-- Schüler wählen --</option>';
+                data.data.forEach(s => {
+                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}">${s.name}, ${s.fore_name}</option>`;
+                });
+                studentSelect.disabled = false;
+            }
+        });
+    });
+
+    // Schülerwahl -> Namen in Hidden Fields
+    studentSelect.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        const last = opt.dataset.last || '';
+        const first = opt.dataset.first || '';
+        document.getElementById('student_lastname').value = last;
+        document.getElementById('student_firstname').value = first;
+        document.getElementById('display_lastname').value = last;
+        document.getElementById('display_firstname').value = first;
+    });
+
     // ALTER RECHNER
     const dobInput = document.getElementById('field_dob');
     const statusDisplay = document.getElementById('status_display');
     const statusInput = document.getElementById('input_is_minor');
-function calcAge() {
+    function calcAge() {
         if(!dobInput.value) return;
-        
         const dob = new Date(dobInput.value);
-        const today = new Date(); // Oder 'field_date_off', falls Stichtag das Abmeldedatum sein soll
-        
-        // 1. Tatsächliches Alter HEUTE berechnen
+        const today = new Date();
         let age = today.getFullYear() - dob.getFullYear();
-        const m = today.getMonth() - dob.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-            age--;
-        }
-
+        if (today.getMonth() < dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() < dob.getDate())) { age--; }
         let outputHtml = '';
-        let isMinor = 0;
-
-        if (age < 18) {
-            // Fall: Generell minderjährig
-            outputHtml = '<span style="color:#d63638; font-weight:bold;">Minderjährig</span> (' + age + ')';
-            isMinor = 1;
-        } else {
-            // Fall: Heute Volljährig -> Prüfung auf Schuljahresbeginn (01.08.)
-            
-            // Ermittlung des relevanten Schuljahresbeginns (01.08.)
-            let schoolStartYear = today.getFullYear();
-            // Wenn wir aktuell VOR August sind (Jan-Juli), begann das Schuljahr letztes Jahr
-            if (today.getMonth() < 7) { 
-                schoolStartYear--; 
-            }
-            
-            // Berechnung des Alters am Stichtag 01.08. des Schuljahres
-            // Monat 7 = August (JS zählt ab 0)
-            let ageAtSchoolStart = schoolStartYear - dob.getFullYear();
-            
-            // Hatte der Schüler am 01.08. schon Geburtstag?
-            // dob.getMonth() > 7 heißt: Geburtstag ist nach August (Sept-Dez) -> war jünger
-            // dob.getMonth() == 7 && dob.getDate() > 1 heißt: Geburtstag im August, aber nach dem 1. -> war jünger
-            if (dob.getMonth() > 7 || (dob.getMonth() === 7 && dob.getDate() > 1)) {
-                ageAtSchoolStart--;
-            }
-
-            outputHtml = '<span style="color:#46b450; font-weight:bold;">Volljährig</span> (' + age + ')';
-            
-            // Detail-Ausgabe
-            if (ageAtSchoolStart >= 18) {
-                // War am 01.08. schon 18
-                outputHtml += '<br><small style="color:#46b450;">(Zu Schuljahresbeginn 01.08.' + schoolStartYear + ' bereits volljährig)</small>';
-            } else {
-                // War am 01.08. noch 17 (weil Geburtstag z.B. am 14.08.)
-                outputHtml += '<br><small style="color:#d63638;">(Zu Schuljahresbeginn 01.08.' + schoolStartYear + ' noch <u>nicht</u> volljährig)</small>';
-            }
-            
-            isMinor = 0;
+        if (age < 18) { outputHtml = '<b style="color:#d63638">Minderjährig</b> (' + age + ')'; statusInput.value = '1'; } 
+        else { 
+            let schoolYearStartYear = today.getFullYear();
+            if (today.getMonth() < 7) { schoolYearStartYear--; }
+            const schoolStart = new Date(schoolYearStartYear, 7, 1);
+            let ageAtStart = schoolYearStartYear - dob.getFullYear();
+            if (7 < dob.getMonth() || (7 === dob.getMonth() && 1 < dob.getDate())) { ageAtStart--; }
+            outputHtml = '<b style="color:#46b450">Volljährig</b> (' + age + ')';
+            outputHtml += ageAtStart >= 18 ? '<br><small>(Schuljahresbeginn volljährig)</small>' : '<br><small>(Schuljahresbeginn <u style="color:#d63638">nicht</u> volljährig)</small>';
+            statusInput.value = '0';
         }
-        
         statusDisplay.innerHTML = outputHtml;
-        statusInput.value = isMinor;
     }
     if(dobInput) { dobInput.addEventListener('change', calcAge); if(dobInput.value) calcAge(); }
 
-    // SYNC DATES (VORSICHTIG!)
+    // SYNC DATES
     const dateOffInput = document.getElementById('field_date_off'); 
     const protDateInput = document.getElementById('field_prot_date'); 
     const protIssueInput = document.getElementById('field_prot_issue_date'); 
     if(dateOffInput && protDateInput) {
-        // Init sync nur wenn Ziel leer (First load)
-        if(dateOffInput.value && !protDateInput.value) {
-            protDateInput.value = dateOffInput.value;
-            protIssueInput.value = dateOffInput.value;
-        }
-        // Nur syncen bei User Interaktion
-        dateOffInput.addEventListener('change', function() {
-            protDateInput.value = this.value;
-            protIssueInput.value = this.value;
-        });
+        if(dateOffInput.value && !protDateInput.value) { protDateInput.value = dateOffInput.value; protIssueInput.value = dateOffInput.value; }
+        dateOffInput.addEventListener('change', function() { protDateInput.value = this.value; protIssueInput.value = this.value; });
     }
 
-    // TOGGLE LOGIC
+    // TOGGLE LOGIC (Recursive)
     const triggers = document.querySelectorAll('.toggle-trigger');
     const allTargets = document.querySelectorAll('.toggle-target');
     function updateToggles() {
@@ -415,7 +383,6 @@ function calcAge() {
         });
     }
     triggers.forEach(r => r.addEventListener('change', updateToggles));
-    // Timeout damit Browser-Autofill nicht dazwischen funkt
     setTimeout(() => { updateToggles(); }, 100);
 });
 </script>

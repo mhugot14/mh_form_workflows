@@ -129,6 +129,21 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			}
 			
 		}
+		  // 1. Geburtsdatum Check
+    if ( ! empty($dob) && strtotime($dob) > time() ) {
+        $this->add_error('dob', 'Das Geburtsdatum darf nicht in der Zukunft liegen.');
+    }
+
+    // 2. Anschlussperspektive nur bei Vollzeit Pflicht
+    // Wir prüfen, ob das versteckte Feld 'is_fulltime_class' (vom JS gesetzt) auf 1 steht
+    $is_fulltime = (isset($data['is_fulltime_class']) && $data['is_fulltime_class'] == '1');
+    
+    if ($is_fulltime) {
+        if (empty($data['perspective'])) {
+            $this->add_error('perspective', 'Bei Vollzeitklassen ist die Anschlussperspektive ein Pflichtfeld.');
+        }
+    }
+
 
 
 		// --- 3. DATEN SPEICHERN ---

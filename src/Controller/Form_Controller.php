@@ -65,6 +65,11 @@ class Form_Controller {
 				$form_data['is_reloaded'] = true; 
 			}
 		}
+				  $current_user = wp_get_current_user();
+    $teacher_name = trim($current_user->first_name . ' ' . $current_user->last_name);
+    if (empty($teacher_name)) $teacher_name = $current_user->display_name;
+
+    $classes_list = $this->class_repo->get_real_classes();
 
 		// Stammdaten laden (unverändert)
 		$classes_list = method_exists($this->class_repo, 'get_real_classes') ? $this->class_repo->get_real_classes() : [];
@@ -76,7 +81,7 @@ class Form_Controller {
 		} else {
 			include MH_FW_PLUGIN_DIR . 'templates/form-abmeldung.php';
 		}
-		return ob_get_clean() ?: '';
+		return ob_get_clean() ?: '';    
 	}
 
 	public function handle_submission(): void {
@@ -380,4 +385,16 @@ class Form_Controller {
 
         return ''; 
     }
+	public function ajax_get_students(): void {
+    check_ajax_referer('mh_form_nonce', 'nonce');
+    $class_id = isset($_POST['class_id']) ? (int)$_POST['class_id'] : 0;
+    
+    $students = $this->student_repo->get_students_by_class($class_id);
+    
+    if ($students) {
+        wp_send_json_success($students);
+    } else {
+        wp_send_json_error('Keine Schüler gefunden');
+    }
+}
 }
