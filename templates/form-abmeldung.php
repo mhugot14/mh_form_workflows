@@ -64,6 +64,40 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
     .mh-info-icon:hover::after { content: attr(data-tooltip); position: absolute; bottom: 25px; left: -100px; width: 250px; padding: 10px; background: #333; color: #fff; font-size: 12px; font-weight: normal; line-height: 1.4; border-radius: 4px; z-index: 9999; }
     
     .mh-form-wrapper input, .mh-form-wrapper select, .mh-form-wrapper label, .mh-form-wrapper span, .mh-form-wrapper div { text-transform: none !important; font-variant: normal !important; }
+	
+	/* Kompakte Notentabelle */
+    .mh-subject-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px; /* Etwas kleinere Schrift für die Tabelle */
+    }
+    .mh-subject-table th {
+        background: #eee;
+        padding: 8px 5px;
+        text-align: left;
+        border: 1px solid #ccc;
+    }
+    .mh-subject-table td {
+        padding: 4px;
+        border: 1px solid #ccc;
+        vertical-align: middle;
+    }
+    /* Zwinge die Inputs in der Tabelle klein zu sein */
+    .mh-subject-table input[type="text"],
+    .mh-subject-table input[type="number"],
+    .mh-subject-table select {
+        height: 32px !important;
+        font-size: 13px !important;
+        padding: 2px 8px !important;
+        margin: 0 !important;
+    }
+    .mh-subject-table input[type="checkbox"] {
+        width: 18px !important;
+        height: 18px !important;
+        margin: 0 auto !important;
+        display: block;
+    }
+
 </style>
 
 <div class="mh-form-wrapper">
@@ -118,12 +152,15 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 
                 <div class="mh-input-group">
                     <label>Schüler*in <span class="req">*</span></label>
-                    <select name="student_wu_id" id="mh_student_select" required <?= empty($val('student_wu_id')) ? 'disabled' : '' ?>>
-                        <option value="">-- Erst Klasse wählen --</option>
-                        <?php if(!empty($val('student_wu_id'))): ?>
-                             <option value="<?= $val('student_wu_id') ?>" selected><?= $val('lastname') ?>, <?= $val('firstname') ?></option>
-                        <?php endif; ?>
-                    </select>
+                    <select name="student_wu_id" id="mh_student_select" required <?= empty($val('class_wu_id')) ? 'disabled' : '' ?>>
+						<option value="">-- Bitte wählen --</option>
+						<?php if(!empty($val('student_wu_id'))): ?>
+							<!-- Wir setzen den gespeicherten Schüler als erste Option ein -->
+							<option value="<?= $val('student_wu_id') ?>" selected>
+								<?= $val('lastname') ?>, <?= $val('firstname') ?>
+							</option>
+						<?php endif; ?>
+					</select>
                     <input type="hidden" name="lastname" id="student_lastname" value="<?= $val('lastname') ?>">
                     <input type="hidden" name="firstname" id="student_firstname" value="<?= $val('firstname') ?>">
                 </div>
@@ -224,9 +261,8 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         <!-- SEKTION 5: Protokoll (Inkl. Fehlstunden) -->
         <div id="protocol_wrapper" class="mh-form-section toggle-target mh-collapsible-section" style="border-left: 5px solid #0073aa;">
             <h4>4. Angaben zum Konferenzprotokoll</h4>
-            <div class="radio-group"><input type="radio" name="prot_type" value="berufsschule" id="pt_bs" <?= $chk('prot_type', 'berufsschule') ?>> <label for="pt_bs"><b>Teilzeit</b> (u.a. Berufsschule)</label></div>
-            <div class="radio-group"><input type="radio" name="prot_type" value="vollzeit" id="pt_vz" <?= $chk('prot_type', 'vollzeit') ?>> <label for="pt_vz"><b>Vollzeit</b></label></div>
-
+           <!-- Ersetzt die Radio-Buttons für Teilzeit/Vollzeit -->
+<input type="hidden" name="prot_type" id="input_prot_type" value="<?= $val('prot_type') ?>">
             <div class="mh-grid-row mh-grid-3" style="margin-top:20px;">
                 <div class="mh-input-group">
                     <label>Konferenzdatum <span class="req">*</span></label>
@@ -244,6 +280,55 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                     <div class="mh-input-group"><label>Unentschuldigt <span class="req">*</span></label><input type="number" name="missed_ue" value="<?= $val('missed_ue') ?>"></div>
                  </div>
             </div>
+<!-- SEKTION: FÄCHER & NOTEN -->
+        <div style="margin-top: 25px; margin-bottom: 20px;">
+            <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer & Noten (Vorausfüllung für Protokoll)</h5>
+            
+            <table class="mh-subject-table">
+                <thead>
+                    <tr>
+                        <th width="30%">Fach</th>
+                        <th width="25%">Lehrkraft</th>
+                        <th width="10%">Note</th>
+                        <th width="15%" style="text-align:center;">WebUntis?</th>
+                        <th width="20%" style="text-align:center;">Fach vorher abgeschlossen?</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    // Wir zeigen 12 Zeilen an
+                    for($i=0; $i<12; $i++): 
+                        $s = $form_data['subjects'][$i] ?? [];
+                    ?>
+                    <tr>
+                        <td>
+                            <!-- Platzhalter entfernt -->
+                            <input type="text" name="subj_name[]" value="<?= esc_attr($s['name'] ?? '') ?>">
+                        </td>
+                        <td>
+                            <select name="subj_teacher[]">
+                                <option value="">-- Lehrer --</option>
+                                <?php if(!empty($teachers_list)): foreach($teachers_list as $t): ?>
+                                    <option value="<?= esc_attr($t['name']) ?>" <?= selected($s['teacher'] ?? '', $t['name']) ?>>
+                                        <?= esc_html($t['name']) ?> (<?= esc_html($t['long_name']) ?>)
+                                    </option>
+                                <?php endforeach; endif; ?>
+                            </select>
+                        </td>
+                        <td>
+                            <input type="text" name="subj_grade[]" value="<?= esc_attr($s['grade'] ?? '') ?>">
+                        </td>
+                        <td>
+                            <input type="checkbox" name="subj_webuntis[<?= $i ?>]" value="1" <?= (isset($s['webuntis']) && $s['webuntis'] == '1') ? 'checked' : '' ?>>
+                        </td>
+                        <td>
+                            <input type="checkbox" name="subj_completed[<?= $i ?>]" value="1" <?= (isset($s['completed']) && $s['completed'] == '1') ? 'checked' : '' ?>>
+                        </td>
+                    </tr>
+                    <?php endfor; ?>
+                </tbody>
+            </table>
+        </div>
             <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:</label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
 
@@ -263,35 +348,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const classHidden = document.getElementById('class_name_hidden');
     const displayClass = document.getElementById('display_classname');
 
-    // 1. AJAX & UI LOGIK BEI KLASSENWAHL
-    classSelect.addEventListener('change', function() {
-        const classId = this.value;
-        const opt = this.options[this.selectedIndex];
-        const isFulltime = opt.dataset.fulltime === "1";
-        
-        // UI Update
-        classHidden.value = opt.dataset.name || '';
-        if(displayClass) displayClass.value = opt.dataset.name || '';
-
-        // Anschlussperspektive steuern
-        if (isFulltime) {
-            perspectiveSection.style.opacity = "1";
-            perspectiveSection.style.pointerEvents = "auto";
-            isFulltimeInput.value = "1";
-            document.getElementById('perspective_req').style.display = "inline";
-            perspectiveSection.querySelectorAll('input').forEach(i => i.disabled = false);
-        } else {
-            perspectiveSection.style.opacity = "0.4";
-            perspectiveSection.style.pointerEvents = "none";
-            isFulltimeInput.value = "0";
-            document.getElementById('perspective_req').style.display = "none";
-            perspectiveSection.querySelectorAll('input').forEach(i => { i.disabled = true; i.checked = false; });
+    // --- 1. FUNKTION: SCHÜLER PER AJAX LADEN ---
+    function fetchStudents(classId, selectedStudentId = null) {
+        if (!classId) {
+            studentSelect.disabled = true;
+            studentSelect.innerHTML = '<option value="">-- Erst Klasse wählen --</option>';
+            return;
         }
 
-        // AJAX Schüler laden
-        if (!classId) { studentSelect.disabled = true; return; }
-        studentSelect.innerHTML = '<option>Lade Schüler...</option>';
         studentSelect.disabled = true;
+        // Nur "Lade..." anzeigen, wenn wir nicht gerade einen bestehenden Schüler wiederherstellen
+        if (!selectedStudentId) {
+            studentSelect.innerHTML = '<option>Lade Schüler...</option>';
+        }
 
         const formData = new FormData();
         formData.append('action', 'mh_get_students');
@@ -304,14 +373,63 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 studentSelect.innerHTML = '<option value="">-- Schüler wählen --</option>';
                 data.data.forEach(s => {
-                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}">${s.name}, ${s.fore_name}</option>`;
+                    // Prüfen, ob dieser Schüler vorselektiert werden muss (beim Bearbeiten)
+                    const isSelected = (selectedStudentId && s.wu_id == selectedStudentId) ? 'selected' : '';
+                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
                 });
                 studentSelect.disabled = false;
             }
         });
+    }
+
+    // --- 2. FUNKTION: VOLLZEIT/TEILZEIT UI STEUERN ---
+    function updatePerspectiveUI() {
+        const opt = classSelect.options[classSelect.selectedIndex];
+        const protTypeInput = document.getElementById('input_prot_type'); // Das neue hidden field
+
+        if (!opt || !opt.value) {
+            perspectiveSection.style.opacity = "0.4";
+            perspectiveSection.style.pointerEvents = "none";
+            return;
+        }
+
+        const isFulltime = opt.dataset.fulltime === "1";
+        classHidden.value = opt.dataset.name || '';
+        if(displayClass) displayClass.value = opt.dataset.name || '';
+
+        if (isFulltime) {
+            // --- VOLLZEIT ---
+            perspectiveSection.style.opacity = "1";
+            perspectiveSection.style.pointerEvents = "auto";
+            isFulltimeInput.value = "1";
+            if(protTypeInput) protTypeInput.value = "vollzeit"; // Automatisch setzen
+            
+            document.getElementById('perspective_req').style.display = "inline";
+            perspectiveSection.querySelectorAll('input').forEach(i => i.disabled = false);
+        } else {
+            // --- TEILZEIT ---
+            perspectiveSection.style.opacity = "0.4";
+            perspectiveSection.style.pointerEvents = "none";
+            isFulltimeInput.value = "0";
+            if(protTypeInput) protTypeInput.value = "berufsschule"; // Automatisch setzen
+            
+            document.getElementById('perspective_req').style.display = "none";
+            perspectiveSection.querySelectorAll('input').forEach(i => {
+                i.disabled = true;
+                i.required = false;
+            });
+        }
+    }
+
+    // --- 3. EVENT LISTENER ---
+
+    // Klassenwahl geändert
+    classSelect.addEventListener('change', function() {
+        fetchStudents(this.value);
+        updatePerspectiveUI();
     });
 
-    // Schülerwahl -> Namen in Hidden Fields
+    // Schülerwahl geändert -> Namen in Hidden Fields & Anzeige schreiben
     studentSelect.addEventListener('change', function() {
         const opt = this.options[this.selectedIndex];
         const last = opt.dataset.last || '';
@@ -322,7 +440,19 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('display_firstname').value = first;
     });
 
-    // ALTER RECHNER
+    // --- 4. INITIALISIERUNG BEIM LADEN (WICHTIG FÜR EDIT) ---
+    const initialClassId = classSelect.value;
+    const initialStudentId = "<?= $val('student_wu_id') ?>";
+
+    if (initialClassId) {
+        // Wenn eine Klasse geladen wurde (Edit-Modus), Schülerliste holen
+        fetchStudents(initialClassId, initialStudentId);
+        updatePerspectiveUI();
+    }
+
+    // --- 5. RESTLICHE LOGIK (Alter, Sync Dates, Toggles) ---
+    
+    // Alter berechnen
     const dobInput = document.getElementById('field_dob');
     const statusDisplay = document.getElementById('status_display');
     const statusInput = document.getElementById('input_is_minor');
@@ -337,7 +467,6 @@ document.addEventListener('DOMContentLoaded', function() {
         else { 
             let schoolYearStartYear = today.getFullYear();
             if (today.getMonth() < 7) { schoolYearStartYear--; }
-            const schoolStart = new Date(schoolYearStartYear, 7, 1);
             let ageAtStart = schoolYearStartYear - dob.getFullYear();
             if (7 < dob.getMonth() || (7 === dob.getMonth() && 1 < dob.getDate())) { ageAtStart--; }
             outputHtml = '<b style="color:#46b450">Volljährig</b> (' + age + ')';
@@ -348,7 +477,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if(dobInput) { dobInput.addEventListener('change', calcAge); if(dobInput.value) calcAge(); }
 
-    // SYNC DATES
+    // Datum Sync
     const dateOffInput = document.getElementById('field_date_off'); 
     const protDateInput = document.getElementById('field_prot_date'); 
     const protIssueInput = document.getElementById('field_prot_issue_date'); 
@@ -357,78 +486,49 @@ document.addEventListener('DOMContentLoaded', function() {
         dateOffInput.addEventListener('change', function() { protDateInput.value = this.value; protIssueInput.value = this.value; });
     }
 
-    // TOGGLE LOGIC (Recursive)
+    // Allgemeine Toggles (z.B. Protokoll-Bereich)
     const triggers = document.querySelectorAll('.toggle-trigger');
     const allTargets = document.querySelectorAll('.toggle-target');
-   
-	function updateToggles() {
+
+    function updateToggles() {
         let activeIds = new Set();
         triggers.forEach(tr => { if(tr.checked && tr.dataset.target) activeIds.add(tr.dataset.target); });
+        
         allTargets.forEach(t => {
             const isActive = activeIds.has(t.id);
             const parent = t.parentElement.closest('.toggle-target');
             const isParentInactive = parent && (parent.style.opacity === '0.5' || parent.classList.contains('mh-hidden'));
+            
             if(!isActive || isParentInactive) {
+                // INAKTIV-Zustand
                 if(t.classList.contains('mh-collapsible-section')) t.classList.add('mh-hidden');
                 else { t.style.opacity = '0.5'; t.style.pointerEvents = 'none'; }
                 t.querySelectorAll('input, select, textarea').forEach(i => { i.disabled = true; i.required = false; });
             } else {
+                // AKTIV-Zustand
                 t.classList.remove('mh-hidden'); t.style.opacity = '1'; t.style.pointerEvents = 'auto';
+                
                 t.querySelectorAll('input, select, textarea').forEach(i => {
                     if(i.closest('.toggle-target').id === t.id) {
                         i.disabled = false;
-                        if(i.type !== 'hidden' && i.type !== 'checkbox' && i.tagName !== 'TEXTAREA') i.required = true;
+                        
+                        // --- LOGIK-KORREKTUR FÜR DIE TABELLE ---
+                        // Wir prüfen, ob das Element innerhalb der Notentabelle liegt
+                        const isInsideSubjectTable = i.closest('.mh-subject-table');
+                        
+                        if(
+                            i.type !== 'hidden' && 
+                            i.type !== 'checkbox' && 
+                            i.tagName !== 'TEXTAREA' &&
+                            !isInsideSubjectTable // <-- Wenn es in der Tabelle ist, NICHT required setzen
+                        ) { 
+                            i.required = true; 
+                        }
                     }
                 });
             }
         });
     }
-	function updatePerspectiveUI() {
-        const opt = classSelect.options[classSelect.selectedIndex];
-        if (!opt || !opt.value) {
-            // Keine Klasse gewählt -> Sektion neutral/aus
-            perspectiveSection.style.opacity = "0.4";
-            perspectiveSection.style.pointerEvents = "none";
-            return;
-        }
-
-        const isFulltime = opt.dataset.fulltime === "1";
-        
-        if (isFulltime) {
-            // VOLLZEIT: Aktivieren
-            perspectiveSection.style.opacity = "1";
-            perspectiveSection.style.pointerEvents = "auto";
-            isFulltimeInput.value = "1";
-            
-            // Required setzen für Radio-Buttons in dieser Sektion
-            perspectiveSection.querySelectorAll('input[type="radio"]').forEach(i => {
-                if (i.name === 'perspective') i.required = true;
-            });
-            if (document.getElementById('perspective_req')) {
-                document.getElementById('perspective_req').style.display = "inline";
-            }
-        } else {
-            // TEILZEIT: Deaktivieren
-            perspectiveSection.style.opacity = "0.4";
-            perspectiveSection.style.pointerEvents = "none";
-            isFulltimeInput.value = "0";
-            
-            // Required ENTFERNEN (Wichtig gegen deinen Fehler!)
-            perspectiveSection.querySelectorAll('input').forEach(i => {
-                i.required = false;
-                // i.checked = false; // Optional: Auswahl löschen bei Wechsel
-            });
-            if (document.getElementById('perspective_req')) {
-                document.getElementById('perspective_req').style.display = "none";
-            }
-        }
-	}
-	 // Event Listener für manuelle Änderung
-    classSelect.addEventListener('change', updatePerspectiveUI);
-
-    // INITIALER AUFRUF BEIM LADEN (Wichtig nach "Prüfen" Klick)
-    updatePerspectiveUI();
-	
     triggers.forEach(r => r.addEventListener('change', updateToggles));
     setTimeout(() => { updateToggles(); }, 100);
 });

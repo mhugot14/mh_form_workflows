@@ -155,9 +155,29 @@ class Abmeldung_Student_Form extends Abstract_Form {
     unset($this->errors['perspective']);
     unset($this->errors['perspective_detail']);
 	}
+	
+	// --- NEU: FÄCHER-LISTE VERARBEITEN ---
+		$subjects = [];
+		if ( isset( $data['subj_name'] ) && is_array( $data['subj_name'] ) ) {
+			for ( $i = 0; $i < count( $data['subj_name'] ); $i ++ ) {
+				$s_name = $this->sanitize_text( $data['subj_name'][$i] );
+				// Nur speichern, wenn ein Fachname eingegeben wurde
+				if ( ! empty( $s_name ) ) {
+					$subjects[] = [
+						'name'      => $s_name,
+						'teacher'   => $this->sanitize_text( $data['subj_teacher'][$i] ?? '' ),
+						'grade'     => $this->sanitize_text( $data['subj_grade'][$i] ?? '' ),
+						'webuntis'  => isset( $data['subj_webuntis'][$i] ) ? '1' : '0',
+						'completed' => isset( $data['subj_completed'][$i] ) ? '1' : '0',
+					];
+				}
+			}
+		}
 
 		// --- 3. DATEN SPEICHERN ---
 		$this->data = [
+			'class_wu_id'   => (int)($data['class_wu_id'] ?? 0),
+            'student_wu_id' => (int)($data['student_wu_id'] ?? 0),
 			'lastname'            => $name,
 			'firstname'           => $firstname,
 			'dob'                 => $dob,
@@ -193,6 +213,7 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			'perspective'        => $perspective,
             'perspective_detail' => $perspective_detail,
             'perspective_other'  => $perspective_other,
+			'subjects' => $subjects,
 		];
 
 		return empty( $this->errors );

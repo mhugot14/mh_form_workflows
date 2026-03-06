@@ -86,32 +86,43 @@ if ($is_vollzeit) {
 </table>
 
 <!-- Notentabelle MIT WEBUNTIS SPALTE -->
+<!-- Notentabelle (Dynamisch) -->
 <table style="width: 100%; border-collapse: collapse; border: 1px solid black; margin-bottom: 15px;">
-    <tr style="background:#eee; font-weight:bold;">
+    <tr style="background:#eee; font-weight:bold; font-size: 8pt;">
         <th style="border:1px solid black; padding:4px;" width="25%">Fach</th>
         <th style="border:1px solid black; padding:4px;" width="15%">Lehrkraft</th>
-        <th style="border:1px solid black; padding:4px;" width="10%">Note</th>
-        
-        <!-- NEUE SPALTE -->
-        <th style="border:1px solid black; padding:4px; font-size:8pt; text-align:center;" width="12%">
-            Noten in WebUntis<br>erfasst?
-        </th>
-        
-        <th style="border:1px solid black; padding:4px; font-size:8pt;" width="10%">Fach<br>vorher<br>abg.?</th>
-        <th style="border:1px solid black; padding:4px;" width="28%">Unterschrift Fachlehrer</th>
+        <th style="border:1px solid black; padding:4px;" width="8%">Note</th>
+        <th style="border:1px solid black; padding:4px; text-align:center;" width="12%">Noten in<br>WebUntis?</th>
+        <th style="border:1px solid black; padding:4px; text-align:center;" width="10%">Fach<br>vorher<br>abg.?</th>
+        <th style="border:1px solid black; padding:4px;" width="30%">Unterschrift Fachlehrer</th>
     </tr>
-    <?php for($i=0; $i<10; $i++): ?>
+    <?php 
+    $subjects = $data['subjects'] ?? [];
+    $max_rows = 11; // Wir wollen immer 11 Zeilen für das Layout
+    
+    for($i=0; $i < $max_rows; $i++): 
+        $s = $subjects[$i] ?? null;
+    ?>
     <tr>
-        <td style="border:1px solid black; height: 22px;">&nbsp;</td>
-        <td style="border:1px solid black;"></td>
-        <td style="border:1px solid black;"></td>
-        
-        <!-- CHECKBOX ZELLE -->
-        <td style="border:1px solid black; text-align:center; vertical-align:middle; color:#ccc;">
-            <span style="font-family: DejaVu Sans, sans-serif; font-size:14pt;">&#9744;</span>
+        <td style="border:1px solid black; height: 22px; font-size: 9pt;">
+            <?= $s ? esc_html($s['name']) : '&nbsp;' ?>
         </td>
-        
-        <td style="border:1px solid black;"></td>
+        <td style="border:1px solid black; font-size: 9pt;">
+            <?= $s ? esc_html($s['teacher']) : '' ?>
+        </td>
+        <td style="border:1px solid black; text-align:center; font-weight:bold;">
+            <?= $s ? esc_html($s['grade']) : '' ?>
+        </td>
+        <td style="border:1px solid black; text-align:center; vertical-align:middle;">
+            <?php if($s): ?>
+                <?= ($s['webuntis'] === '1') ? $x : $o ?>
+            <?php else: echo $o; endif; ?>
+        </td>
+        <td style="border:1px solid black; text-align:center; vertical-align:middle;">
+            <?php if($s): ?>
+                <?= ($s['completed'] === '1') ? $x : $o ?>
+            <?php else: echo $o; endif; ?>
+        </td>
         <td style="border:1px solid black;"></td>
     </tr>
     <?php endfor; ?>
