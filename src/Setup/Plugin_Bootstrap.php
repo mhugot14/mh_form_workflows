@@ -8,6 +8,7 @@ use Mh\FormWorkflows\Controller\Form_Controller;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Class_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
+use Mh\FormWorkflows\Repository\Student_Repository;
 use Mh\FormWorkflows\Service\Pdf_Generator;
 
 /**
@@ -39,13 +40,15 @@ class Plugin_Bootstrap {
 		$submission_repo = new Submission_Repository( $wpdb );
 		$class_repo      = new Class_Repository( $wpdb );
 		$teacher_repo    = new Teacher_Repository( $wpdb );
+		 $student_repo =   new Student_Repository( $wpdb );
 		$pdf_generator   = new Pdf_Generator();
 
 		// 2. Controller instanziieren und in Property speichern
 		$this->form_controller = new Form_Controller( 
 			$submission_repo, 
 			$class_repo, 
-			$teacher_repo, 
+			$teacher_repo,
+			$student_repo,
 			$pdf_generator 
 		);
 
