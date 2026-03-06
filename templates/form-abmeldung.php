@@ -360,7 +360,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // TOGGLE LOGIC (Recursive)
     const triggers = document.querySelectorAll('.toggle-trigger');
     const allTargets = document.querySelectorAll('.toggle-target');
-    function updateToggles() {
+   
+	function updateToggles() {
         let activeIds = new Set();
         triggers.forEach(tr => { if(tr.checked && tr.dataset.target) activeIds.add(tr.dataset.target); });
         allTargets.forEach(t => {
@@ -382,6 +383,52 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+	function updatePerspectiveUI() {
+        const opt = classSelect.options[classSelect.selectedIndex];
+        if (!opt || !opt.value) {
+            // Keine Klasse gewählt -> Sektion neutral/aus
+            perspectiveSection.style.opacity = "0.4";
+            perspectiveSection.style.pointerEvents = "none";
+            return;
+        }
+
+        const isFulltime = opt.dataset.fulltime === "1";
+        
+        if (isFulltime) {
+            // VOLLZEIT: Aktivieren
+            perspectiveSection.style.opacity = "1";
+            perspectiveSection.style.pointerEvents = "auto";
+            isFulltimeInput.value = "1";
+            
+            // Required setzen für Radio-Buttons in dieser Sektion
+            perspectiveSection.querySelectorAll('input[type="radio"]').forEach(i => {
+                if (i.name === 'perspective') i.required = true;
+            });
+            if (document.getElementById('perspective_req')) {
+                document.getElementById('perspective_req').style.display = "inline";
+            }
+        } else {
+            // TEILZEIT: Deaktivieren
+            perspectiveSection.style.opacity = "0.4";
+            perspectiveSection.style.pointerEvents = "none";
+            isFulltimeInput.value = "0";
+            
+            // Required ENTFERNEN (Wichtig gegen deinen Fehler!)
+            perspectiveSection.querySelectorAll('input').forEach(i => {
+                i.required = false;
+                // i.checked = false; // Optional: Auswahl löschen bei Wechsel
+            });
+            if (document.getElementById('perspective_req')) {
+                document.getElementById('perspective_req').style.display = "none";
+            }
+        }
+	}
+	 // Event Listener für manuelle Änderung
+    classSelect.addEventListener('change', updatePerspectiveUI);
+
+    // INITIALER AUFRUF BEIM LADEN (Wichtig nach "Prüfen" Klick)
+    updatePerspectiveUI();
+	
     triggers.forEach(r => r.addEventListener('change', updateToggles));
     setTimeout(() => { updateToggles(); }, 100);
 });

@@ -77,7 +77,7 @@ class Abmeldung_Student_Form extends Abstract_Form {
         $perspective_detail = $this->sanitize_text( $data['perspective_detail'] ?? '' );
         $perspective_other  = $this->sanitize_text( $data['perspective_other'] ?? '' );
 
-		// --- 2. VALIDIERUNG (Pflichtfelder wiederhergestellt!) ---
+		// --- 2. VALIDIERUNG (Pflichtfelder) ---
 		if ( empty( $name ) ) $this->add_error( 'lastname', 'Nachname fehlt.' );
 		if ( empty( $firstname ) ) $this->add_error( 'firstname', 'Vorname fehlt.' );
 		if ( empty( $dob ) ) $this->add_error( 'dob', 'Geburtsdatum fehlt.' );
@@ -138,13 +138,23 @@ class Abmeldung_Student_Form extends Abstract_Form {
     // Wir prüfen, ob das versteckte Feld 'is_fulltime_class' (vom JS gesetzt) auf 1 steht
     $is_fulltime = (isset($data['is_fulltime_class']) && $data['is_fulltime_class'] == '1');
     
-    if ($is_fulltime) {
-        if (empty($data['perspective'])) {
-            $this->add_error('perspective', 'Bei Vollzeitklassen ist die Anschlussperspektive ein Pflichtfeld.');
-        }
+   // 2. Nur validieren, wenn es eine Vollzeitklasse ist
+	if ($is_fulltime) {
+		$perspective = $this->sanitize_text($data['perspective'] ?? '');
+		if (empty($perspective)) {
+			$this->add_error('perspective', 'Bei Vollzeitklassen ist die Anschlussperspektive ein Pflichtfeld.');
+		}
+		 
+    // Wenn "Vorhanden" gewählt, muss auch ein Detail da sein
+    if ($perspective === 'exists' && empty($data['perspective_detail'])) {
+        $this->add_error('perspective_detail', 'Bitte wählen Sie die Art der Anschlussperspektive.');
     }
-
-
+} else {
+    // Bei Teilzeit: Wir ignorieren etwaige (alte) Fehler in diesem Bereich 
+    // und löschen die Daten für diesen Bereich sicherheitshalber
+    unset($this->errors['perspective']);
+    unset($this->errors['perspective_detail']);
+	}
 
 		// --- 3. DATEN SPEICHERN ---
 		$this->data = [
