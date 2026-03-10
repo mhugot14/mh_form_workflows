@@ -187,7 +187,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             </div>
             <div class="mh-grid-row mh-grid-2">
                 <div class="mh-input-group"><label>Status <span class="mh-info-icon" data-tooltip="Ermittelt Volljährigkeit zum Stichtag 01.08.">?</span></label><div class="mh-fake-input"><span id="status_display">...</span><input type="hidden" name="is_minor" id="input_is_minor" value="<?= $val('is_minor') ?>"></div></div>
-                <div class="mh-input-group"><label>Datum der Abmeldung <span class="req">*</span></label><input type="date" name="date_off" id="field_date_off" required value="<?= $val('date_off') ?: date('Y-m-d') ?>"></div>
+                <div class="mh-input-group"><label>Datum der Abmeldung / Kündigung <span class="req">*</span><span class="mh-info-icon" data-tooltip="Datum des Endes des Schulverhältnisses. Das Formular rechnet basierend darauf den letzten Schultag (Konferenz- und Zeugnisdatum) aus.">?</span> </label><input type="date" name="date_off" id="field_date_off" required value="<?= $val('date_off') ?: date('Y-m-d') ?>"></div>
             </div>
         </div>
 
@@ -220,7 +220,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         <!-- SEKTION: ANSCHLUSSPERSPEKTIVE (Bedingt Pflicht) -->
         <div id="section_perspective" class="mh-form-section">
             <h4 style="margin-bottom:5px;">Anschlussperspektive <span class="req" id="perspective_req">*</span></h4>
-            <p style="font-size:0.85em; color:#666; margin-bottom:15px;">Auszufüllen für Vollzeit-Bildungsgänge.</p>
+            <p style="font-size:0.85em; color:#666; margin-bottom:15px;">Auszufüllen für Vollzeit-Bildungsgänge. Im Speziellen AV, BFI, BFII, HH, KA, WG. </p>
             
             <div class="mh-input-group" style="margin-bottom: 5px !important;">
                 <div class="radio-group">
@@ -248,7 +248,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         <div class="mh-form-section" style="<?= isset($form_errors['certificate']) ? 'border:2px solid #d63638;' : '' ?>">
             <h4>3. Zeugnis <span class="req">*</span></h4>
             <div class="radio-group"><input type="radio" name="certificate" value="abgang" id="z_ab" required <?= $chk('certificate', 'abgang') ?>> <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small>(Ohne Abschluss)</small></label></div>
-            <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb Schulstufe)</small></label></div>
+            <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb der Schulstufe)</small></label></div>
 
             <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px;">
                 <div class="radio-group">
@@ -265,16 +265,16 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 <input type="hidden" name="prot_type" id="input_prot_type" value="<?= $val('prot_type') ?>">
             <div class="mh-grid-row mh-grid-3" style="margin-top:20px;">
                 <div class="mh-input-group">
-                    <label>Konferenzdatum <span class="req">*</span></label>
+                    <label>Konferenzdatum <span class="req">*</span><span class="mh-info-icon" data-tooltip="Das Konferenzdatum wird der Einfachheit halber auf das Zeugnisdatum gesetzt. Es sollte ein Schultag sein.">?</span></label>
                     <input type="date" name="prot_date" id="field_prot_date" readonly value="<?= $val('prot_date') ?>" style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
                     <?php if ( ! empty( $form_data['prot_was_corrected'] ) ): ?><div style="font-size:0.8em; color:#b7791f; margin-top:3px; font-weight:bold;">ℹ️ Korrigiert auf Schultag.</div><?php endif; ?>
                 </div>
-                <div class="mh-input-group"><label>Ausgabedatum <span class="req">*</span></label><input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly value="<?= $val('prot_issue_date') ?>" style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>"></div>
-                <div class="mh-input-group"><label>Vorsitzende/r <span class="req">*</span></label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
+                <div class="mh-input-group"><label>Ausgabedatum <span class="req">*</span><span class="mh-info-icon" data-tooltip="Dieses wird automatisch berechnet. Es ist der letzte Schultag, ausgehend vom Abmeldedatum.">?</span></label><input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly value="<?= $val('prot_issue_date') ?>" style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>"></div>
+                <div class="mh-input-group"><label>Vorsitzende/r <span class="req">*</span><span class="mh-info-icon" data-tooltip="Der/die Vorsitzende ist in der Regel die Abteilungsleitung des Bildungsgangs.">?</span></label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
             </div>
             
             <div class="mh-grid-row mh-grid-2">
-                 <div class="mh-input-group"><label>Raum <span class="req">*</span></label><input type="text" name="prot_room" value="<?= $val('prot_room') ?>"></div>
+                 <div class="mh-input-group"><label>Raum <span class="req">*</span><span class="mh-info-icon" data-tooltip="Gib hier eine Raumnummer oder das LZ für Lehrerzimmer an.">?</span></label><input type="text" name="prot_room" value="<?= $val('prot_room') ?>"></div>
                  <div class="mh-grid-row mh-grid-2" style="margin-bottom:0 !important; gap: 10px !important;">
                     <div class="mh-input-group"><label>Fehlstunden <span class="req">*</span></label><input type="number" name="missed_hours" value="<?= $val('missed_hours') ?>"></div>
                     <div class="mh-input-group"><label>Unentschuldigt <span class="req">*</span></label><input type="number" name="missed_ue" value="<?= $val('missed_ue') ?>"></div>
@@ -287,10 +287,10 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             <table class="mh-subject-table">
                 <thead>
                     <tr>
-                        <th width="30%">Fach</th>
+                        <th width="25%">Fach</th>
                         <th width="25%">Lehrkraft</th>
                         <th width="10%">Note</th>
-                        <th width="15%" style="text-align:center;">WebUntis?</th>
+                        <th width="20%" style="text-align:center;">Teilnoten in WebUntis eingetragen?</th>
                         <th width="20%" style="text-align:center;">Fach vorher abgeschlossen?</th>
                     </tr>
                 </thead>
@@ -329,7 +329,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                 </tbody>
             </table>
         </div>
-            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:</label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
+            <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
 
         <div class="btn-group">
