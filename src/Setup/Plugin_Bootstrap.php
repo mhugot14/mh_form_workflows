@@ -91,18 +91,30 @@ class Plugin_Bootstrap {
 	 * Registriert das Admin-Menü.
 	 */
 	public function add_admin_menu(): void {
+		// Hauptpunkt (zeigt jetzt die Hilfe/Übersicht)
 		add_menu_page(
 			'MH Formulare',
 			'MH Formulare',
 			'manage_options',
-			'mh-form-admin-list',
-			[ $this->form_controller, 'render_admin_dashboard' ],
+			'mh-form-admin-help', // Neuer Haupt-Slug
+			[ $this->form_controller, 'render_admin_help' ],
 			'dashicons-clipboard',
 			30
 		);
 
+		// Unterpunkt 1: Übersicht (muss den gleichen Slug wie der Hauptpunkt haben)
 		add_submenu_page(
-			'mh-form-admin-list',
+			'mh-form-admin-help',
+			'Übersicht & Hilfe',
+			'Übersicht & Hilfe',
+			'manage_options',
+			'mh-form-admin-help',
+			[ $this->form_controller, 'render_admin_help' ]
+		);
+
+		// Unterpunkt 2: Alle Einsendungen
+		add_submenu_page(
+			'mh-form-admin-help',
 			'Alle Einsendungen',
 			'Alle Einsendungen',
 			'manage_options',
@@ -110,8 +122,9 @@ class Plugin_Bootstrap {
 			[ $this->form_controller, 'render_admin_dashboard' ]
 		);
 
+		// Unterpunkt 3: Einstellungen
 		add_submenu_page(
-			'mh-form-admin-list',
+			'mh-form-admin-help',
 			'Einstellungen',
 			'Einstellungen',
 			'manage_options',

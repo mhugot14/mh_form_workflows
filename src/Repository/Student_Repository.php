@@ -31,7 +31,7 @@ class Student_Repository {
 		}
 
 		$query = $this->db->prepare(
-			"SELECT wu_id, name, fore_name 
+			"SELECT wu_id, name, fore_name, dob 
              FROM {$this->table_name} 
              WHERE class_wu_id = %d 
              AND is_active = 1 

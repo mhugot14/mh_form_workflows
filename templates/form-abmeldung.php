@@ -375,7 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 data.data.forEach(s => {
                     // Prüfen, ob dieser Schüler vorselektiert werden muss (beim Bearbeiten)
                     const isSelected = (selectedStudentId && s.wu_id == selectedStudentId) ? 'selected' : '';
-                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
+                     studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
                 });
                 studentSelect.disabled = false;
             }
@@ -434,10 +434,18 @@ document.addEventListener('DOMContentLoaded', function() {
         const opt = this.options[this.selectedIndex];
         const last = opt.dataset.last || '';
         const first = opt.dataset.first || '';
+		const dob = opt.dataset.dob || ''; // NEU
         document.getElementById('student_lastname').value = last;
         document.getElementById('student_firstname').value = first;
         document.getElementById('display_lastname').value = last;
         document.getElementById('display_firstname').value = first;
+		// NEU: Geburtsdatum setzen
+    const dobInput = document.getElementById('field_dob');
+    if (dob) {
+        dobInput.value = dob;
+        // WICHTIG: Altersberechnung neu anstoßen!
+        calcAge(); 
+    }
     });
 
     // --- 4. INITIALISIERUNG BEIM LADEN (WICHTIG FÜR EDIT) ---

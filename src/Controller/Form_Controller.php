@@ -306,4 +306,11 @@ class Form_Controller {
 			exit;
 		}
 	}
+	/**
+	 * Rendert die Hilfe-Seite im Backend
+	 */
+	public function render_admin_help(): void {
+		if ( ! current_user_can( 'manage_options' ) ) return;
+		include MH_FW_PLUGIN_DIR . 'templates/admin-help.php';
+	}
 }
