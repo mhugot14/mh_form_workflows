@@ -8,6 +8,7 @@ use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Class_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
 use Mh\FormWorkflows\Repository\Student_Repository;
+use Mh\FormWorkflows\Repository\Subject_Repository;
 use Mh\FormWorkflows\Service\Pdf_Generator;
 use Mh\FormWorkflows\Model\Form\Form_Interface;
 use Mh\FormWorkflows\Model\Form\Abmeldung_Student_Form;
@@ -23,6 +24,7 @@ class Form_Controller {
 		private Class_Repository $class_repo,
 		private Teacher_Repository $teacher_repo,
 		private Student_Repository $student_repo,
+                private Subject_Repository $subject_repo,
 		private Pdf_Generator $pdf_generator
 	) {}
 	
@@ -113,6 +115,7 @@ class Form_Controller {
 		// Stammdaten für Dropdowns laden
 		$classes_list = $this->class_repo->get_real_classes();
 		$teachers_list = $this->teacher_repo->get_all_teachers();
+                $subjects_list = $this->subject_repo->get_all_subjects();
 
 		ob_start();
 		if ( 'service_leave_v1' === $form_type ) {

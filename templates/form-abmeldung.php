@@ -302,8 +302,16 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                     ?>
                     <tr>
                         <td>
-                            <!-- Platzhalter entfernt -->
-                            <input type="text" name="subj_name[]" value="<?= esc_attr($s['name'] ?? '') ?>">
+                            
+                                <select name="subj_name[]" style="width:100%;">
+                                    <option value="">-- Fach wählen --</option>
+                                    <?php foreach($subjects_list as $sub): ?>
+                                        <option value="<?= esc_attr($sub['short_name']) ?>" <?= selected($s['name'] ?? '', $sub['short_name']) ?>>
+                                            <?= esc_html($sub['short_name']) ?> - <?= esc_html($sub['display_name']) ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            
                         </td>
                         <td>
                             <select name="subj_teacher[]">
