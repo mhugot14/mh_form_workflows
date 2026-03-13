@@ -97,6 +97,13 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         margin: 0 auto !important;
         display: block;
     }
+	
+	/* Notenfeld schmaler machen */
+    .mh-subject-table input[name="subj_grade[]"] {
+        width: 50px !important; /* Feste schmale Breite */
+        text-align: center;
+        margin: 0 auto !important;
+        display: block;
 
 </style>
 
