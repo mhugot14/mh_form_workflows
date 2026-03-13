@@ -160,7 +160,9 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                 <div class="mh-input-group">
                     <label>Schüler*in <span class="req">*</span></label>
                     <select name="student_wu_id" id="mh_student_select" required <?= empty($val('class_wu_id')) ? 'disabled' : '' ?>>
-						<option value="">-- Bitte wählen --</option>
+						<option value="">-- Erst Klasse wählen --</option>
+						<!-- Diese Option erlaubt den manuellen Override -->
+						<option value="manual">-- Manueller Eintrag (Schüler*in nicht in der Liste) --</option>
 						<?php if(!empty($val('student_wu_id'))): ?>
 							<!-- Wir setzen den gespeicherten Schüler als erste Option ein -->
 							<option value="<?= $val('student_wu_id') ?>" selected>
@@ -182,7 +184,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                 <div class="mh-input-group"><label>Vorname <span class="req">*</span></label><input type="text" name="firstname_manual" id="display_firstname" readonly class="<?= $err_cls('firstname') ?>" value="<?= $val('firstname') ?>"></div>
                 <div class="mh-input-group">
                     <label>Geburtsdatum <span class="req">*</span></label>
-                    <input type="date" name="dob" id="field_dob" required class="<?= $err_cls('dob') ?>" value="<?= $val('dob') ?>" max="<?= date('Y-m-d') ?>">
+                    <input type="date" name="dob" id="field_dob" required readonly class="<?= $err_cls('dob') ?>" value="<?= $val('dob') ?>" max="<?= date('Y-m-d') ?>">
                 </div>
             </div>
             <div class="mh-grid-row mh-grid-2">
@@ -364,17 +366,25 @@ document.addEventListener('DOMContentLoaded', function() {
     const displayClass = document.getElementById('display_classname');
 
     // --- 1. FUNKTION: SCHÜLER PER AJAX LADEN ---
-    function fetchStudents(classId, selectedStudentId = null) {
-        if (!classId) {
-            studentSelect.disabled = true;
-            studentSelect.innerHTML = '<option value="">-- Erst Klasse wählen --</option>';
-            return;
+   function fetchStudents(classId, selectedStudentId = null) {
+        if (!classId) { 
+            studentSelect.disabled = true; 
+            studentSelect.innerHTML = '<option value="">-- Erst Klasse wählen --</option>'; 
+            return; 
         }
 
-        studentSelect.disabled = true;
-        // Nur "Lade..." anzeigen, wenn wir nicht gerade einen bestehenden Schüler wiederherstellen
+        // Sofort aktivieren und die Basis-Optionen setzen
+        studentSelect.disabled = false; 
+        studentSelect.innerHTML = `
+            <option value="">-- Schüler wählen --</option>
+            <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in der Liste) --</option>
+        `;
+
+        // Wenn wir nicht gerade einen bestehenden Schüler laden, zeigen wir kurz "Lade..."
         if (!selectedStudentId) {
-            studentSelect.innerHTML = '<option>Lade Schüler...</option>';
+            const loadingOpt = document.createElement('option');
+            loadingOpt.text = 'Lade Klassenliste...';
+            studentSelect.add(loadingOpt);
         }
 
         const formData = new FormData();
@@ -385,15 +395,23 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
-            if (data.success) {
-                studentSelect.innerHTML = '<option value="">-- Schüler wählen --</option>';
+            // Wir leeren die Liste NICHT komplett, sondern entfernen nur die Lade-Meldung
+            // und behalten "Bitte wählen" und "Manual"
+            studentSelect.innerHTML = `
+                <option value="">-- Schüler wählen --</option>
+                <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in Liste) --</option>
+            `;
+
+            if (data.success && data.data) {
                 data.data.forEach(s => {
-                    // Prüfen, ob dieser Schüler vorselektiert werden muss (beim Bearbeiten)
                     const isSelected = (selectedStudentId && s.wu_id == selectedStudentId) ? 'selected' : '';
-                     studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
+                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
                 });
-                studentSelect.disabled = false;
             }
+        })
+        .catch(err => {
+            console.error("AJAX Fehler:", err);
+            // Bei Fehler bleibt "Manual" trotzdem stehen!
         });
     }
 
@@ -445,34 +463,95 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Schülerwahl geändert -> Namen in Hidden Fields & Anzeige schreiben
+    // Schülerwahl -> Logik für Sperrung und Autofill
     studentSelect.addEventListener('change', function() {
         const opt = this.options[this.selectedIndex];
-        const last = opt.dataset.last || '';
-        const first = opt.dataset.first || '';
-		const dob = opt.dataset.dob || ''; // NEU
-        document.getElementById('student_lastname').value = last;
-        document.getElementById('student_firstname').value = first;
-        document.getElementById('display_lastname').value = last;
-        document.getElementById('display_firstname').value = first;
-		// NEU: Geburtsdatum setzen
-    const dobInput = document.getElementById('field_dob');
-    if (dob) {
-        dobInput.value = dob;
-        // WICHTIG: Altersberechnung neu anstoßen!
-        calcAge(); 
-    }
+        const isManual = this.value === 'manual';
+        const isEmpty = this.value === '';
+
+        // Felder referenzieren
+        const f_last = document.getElementById('display_lastname');
+        const f_first = document.getElementById('display_firstname');
+        const f_dob = document.getElementById('field_dob');
+// NEU: Synchronisierung der manuellen Eingabe mit den Hidden Fields für den Server
+    f_last.addEventListener('input', function() {
+        if (studentSelect.value === 'manual') {
+            document.getElementById('student_lastname').value = this.value;
+        }
+    });
+
+    f_first.addEventListener('input', function() {
+        if (studentSelect.value === 'manual') {
+            document.getElementById('student_firstname').value = this.value;
+        }
+    });
+
+        if (isManual) {
+            // MANUELLER MODUS: Felder leeren und entsperren
+            f_last.value = '';
+            f_first.value = '';
+            f_dob.value = '';
+            
+            f_last.readOnly = false;
+            f_first.readOnly = false;
+            f_dob.readOnly = false;
+            
+            f_last.style.backgroundColor = '#fff';
+            f_first.style.backgroundColor = '#fff';
+            f_dob.style.backgroundColor = '#fff';
+
+            // Hidden fields für den Controller leeren
+            document.getElementById('student_lastname').value = '';
+            document.getElementById('student_firstname').value = '';
+        } else if (!isEmpty) {
+            // SCHÜLER GEWÄHLT: Daten füllen und sperren
+            const last = opt.dataset.last || '';
+            const first = opt.dataset.first || '';
+            const dob = opt.dataset.dob || '';
+
+            f_last.value = last;
+            f_first.value = first;
+            f_dob.value = dob;
+
+            f_last.readOnly = true;
+            f_first.readOnly = true;
+            f_dob.readOnly = true;
+
+            // Optisches Feedback (Grau)
+            f_last.style.backgroundColor = '#e9e9e9';
+            f_first.style.backgroundColor = '#e9e9e9';
+            f_dob.style.backgroundColor = '#e9e9e9';
+
+            // Hidden fields für Controller/PDF befüllen
+            document.getElementById('student_lastname').value = last;
+            document.getElementById('student_firstname').value = first;
+            
+            calcAge(); // Alter neu berechnen
+        } else {
+            // NICHTS GEWÄHLT: Felder leeren und sperren
+            f_last.value = ''; f_first.value = ''; f_dob.value = '';
+            f_last.readOnly = true; f_first.readOnly = true; f_dob.readOnly = true;
+            f_last.style.backgroundColor = '#e9e9e9';
+        }
     });
 
     // --- 4. INITIALISIERUNG BEIM LADEN (WICHTIG FÜR EDIT) ---
     const initialClassId = classSelect.value;
     const initialStudentId = "<?= $val('student_wu_id') ?>";
 
-    if (initialClassId) {
-        // Wenn eine Klasse geladen wurde (Edit-Modus), Schülerliste holen
-        fetchStudents(initialClassId, initialStudentId);
-        updatePerspectiveUI();
+    if (initialClassId) { 
+        fetchStudents(initialClassId, initialStudentId); 
+        updatePerspectiveUI(); 
+        
+        // WICHTIG: Wenn der gespeicherte Typ "manual" ist, müssen wir 
+        // die Felder sofort entsperren. Wir triggern das Change-Event:
+        if (initialStudentId === 'manual') {
+            // Ein kleiner Timeout stellt sicher, dass die Elemente bereit sind
+            setTimeout(() => {
+                studentSelect.dispatchEvent(new Event('change'));
+            }, 200);
+        }
     }
-
     // --- 5. RESTLICHE LOGIK (Alter, Sync Dates, Toggles) ---
     
     // Alter berechnen
@@ -514,38 +593,64 @@ document.addEventListener('DOMContentLoaded', function() {
     const allTargets = document.querySelectorAll('.toggle-target');
 
     function updateToggles() {
-        let activeIds = new Set();
-        triggers.forEach(tr => { if(tr.checked && tr.dataset.target) activeIds.add(tr.dataset.target); });
+        let activeTargetIds = new Set();
         
+        // 1. Alle aktiven Trigger finden
+        triggers.forEach(tr => { 
+            if(tr.checked && tr.dataset.target) {
+                activeTargetIds.add(tr.dataset.target);
+            }
+        });
+
+        // 2. Alle Targets durchlaufen
         allTargets.forEach(t => {
-            const isActive = activeIds.has(t.id);
-            const parent = t.parentElement.closest('.toggle-target');
-            const isParentInactive = parent && (parent.style.opacity === '0.5' || parent.classList.contains('mh-hidden'));
+            const isActive = activeTargetIds.has(t.id);
             
-            if(!isActive || isParentInactive) {
-                // INAKTIV-Zustand
-                if(t.classList.contains('mh-collapsible-section')) t.classList.add('mh-hidden');
-                else { t.style.opacity = '0.5'; t.style.pointerEvents = 'none'; }
-                t.querySelectorAll('input, select, textarea').forEach(i => { i.disabled = true; i.required = false; });
+            // Prüfen, ob das Target in einem inaktiven Eltern-Target liegt
+            const parentTarget = t.parentElement.closest('.toggle-target');
+            const isParentInactive = parentTarget && (parentTarget.style.opacity === '0.4' || parentTarget.classList.contains('mh-hidden'));
+
+            if (!isActive || isParentInactive) {
+                // --- ZUSTAND: INAKTIV ---
+                if (t.classList.contains('mh-collapsible-section')) {
+                    t.classList.add('mh-hidden');
+                } else {
+                    t.style.opacity = "0.4";
+                    t.style.pointerEvents = "none";
+                }
+
+                // WICHTIG: Alle Felder im inaktiven Bereich entwerten
+                t.querySelectorAll('input, select, textarea').forEach(i => {
+                    i.disabled = true;
+                    i.required = false; // Pflichtfeld-Status hart entfernen
+                    
+                    // Optional: Wert löschen, damit keine "Leichen" abgeschickt werden
+                    if(i.type === 'text' || i.type === 'number' || i.tagName === 'TEXTAREA') {
+                        // i.value = ''; 
+                    }
+                });
             } else {
-                // AKTIV-Zustand
-                t.classList.remove('mh-hidden'); t.style.opacity = '1'; t.style.pointerEvents = 'auto';
+                // --- ZUSTAND: AKTIV ---
+                t.classList.remove('mh-hidden');
+                t.style.opacity = "1";
+                t.style.pointerEvents = "auto";
                 
                 t.querySelectorAll('input, select, textarea').forEach(i => {
-                    if(i.closest('.toggle-target').id === t.id) {
+                    // Nur Felder aktivieren, die direkt zu diesem Target gehören 
+                    // (verhindert das Aktivieren von noch tiefer verschachtelten Targets)
+                    if (i.closest('.toggle-target').id === t.id) {
                         i.disabled = false;
-                        
-                        // --- LOGIK-KORREKTUR FÜR DIE TABELLE ---
-                        // Wir prüfen, ob das Element innerhalb der Notentabelle liegt
+
+                        // Pflichtfeld-Logik anwenden
                         const isInsideSubjectTable = i.closest('.mh-subject-table');
-                        
-                        if(
+                        if (
                             i.type !== 'hidden' && 
                             i.type !== 'checkbox' && 
                             i.tagName !== 'TEXTAREA' &&
-                            !isInsideSubjectTable // <-- Wenn es in der Tabelle ist, NICHT required setzen
-                        ) { 
-                            i.required = true; 
+                            !isInsideSubjectTable && 
+                            !i.classList.contains('mh-no-validate')
+                        ) {
+                            i.required = true;
                         }
                     }
                 });
