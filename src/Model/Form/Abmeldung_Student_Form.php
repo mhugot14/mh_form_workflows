@@ -43,8 +43,16 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		$av_date_start = $calc->get_previous_school_day( $av_date_raw );
 
 		// --- RESTLICHE INPUTS ---
-		$name      = $this->sanitize_text( $data['lastname'] ?? '' );
+		// Ersetze sie durch diesen robusten Check:
+		$name = $this->sanitize_text( $data['lastname'] ?? '' );
+		if ( empty( $name ) ) {
+			$name = $this->sanitize_text( $data['lastname_manual'] ?? '' );
+		}
+
 		$firstname = $this->sanitize_text( $data['firstname'] ?? '' );
+		if ( empty( $firstname ) ) {
+			$firstname = $this->sanitize_text( $data['firstname_manual'] ?? '' );
+		}
 		$dob       = $this->sanitize_text( $data['dob'] ?? '' );
 		$class     = $this->sanitize_text( $data['class_name'] ?? '' );
 		$teacher   = $this->sanitize_text( $data['teacher'] ?? '' );
@@ -76,6 +84,9 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		$perspective        = $this->sanitize_text( $data['perspective'] ?? '' ); 
         $perspective_detail = $this->sanitize_text( $data['perspective_detail'] ?? '' );
         $perspective_other  = $this->sanitize_text( $data['perspective_other'] ?? '' );
+		
+		$notice_accepted = isset($data['notice_accepted']) ? '1' : '0';
+
 
 		// --- 2. VALIDIERUNG (Pflichtfelder) ---
 		if ( empty( $name ) ) $this->add_error( 'lastname', 'Nachname fehlt.' );
@@ -86,6 +97,10 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( empty( $date_off ) ) $this->add_error( 'date_off', 'Datum der Abmeldung fehlt.' );
 		if ( empty( $reason ) ) $this->add_error( 'reason', 'Grund der Abmeldung auswählen.' );
 		if ( empty( $compulsory ) ) $this->add_error( 'compulsory', 'Angabe zur Schulpflicht fehlt.' );
+		
+		if ($notice_accepted !== '1') {
+			$this->add_error('notice_accepted', 'Bitte bestätigen Sie, dass Sie den Hinweis zur Speicherung gelesen haben.');
+			}
 		
 		  // PFLICHTFELD: Anschluss
         if ( empty( $perspective ) ) {
@@ -173,6 +188,19 @@ class Abmeldung_Student_Form extends Abstract_Form {
 				}
 			}
 		}
+			$has_nb = false;
+		 if (!empty($subjects)) {
+			 foreach ($subjects as $subject) {
+				 if ($subject['grade'] === 'NB') {
+					 $has_nb = true;
+					 break;
+				 }
+			 }
+		 }
+
+		 if ($has_nb && empty($prot_remarks)) {
+			 $this->add_error('prot_remarks', 'Bei der Note "NB" (Nicht bewertbar) ist eine Begründung in den Bemerkungen zwingend erforderlich.');
+		 }
 
 		// --- 3. DATEN SPEICHERN ---
 		$this->data = [
@@ -214,6 +242,7 @@ class Abmeldung_Student_Form extends Abstract_Form {
             'perspective_detail' => $perspective_detail,
             'perspective_other'  => $perspective_other,
 			'subjects' => $subjects,
+			'notice_accepted' => $notice_accepted,
 		];
 
 		return empty( $this->errors );

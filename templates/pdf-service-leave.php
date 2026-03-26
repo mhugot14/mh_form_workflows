@@ -11,12 +11,20 @@ $scissor = '<span style="font-family: DejaVu Sans, sans-serif; font-size: 16pt;"
 // Helper
 $esc = fn($field) => htmlspecialchars($data[$field] ?? '');
 $chk = fn($val) => ( ($data['reason_key'] ?? '') === $val ) ? $x : $o;
+// Footer Text generieren
 $footer_date = date('y-m-d');
 $footer_id   = $data['entry_id'] ?? 0;
 $footer_name = ($data['lastname'] ?? '') . '-' . ($data['firstname'] ?? '');
-// Bereinigen (Umlaute etc. sicherheitshalber entfernen für Dateinamen-Optik, falls gewünscht, oder roh lassen)
-// Hier nehmen wir es direkt, wie es auch im Controller gemacht wird:
-$footer_text = sprintf('LEBK Schulverwaltung: %s_%d_Befreiung_%s', $footer_date, $footer_id, $footer_name);
+
+// Wenn es nicht gespeichert wurde (ID kommt aus Zeit), markieren wir das
+$is_unsaved = ('service_leave_v1' === ($data['form_type'] ?? 'service_leave_v1'));
+
+$footer_text = sprintf('LEBK Schulverwaltung: %s_%s_Befreiung_%s %s', 
+    $footer_date, 
+    $footer_id, 
+    $footer_name,
+    ($is_unsaved ? '(Einmal-Dokument)' : '')
+);
 
 // Datum formatieren
 $fmt_date = function($iso) {

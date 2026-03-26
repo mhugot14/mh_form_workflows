@@ -3,6 +3,18 @@
 $val = fn($key) => isset($form_data[$key]) ? esc_attr($form_data[$key]) : '';
 $err_cls = fn($key) => isset($form_errors[$key]) ? 'mh-error-field' : '';
 $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ? 'checked' : '';
+
+// NEU: Aktuellen Benutzer holen für die automatische Namensfüllung
+$current_user = wp_get_current_user();
+$fname = get_user_meta($current_user->ID, 'first_name', true);
+$lname = get_user_meta($current_user->ID, 'last_name', true);
+
+$teacher_default = trim($fname . ' ' . $lname);
+
+// Falls Vor- und Nachname im Profil leer sind, nutzen wir den Anzeigenamen
+if ( empty( $teacher_default ) ) {
+    $teacher_default = $current_user->display_name;
+}
 ?>
 
 <style>
@@ -125,27 +137,16 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
             
             <div style="margin-bottom: 25px;">
                 <div class="mh-input-group">
-                    <label>Antragsteller*in <span class="req">*</span></label>
-                    <select id="teacher_select" onchange="updateNameFields(this)" style="font-size:1.1em; padding:8px; width: 100%;">
-                        <option value="">-- Bitte wählen --</option>
-                        <?php 
-                        $current_last = $val('lastname'); 
-                        $current_first = $val('firstname');
-                        if ( isset($teachers_list) && is_array($teachers_list) ): 
-                            foreach($teachers_list as $t): 
-                                $display = esc_html($t['long_name'] . ', ' . $t['fore_name'] . ' (' . $t['name'] . ')');
-                                $selected = ($current_last === $t['long_name'] && $current_first === $t['fore_name']) ? 'selected' : '';
-                        ?>
-                            <option value="<?= esc_attr($t['name']) ?>" 
-                                    <?= $selected ?>
-                                    data-last="<?= esc_attr($t['long_name']) ?>" 
-                                    data-first="<?= esc_attr($t['fore_name']) ?>">
-                                <?= $display ?>
-                            </option>
-                        <?php endforeach; endif; ?>
-                    </select>
-                    <input type="hidden" name="lastname" id="hidden_lastname" value="<?= $val('lastname') ?>">
-                    <input type="hidden" name="firstname" id="hidden_firstname" value="<?= $val('firstname') ?>">
+                    <label>Antragsteller*in (angemeldet)</label>
+                    <!-- Anzeige des Namens -->
+                    <input type="text" value="<?= esc_attr($teacher_default) ?>" readonly style="background:#e9e9e9; color: #555;">
+                    
+                    <!-- Versteckte Felder für das PDF (damit Vor- und Nachname getrennt ankommen) -->
+                    <input type="hidden" name="lastname" value="<?= esc_attr($lname ?: $current_user->display_name) ?>">
+                    <input type="hidden" name="firstname" value="<?= esc_attr($fname) ?>">
+                    
+                    <!-- Wichtig: Das Feld 'teacher' muss für die Validierung im Model auch da sein -->
+                    <input type="hidden" name="teacher" value="<?= esc_attr($teacher_default) ?>">
                 </div>
             </div>
 
@@ -230,6 +231,10 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
                 </tbody>
             </table>
         </div>
+		
+		<div style="margin: 20px 0; padding: 15px; background: #fff8e5; border-left: 5px solid #e5a912; color: #8a6d3b;">
+			<strong>Datenschutz-Hinweis:</strong> Dieses Formular wird <strong>nicht</strong> gespeichert. Deine persönlichen Daten werden nach der Erstellung des PDFs sofort vom Server gelöscht.
+		</div>
 
         <div class="btn-group">
             <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Antrag prüfen & PDF erstellen</button>

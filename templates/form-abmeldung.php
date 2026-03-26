@@ -104,7 +104,75 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         text-align: center;
         margin: 0 auto !important;
         display: block;
+	}
+   /* Gehärtetes CSS für die Hilfe-Box */
+details.mh-help-notice-box {
+    background-color: #f0f6fb !important;
+    border: 1px solid #003E7E !important;
+    border-left: 5px solid #003E7E !important;
+    border-radius: 4px !important;
+    margin: 20px 0 !important;
+    display: block !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
 
+details.mh-help-notice-box summary {
+    padding: 15px !important;
+    color: #003E7E !important;
+    font-weight: bold !important;
+    cursor: pointer !important;
+    list-style: none !important;
+    display: flex !important;
+    align-items: center !important;
+    outline: none !important;
+    background: none !important;
+    border: none !important;
+}
+
+/* Standard-Pfeil von Browsern verstecken */
+details.mh-help-notice-box summary::-webkit-details-marker {
+    display: none !important;
+}
+
+/* Eigenes Icon vor den Text setzen */
+details.mh-help-notice-box summary::before {
+    content: "\f140" !important; /* Dashicon Pfeil */
+    font-family: dashicons !important;
+    font-size: 20px !important;
+    margin-right: 10px !important;
+    transition: transform 0.2s ease !important;
+}
+
+details.mh-help-notice-box[open] summary::before {
+    transform: rotate(180deg) !important;
+}
+
+/* Der weiße Inhaltsbereich */
+.mh-help-content-inner {
+    padding: 0 20px 20px 20px !important;
+    background-color: #f0f6fb !important; /* Gleicher Hintergrund wie Box */
+    color: #333 !important;
+}
+
+.mh-help-content-inner h5 {
+    margin: 15px 0 10px 0 !important;
+    color: #003E7E !important;
+    font-weight: bold !important;
+    border-bottom: 1px solid #d1e3ef !important;
+    padding-bottom: 5px !important;
+}
+
+.mh-help-content-inner ul {
+    margin: 0 0 15px 20px !important;
+    padding: 0 !important;
+    list-style-type: disc !important;
+}
+
+.mh-help-content-inner li {
+    margin-bottom: 8px !important;
+    float: none !important; /* Wichtig gegen Theme-Floats */
+}
 </style>
 
 <div class="mh-form-wrapper">
@@ -212,7 +280,7 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         </div>
 
         <!-- SEKTION 3: Schulpflicht (Erhalten) -->
-        <div class="mh-form-section">
+	    <div class="mh-form-section">
             <h4>Schulpflicht <span class="req">*</span></h4>
             <div class="radio-group"><input type="radio" name="compulsory" value="fulfilled" id="c_full" class="toggle-trigger" required <?= $chk('compulsory', 'fulfilled') ?>> <label for="c_full">Die Schulpflicht ist erfüllt.</label></div>
             <div class="radio-group"><input type="radio" name="compulsory" value="not_fulfilled" id="c_not" class="toggle-trigger" <?= $chk('compulsory', 'not_fulfilled') ?>> <label for="c_not">Die Schulpflicht ist NICHT erfüllt (Schulpflichtverfolgung...).</label></div>
@@ -224,7 +292,39 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
             </div></div>
             <div class="radio-group"><input type="radio" name="compulsory" value="bildungsgang" id="c_bg" class="toggle-trigger" data-target="bg_details" <?= $chk('compulsory', 'bildungsgang') ?>> <label for="c_bg">Wechsel in den Bildungsgang...</label></div>
             <div id="bg_details" class="mh-sub-group toggle-target"><div class="mh-input-group"><label>Name des Bildungsgangs <span class="req">*</span></label><input type="text" name="new_education_track" value="<?= $val('new_education_track') ?>"></div></div>
-        </div>
+	
+		<div style="margin-top: 20px; border-top: 1px dashed #ccc; padding-top: 15px;">
+			<details class="mh-help-notice-box">
+				<summary>
+					Wie prüfe ich die Schulpflicht? Hinweise & Tipps
+				</summary>
+				<div class="mh-help-content-inner">
+
+					<h5>Allgemeine Regeln (§ 34-38 SchulG)</h5>
+					<ul>
+						<li><strong>Volljährig:</strong> Schulpflicht endet mit 18 Jahren (außer bei bestehendem Ausbildungsverhältnis).</li>
+						<li><strong>Minderjährig:</strong> Berufsschulpflicht bis zum Ende des Schuljahres, in dem das 18. Lebensjahr vollendet wird.</li>
+					</ul>
+
+					<h5>Besonderheit Berufsfachschule (Anlage B)</h5>
+					<ul>
+						<li><strong>BF I (Erster Abschluss / HS9):</strong> Erfüllt ein Jahr der Berufsschulpflicht. Wer ohne Abschluss abgeht, bleibt schulpflichtig.</li>
+						<li>
+							<strong>BF II (Erw. Erster Abschluss / HS10):</strong> Mit erfolgreichem Abschluss ist die Schulpflicht in der Regel <strong>erfüllt</strong> (§ 38 Abs. 3). 
+							<br><strong style="color: #d63638;">Wichtig: Dies gilt auch, wenn der/die SchülerIn noch unter 18 Jahren alt ist</strong>, sofern kein Ausbildungsverhältnis beginnt.
+						</li>
+						<li><strong>Abbruch:</strong> Bei Abbruch vor Schuljahresende lebt die Schulpflicht sofort wieder auf!</li>
+					</ul>
+
+					<div style="background: #fff8e5; padding: 12px; border-radius: 4px; border: 1px solid #f5e7c1; font-size: 0.95em; display: block !important;">
+						<span class="dashicons dashicons-warning" style="color: #d6a100; vertical-align: text-bottom;"></span> 
+						<strong>Nachweispflicht:</strong> Bei Schulpflichtigen muss die Aufnahmebestätigung der Folgeschule oder der Ausbildungsvertrag zwingend vorliegen.
+					</div>
+				</div>
+			</details>
+		</div>
+		
+		</div>
 		
         <!-- SEKTION: ANSCHLUSSPERSPEKTIVE (Bedingt Pflicht) -->
         <div id="section_perspective" class="mh-form-section">
@@ -332,9 +432,14 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                                 <?php endforeach; endif; ?>
                             </select>
                         </td>
-                        <td>
-                            <input type="text" name="subj_grade[]" value="<?= esc_attr($s['grade'] ?? '') ?>">
-                        </td>
+                       <td>
+						<select name="subj_grade[]" class="mh-grade-select mh-no-validate">
+							<option value="">-</option>
+							<?php foreach(['1','2','3','4','5','6','NB','NE'] as $n): ?>
+								<option value="<?= $n ?>" <?= selected($s['grade'] ?? '', $n) ?>><?= $n ?></option>
+							<?php endforeach; ?>
+						</select>
+					</td>
                         <td>
                             <input type="checkbox" name="subj_webuntis[<?= $i ?>]" value="1" <?= (isset($s['webuntis']) && $s['webuntis'] == '1') ? 'checked' : '' ?>>
                         </td>
@@ -344,11 +449,23 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
                     </tr>
                     <?php endfor; ?>
                 </tbody>
+				
             </table>
+			<p style="margin-top:-10px;font-size:9pt;">NB = nicht bewertbar | NE = nicht erteilt</p>
+			
         </div>
             <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
-
+		
+		<div style="margin: 20px 0; padding: 15px; background: #fff; border: 1px solid #ccc; border-radius: 4px;">
+			<div class="radio-group">
+				<input type="checkbox" name="notice_accepted" value="1" id="chk_notice" required <?= $chk('notice_accepted', '1') ?>>
+				<label for="chk_notice" style="font-weight:bold;">
+					Ich habe zur Kenntnis genommen, dass dieses Formular inkl. aller Daten gespeichert wird und zu einem späteren Zeitpunkt weiter bearbeitet bzw. korrigiert werden kann. <span class="req">*</span>
+				</label>
+			</div>
+		</div>
+		
         <div class="btn-group">
             <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
             <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
@@ -358,29 +475,35 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // 1. ELEMENT-REFERENZEN
     const classSelect = document.getElementById('mh_class_select');
     const studentSelect = document.getElementById('mh_student_select');
     const perspectiveSection = document.getElementById('section_perspective');
     const isFulltimeInput = document.getElementById('is_fulltime_class');
     const classHidden = document.getElementById('class_name_hidden');
     const displayClass = document.getElementById('display_classname');
+    
+    const f_last = document.getElementById('display_lastname');
+    const f_first = document.getElementById('display_firstname');
+    const f_dob = document.getElementById('field_dob');
+    
+    const h_last = document.getElementById('student_lastname');
+    const h_first = document.getElementById('student_firstname');
 
-    // --- 1. FUNKTION: SCHÜLER PER AJAX LADEN ---
-   function fetchStudents(classId, selectedStudentId = null) {
+    // 2. HELPER: SCHÜLER PER AJAX LADEN
+    function fetchStudents(classId, selectedStudentId = null) {
         if (!classId) { 
             studentSelect.disabled = true; 
             studentSelect.innerHTML = '<option value="">-- Erst Klasse wählen --</option>'; 
             return; 
         }
 
-        // Sofort aktivieren und die Basis-Optionen setzen
         studentSelect.disabled = false; 
         studentSelect.innerHTML = `
             <option value="">-- Schüler wählen --</option>
-            <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in der Liste) --</option>
+            <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in Liste) --</option>
         `;
 
-        // Wenn wir nicht gerade einen bestehenden Schüler laden, zeigen wir kurz "Lade..."
         if (!selectedStudentId) {
             const loadingOpt = document.createElement('option');
             loadingOpt.text = 'Lade Klassenliste...';
@@ -395,166 +518,94 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
-            // Wir leeren die Liste NICHT komplett, sondern entfernen nur die Lade-Meldung
-            // und behalten "Bitte wählen" und "Manual"
             studentSelect.innerHTML = `
                 <option value="">-- Schüler wählen --</option>
                 <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in Liste) --</option>
             `;
-
             if (data.success && data.data) {
                 data.data.forEach(s => {
                     const isSelected = (selectedStudentId && s.wu_id == selectedStudentId) ? 'selected' : '';
                     studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
                 });
             }
-        })
-        .catch(err => {
-            console.error("AJAX Fehler:", err);
-            // Bei Fehler bleibt "Manual" trotzdem stehen!
-        });
+        }).catch(err => console.error("Fehler:", err));
     }
 
-    // --- 2. FUNKTION: VOLLZEIT/TEILZEIT UI STEUERN ---
+    // 3. HELPER: VOLLZEIT/TEILZEIT UI
     function updatePerspectiveUI() {
         const opt = classSelect.options[classSelect.selectedIndex];
-        const protTypeInput = document.getElementById('input_prot_type'); // Das neue hidden field
-
-        if (!opt || !opt.value) {
-            perspectiveSection.style.opacity = "0.4";
-            perspectiveSection.style.pointerEvents = "none";
-            return;
-        }
+        const protTypeInput = document.getElementById('input_prot_type');
+        if (!opt || !opt.value) return;
 
         const isFulltime = opt.dataset.fulltime === "1";
         classHidden.value = opt.dataset.name || '';
         if(displayClass) displayClass.value = opt.dataset.name || '';
 
         if (isFulltime) {
-            // --- VOLLZEIT ---
-            perspectiveSection.style.opacity = "1";
-            perspectiveSection.style.pointerEvents = "auto";
+            perspectiveSection.style.opacity = "1"; perspectiveSection.style.pointerEvents = "auto";
             isFulltimeInput.value = "1";
-            if(protTypeInput) protTypeInput.value = "vollzeit"; // Automatisch setzen
-            
+            if(protTypeInput) protTypeInput.value = "vollzeit";
             document.getElementById('perspective_req').style.display = "inline";
             perspectiveSection.querySelectorAll('input').forEach(i => i.disabled = false);
         } else {
-            // --- TEILZEIT ---
-            perspectiveSection.style.opacity = "0.4";
-            perspectiveSection.style.pointerEvents = "none";
+            perspectiveSection.style.opacity = "0.4"; perspectiveSection.style.pointerEvents = "none";
             isFulltimeInput.value = "0";
-            if(protTypeInput) protTypeInput.value = "berufsschule"; // Automatisch setzen
-            
+            if(protTypeInput) protTypeInput.value = "berufsschule";
             document.getElementById('perspective_req').style.display = "none";
-            perspectiveSection.querySelectorAll('input').forEach(i => {
-                i.disabled = true;
-                i.required = false;
-            });
+            perspectiveSection.querySelectorAll('input').forEach(i => { i.disabled = true; i.required = false; });
         }
     }
 
-    // --- 3. EVENT LISTENER ---
+    // 4. MANUELLE EINGABE SYNCHRONISIEREN (Wichtig für deinen Fehler!)
+    // Wenn der User tippt, kopieren wir den Wert in das versteckte Feld für PHP
+    f_last.addEventListener('input', function() {
+        if (studentSelect.value === 'manual') h_last.value = this.value;
+    });
+    f_first.addEventListener('input', function() {
+        if (studentSelect.value === 'manual') h_first.value = this.value;
+    });
+    f_dob.addEventListener('input', function() {
+        if (studentSelect.value === 'manual') calcAge();
+    });
 
-    // Klassenwahl geändert
+    // 5. CHANGE LISTENERS
     classSelect.addEventListener('change', function() {
         fetchStudents(this.value);
         updatePerspectiveUI();
     });
 
-    // Schülerwahl geändert -> Namen in Hidden Fields & Anzeige schreiben
-    // Schülerwahl -> Logik für Sperrung und Autofill
     studentSelect.addEventListener('change', function() {
         const opt = this.options[this.selectedIndex];
         const isManual = this.value === 'manual';
-        const isEmpty = this.value === '';
-
-        // Felder referenzieren
-        const f_last = document.getElementById('display_lastname');
-        const f_first = document.getElementById('display_firstname');
-        const f_dob = document.getElementById('field_dob');
-// NEU: Synchronisierung der manuellen Eingabe mit den Hidden Fields für den Server
-    f_last.addEventListener('input', function() {
-        if (studentSelect.value === 'manual') {
-            document.getElementById('student_lastname').value = this.value;
-        }
-    });
-
-    f_first.addEventListener('input', function() {
-        if (studentSelect.value === 'manual') {
-            document.getElementById('student_firstname').value = this.value;
-        }
-    });
-
+        
         if (isManual) {
-            // MANUELLER MODUS: Felder leeren und entsperren
-            f_last.value = '';
-            f_first.value = '';
-            f_dob.value = '';
-            
-            f_last.readOnly = false;
-            f_first.readOnly = false;
-            f_dob.readOnly = false;
-            
-            f_last.style.backgroundColor = '#fff';
-            f_first.style.backgroundColor = '#fff';
-            f_dob.style.backgroundColor = '#fff';
-
-            // Hidden fields für den Controller leeren
-            document.getElementById('student_lastname').value = '';
-            document.getElementById('student_firstname').value = '';
-        } else if (!isEmpty) {
-            // SCHÜLER GEWÄHLT: Daten füllen und sperren
-            const last = opt.dataset.last || '';
-            const first = opt.dataset.first || '';
-            const dob = opt.dataset.dob || '';
-
-            f_last.value = last;
-            f_first.value = first;
-            f_dob.value = dob;
-
-            f_last.readOnly = true;
-            f_first.readOnly = true;
-            f_dob.readOnly = true;
-
-            // Optisches Feedback (Grau)
-            f_last.style.backgroundColor = '#e9e9e9';
-            f_first.style.backgroundColor = '#e9e9e9';
-            f_dob.style.backgroundColor = '#e9e9e9';
-
-            // Hidden fields für Controller/PDF befüllen
-            document.getElementById('student_lastname').value = last;
-            document.getElementById('student_firstname').value = first;
-            
-            calcAge(); // Alter neu berechnen
-        } else {
-            // NICHTS GEWÄHLT: Felder leeren und sperren
             f_last.value = ''; f_first.value = ''; f_dob.value = '';
+            f_last.readOnly = false; f_first.readOnly = false; f_dob.readOnly = false;
+            f_last.style.backgroundColor = '#fff'; f_first.style.backgroundColor = '#fff'; f_dob.style.backgroundColor = '#fff';
+            h_last.value = ''; h_first.value = '';
+        } else if (this.value !== '') {
+            f_last.value = opt.dataset.last || '';
+            f_first.value = opt.dataset.first || '';
+            f_dob.value = opt.dataset.dob || '';
             f_last.readOnly = true; f_first.readOnly = true; f_dob.readOnly = true;
-            f_last.style.backgroundColor = '#e9e9e9';
+            f_last.style.backgroundColor = '#e9e9e9'; f_first.style.backgroundColor = '#e9e9e9'; f_dob.style.backgroundColor = '#e9e9e9';
+            h_last.value = f_last.value; h_first.value = f_first.value;
+            calcAge();
         }
     });
 
-    // --- 4. INITIALISIERUNG BEIM LADEN (WICHTIG FÜR EDIT) ---
+    // 6. INITIALISIERUNG (Edit-Modus)
     const initialClassId = classSelect.value;
     const initialStudentId = "<?= $val('student_wu_id') ?>";
-
-    if (initialClassId) { 
-        fetchStudents(initialClassId, initialStudentId); 
-        updatePerspectiveUI(); 
-        
-        // WICHTIG: Wenn der gespeicherte Typ "manual" ist, müssen wir 
-        // die Felder sofort entsperren. Wir triggern das Change-Event:
+    if (initialClassId) {
+        fetchStudents(initialClassId, initialStudentId);
+        updatePerspectiveUI();
         if (initialStudentId === 'manual') {
-            // Ein kleiner Timeout stellt sicher, dass die Elemente bereit sind
-            setTimeout(() => {
-                studentSelect.dispatchEvent(new Event('change'));
-            }, 200);
+            setTimeout(() => { studentSelect.dispatchEvent(new Event('change')); }, 200);
         }
     }
-    // --- 5. RESTLICHE LOGIK (Alter, Sync Dates, Toggles) ---
-    
-    // Alter berechnen
+
+    // 7. ALTER & DATUM SYNC
     const dobInput = document.getElementById('field_dob');
     const statusDisplay = document.getElementById('status_display');
     const statusInput = document.getElementById('input_is_minor');
@@ -567,10 +618,10 @@ document.addEventListener('DOMContentLoaded', function() {
         let outputHtml = '';
         if (age < 18) { outputHtml = '<b style="color:#d63638">Minderjährig</b> (' + age + ')'; statusInput.value = '1'; } 
         else { 
-            let schoolYearStartYear = today.getFullYear();
-            if (today.getMonth() < 7) { schoolYearStartYear--; }
-            let ageAtStart = schoolYearStartYear - dob.getFullYear();
-            if (7 < dob.getMonth() || (7 === dob.getMonth() && 1 < dob.getDate())) { ageAtStart--; }
+            let schoolYearStart = today.getFullYear();
+            if (today.getMonth() < 7) schoolYearStart--;
+            let ageAtStart = schoolYearStart - dob.getFullYear();
+            if (7 < dob.getMonth() || (7 === dob.getMonth() && 1 < dob.getDate())) ageAtStart--;
             outputHtml = '<b style="color:#46b450">Volljährig</b> (' + age + ')';
             outputHtml += ageAtStart >= 18 ? '<br><small>(Schuljahresbeginn volljährig)</small>' : '<br><small>(Schuljahresbeginn <u style="color:#d63638">nicht</u> volljährig)</small>';
             statusInput.value = '0';
@@ -579,7 +630,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if(dobInput) { dobInput.addEventListener('change', calcAge); if(dobInput.value) calcAge(); }
 
-    // Datum Sync
     const dateOffInput = document.getElementById('field_date_off'); 
     const protDateInput = document.getElementById('field_prot_date'); 
     const protIssueInput = document.getElementById('field_prot_issue_date'); 
@@ -588,70 +638,26 @@ document.addEventListener('DOMContentLoaded', function() {
         dateOffInput.addEventListener('change', function() { protDateInput.value = this.value; protIssueInput.value = this.value; });
     }
 
-    // Allgemeine Toggles (z.B. Protokoll-Bereich)
+    // 8. ALLGEMEINE TOGGLES
     const triggers = document.querySelectorAll('.toggle-trigger');
     const allTargets = document.querySelectorAll('.toggle-target');
-
     function updateToggles() {
         let activeTargetIds = new Set();
-        
-        // 1. Alle aktiven Trigger finden
-        triggers.forEach(tr => { 
-            if(tr.checked && tr.dataset.target) {
-                activeTargetIds.add(tr.dataset.target);
-            }
-        });
-
-        // 2. Alle Targets durchlaufen
+        triggers.forEach(tr => { if(tr.checked && tr.dataset.target) activeTargetIds.add(tr.dataset.target); });
         allTargets.forEach(t => {
             const isActive = activeTargetIds.has(t.id);
-            
-            // Prüfen, ob das Target in einem inaktiven Eltern-Target liegt
             const parentTarget = t.parentElement.closest('.toggle-target');
             const isParentInactive = parentTarget && (parentTarget.style.opacity === '0.4' || parentTarget.classList.contains('mh-hidden'));
-
             if (!isActive || isParentInactive) {
-                // --- ZUSTAND: INAKTIV ---
-                if (t.classList.contains('mh-collapsible-section')) {
-                    t.classList.add('mh-hidden');
-                } else {
-                    t.style.opacity = "0.4";
-                    t.style.pointerEvents = "none";
-                }
-
-                // WICHTIG: Alle Felder im inaktiven Bereich entwerten
-                t.querySelectorAll('input, select, textarea').forEach(i => {
-                    i.disabled = true;
-                    i.required = false; // Pflichtfeld-Status hart entfernen
-                    
-                    // Optional: Wert löschen, damit keine "Leichen" abgeschickt werden
-                    if(i.type === 'text' || i.type === 'number' || i.tagName === 'TEXTAREA') {
-                        // i.value = ''; 
-                    }
-                });
+                if (t.classList.contains('mh-collapsible-section')) t.classList.add('mh-hidden');
+                else { t.style.opacity = "0.4"; t.style.pointerEvents = "none"; }
+                t.querySelectorAll('input, select, textarea').forEach(i => { i.disabled = true; i.required = false; });
             } else {
-                // --- ZUSTAND: AKTIV ---
-                t.classList.remove('mh-hidden');
-                t.style.opacity = "1";
-                t.style.pointerEvents = "auto";
-                
+                t.classList.remove('mh-hidden'); t.style.opacity = "1"; t.style.pointerEvents = "auto";
                 t.querySelectorAll('input, select, textarea').forEach(i => {
-                    // Nur Felder aktivieren, die direkt zu diesem Target gehören 
-                    // (verhindert das Aktivieren von noch tiefer verschachtelten Targets)
                     if (i.closest('.toggle-target').id === t.id) {
                         i.disabled = false;
-
-                        // Pflichtfeld-Logik anwenden
-                        const isInsideSubjectTable = i.closest('.mh-subject-table');
-                        if (
-                            i.type !== 'hidden' && 
-                            i.type !== 'checkbox' && 
-                            i.tagName !== 'TEXTAREA' &&
-                            !isInsideSubjectTable && 
-                            !i.classList.contains('mh-no-validate')
-                        ) {
-                            i.required = true;
-                        }
+                        if (i.type !== 'hidden' && i.type !== 'checkbox' && i.tagName !== 'TEXTAREA' && !i.closest('.mh-subject-table') && !i.classList.contains('mh-no-validate')) { i.required = true; }
                     }
                 });
             }
@@ -659,5 +665,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     triggers.forEach(r => r.addEventListener('change', updateToggles));
     setTimeout(() => { updateToggles(); }, 100);
+	// Logik für NB -> Bemerkungspflicht
+    const gradeSelects = document.querySelectorAll('.mh-grade-select');
+    const remarksField = document.querySelector('textarea[name="prot_remarks"]');
+
+    function checkNBRequirement() {
+        let nbFound = false;
+        gradeSelects.forEach(select => {
+            if (select.value === 'NB') nbFound = true;
+        });
+
+        if (nbFound) {
+            remarksField.required = true;
+            remarksField.style.borderColor = '#d63638';
+            remarksField.placeholder = 'Begründung für NB hier zwingend erforderlich...';
+        } else {
+            remarksField.required = false;
+            remarksField.style.borderColor = '';
+            remarksField.placeholder = '';
+        }
+    }
+
+    gradeSelects.forEach(select => select.addEventListener('change', checkNBRequirement));
+    // Initialer Check beim Laden (für Edit-Modus)
+    checkNBRequirement();
+	
 });
 </script>

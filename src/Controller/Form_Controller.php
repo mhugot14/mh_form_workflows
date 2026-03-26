@@ -212,17 +212,34 @@ class Form_Controller {
 
 		$submission_id = (int)( $_POST['submission_id'] ?? 0 );
 		$current_user_id = get_current_user_id();
-		$db_data = [ 'form_type' => $form->get_slug(), 'status' => 'submitted', 'user_id' => $current_user_id, 'form_data' => $valid_data ];
+		$entry_id = 0; // Initialisieren
 
-		if ( $submission_id > 0 ) {
-			$this->repository->update( $submission_id, $db_data, $current_user_id );
-			$entry_id = $submission_id;
+		// LOGIK: Nur speichern, wenn es KEINE Dienstbefreiung ist
+		if ( 'service_leave_v1' !== $form_type_slug ) {
+
+			$db_data = [ 
+				'form_type' => $form->get_slug(), 
+				'status' => 'submitted', 
+				'user_id' => $current_user_id, 
+				'form_data' => $valid_data 
+			];
+
+			if ( $submission_id > 0 ) {
+				$this->repository->update( $submission_id, $db_data, $current_user_id );
+				$entry_id = $submission_id;
+			} else {
+				$entry_id = $this->repository->create( $db_data );
+			}
+
+			if ( 0 === $entry_id ) wp_die( 'DB Error' );
+
 		} else {
-			$entry_id = $this->repository->create( $db_data );
+			// FALL: Dienstbefreiung (Wird nicht gespeichert)
+			// Wir nutzen eine temporäre "ID" für den Dateinamen (z.B. Uhrzeit)
+			$entry_id = (int)date('His'); 
 		}
 
-		if ( 0 === $entry_id ) wp_die( 'DB Error' );
-
+		// PDF Generierung
 		$valid_data['entry_id'] = $entry_id;
 		$data = $valid_data; 
 		ob_start();
