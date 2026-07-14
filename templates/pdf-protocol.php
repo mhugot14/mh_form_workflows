@@ -20,9 +20,7 @@ if ( isset($data['certificate']) && $data['certificate'] === 'ueberweisung' ) $s
 elseif ( isset($data['certificate']) && $data['certificate'] === 'abgang' ) $subtitle = 'Abgangszeugnis';
 
 if ($is_vollzeit) {
-    $end_date_str = $date_fmt('date_off'); 
-    $comp_yes = ($data['compulsory'] === 'fulfilled') ? $x : $o;
-    $comp_no  = ($data['compulsory'] !== 'fulfilled') ? $x : $o;
+    $end_date_str = $date_fmt('date_off');
     $transfer_school = '-';
     if (($data['reason'] ?? '') === 'schulwechsel' && !empty($data['new_school'])) {
         $transfer_school = $data['new_school'];
@@ -72,10 +70,7 @@ if ($is_vollzeit) {
 
     <?php if ($is_vollzeit): ?>
     <tr>
-        <td class="no-border">Ende des Schulverhältnisses: <b><?= $end_date_str ?></b></td>
-        <td class="no-border">
-            Schulpflicht überprüft? <?= $comp_yes ?> Ja &nbsp; <?= $comp_no ?> Nein
-        </td>
+        <td class="no-border" colspan="2">Ende des Schulverhältnisses: <b><?= $end_date_str ?></b></td>
     </tr>
     <tr>
         <td class="no-border" colspan="2">
@@ -140,25 +135,25 @@ if ($is_vollzeit) {
 </div>
 
 <!-- Unterschriften -->
-<table class="no-border" style="width:100%; margin-top: 30px;">
+<table style="width:100%; margin-top: 30px; border: none; border-collapse: collapse;">
     <tr>
-        <td class="no-border" width="50%" style="vertical-align: bottom; padding-bottom: 20px;">
+        <td width="50%" style="border: none; vertical-align: bottom; padding-bottom: 20px;">
             Münster, den <?= $date_fmt('prot_date') ?>
         </td>
-        <td class="no-border" width="50%" style="vertical-align: bottom;">
+        <td width="50%" style="border: none; vertical-align: bottom;">
             <div style="border-top: 1px solid black; width: 90%; float:right; padding-top:2px;">
                 Klassenleitung / <?= $esc('teacher') ?>
             </div>
         </td>
     </tr>
-    <tr><td colspan="2" class="no-border" height="30"></td></tr>
+    <tr><td colspan="2" style="border: none;" height="30"></td></tr>
     <tr>
-        <td class="no-border" width="50%" style="vertical-align: bottom;">
+        <td width="50%" style="border: none; vertical-align: bottom;">
             <div style="border-top: 1px solid black; width: 90%; padding-top:2px;">
                 Protokoll / <?= $esc('teacher') ?>
             </div>
         </td>
-        <td class="no-border" width="50%" style="vertical-align: bottom;">
+        <td width="50%" style="border: none; vertical-align: bottom;">
             <div style="border-top: 1px solid black; width: 90%; float:right; padding-top:2px;">
                 Vorsitz / <?= $esc('prot_chair') ?>
             </div>
