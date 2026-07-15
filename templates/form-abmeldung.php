@@ -12,6 +12,14 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
 $current_user = wp_get_current_user();
 $teacher_default = trim($current_user->first_name . ' ' . $current_user->last_name) ?: $current_user->display_name;
 
+// Überblendung Notensammlung: nur ausblenden, wenn schon mind. eine Note vorliegt
+$has_existing_grades = false;
+if ( ! empty( $form_data['subjects'] ) ) {
+    foreach ( $form_data['subjects'] as $s ) {
+        if ( ! empty( $s['grade'] ) ) { $has_existing_grades = true; break; }
+    }
+}
+
 // Warnung extrahieren
 $warning_msg = '';
 if ( isset( $form_errors['date_autocorrect'] ) ) {
@@ -105,6 +113,38 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         margin: 0 auto !important;
         display: block;
 	}
+
+	/* Überblendung für Notensammlung (Umlaufverfahren) */
+	.mh-grades-overlay-wrap { position: relative !important; }
+	.mh-grades-overlay {
+		position: absolute !important;
+		top: 0; left: 0; right: 0; bottom: 0;
+		width: 100%; height: 100%;
+		background: rgba(255, 255, 255, 0.85);
+		z-index: 10;
+		display: flex !important;
+		align-items: center !important;
+		justify-content: center !important;
+		text-align: center;
+		padding: 20px;
+		border-radius: 4px;
+	}
+	.mh-grades-overlay-box { max-width: 520px; }
+	.mh-grades-overlay-box p { font-size: 17px; line-height: 1.6; margin: 0 0 8px 0 !important; color: #222; font-weight: 500; }
+	.mh-grades-overlay-box p strong { color: #0073aa; }
+	.mh-grades-overlay-box button {
+		margin-top: 12px !important;
+		background: #0073aa !important;
+		color: #fff !important;
+		border: none !important;
+		padding: 12px 26px !important;
+		height: auto !important;
+		border-radius: 4px !important;
+		font-size: 15px !important;
+		font-weight: bold !important;
+		cursor: pointer !important;
+	}
+	.mh-grades-overlay-box button:hover { background: #005a87 !important; }
    /* Gehärtetes CSS für die Hilfe-Box */
 details.mh-help-notice-box {
     background-color: #f0f6fb !important;
@@ -392,7 +432,16 @@ details.mh-help-notice-box[open] summary::before {
 <!-- SEKTION: FÄCHER & NOTEN -->
         <div style="margin-top: 25px; margin-bottom: 20px;">
             <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer & Noten (Vorausfüllung für Protokoll)</h5>
-            
+
+            <div class="mh-grades-overlay-wrap">
+            <div id="grades_overlay" class="mh-grades-overlay <?= $has_existing_grades ? 'mh-hidden' : '' ?>">
+                <div class="mh-grades-overlay-box">
+                    <p><strong>Liegen dir die Noten jetzt schon vor?</strong> Dann trage die Noten jetzt ein.</p>
+                    <p>Falls nicht, generiere das PDF trotzdem schon und sammle die Noten auf Papier im Umlaufverfahren.</p>
+                    <button type="button" id="btn_show_grades">Jetzt Noten eingeben</button>
+                </div>
+            </div>
+
             <table class="mh-subject-table">
                 <thead>
                     <tr>
@@ -452,7 +501,7 @@ details.mh-help-notice-box[open] summary::before {
 				
             </table>
 			<p style="margin-top:-10px;font-size:9pt;">NB = nicht bewertbar | NE = nicht erteilt</p>
-			
+			</div>
         </div>
             <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
@@ -689,6 +738,15 @@ document.addEventListener('DOMContentLoaded', function() {
     gradeSelects.forEach(select => select.addEventListener('change', checkNBRequirement));
     // Initialer Check beim Laden (für Edit-Modus)
     checkNBRequirement();
-	
+
+    // Überblendung Notensammlung: erst nach Klick Noteneingabe freigeben
+    const gradesOverlay = document.getElementById('grades_overlay');
+    const btnShowGrades = document.getElementById('btn_show_grades');
+    if (btnShowGrades && gradesOverlay) {
+        btnShowGrades.addEventListener('click', function() {
+            gradesOverlay.classList.add('mh-hidden');
+        });
+    }
+
 });
 </script>

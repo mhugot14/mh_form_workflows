@@ -33,6 +33,7 @@ use Mh\FormWorkflows\Setup\Plugin_Bootstrap;
 define( 'MH_FW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MH_FW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'MH_FW_VERSION', '1.2.0' );
+define( 'MH_FW_DB_VERSION', '3' );
 
 /**
  * Aktivierungs-Hook: Tabellen erstellen.
@@ -40,6 +41,17 @@ define( 'MH_FW_VERSION', '1.2.0' );
 register_activation_hook( __FILE__, function () {
 	Activator::activate();
 } );
+
+/**
+ * Schema-Migrationen auch außerhalb eines manuellen Reaktivierens ausführen
+ * (z. B. nach einem Deploy, bei dem das Plugin nicht neu aktiviert wird).
+ */
+add_action( 'plugins_loaded', function () {
+	if ( get_option( 'mh_fw_db_version' ) !== MH_FW_DB_VERSION ) {
+		Activator::activate();
+		update_option( 'mh_fw_db_version', MH_FW_DB_VERSION );
+	}
+}, 5 );
 
 /**
  * Plugin Bootstrapping.

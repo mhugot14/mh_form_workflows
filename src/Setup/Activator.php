@@ -29,12 +29,15 @@ class Activator {
 			form_type varchar(50) NOT NULL,
 			status varchar(20) DEFAULT 'draft' NOT NULL,
 			user_id bigint(20) NOT NULL,
+			student_wu_id bigint(20) DEFAULT NULL,
+			archived_at datetime DEFAULT NULL,
 			form_data longtext NOT NULL,
 			created_at datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 			updated_at datetime DEFAULT '0000-00-00 00:00:00' NOT NULL,
 			PRIMARY KEY  (id),
 			KEY form_type (form_type),
-			KEY user_id (user_id)
+			KEY user_id (user_id),
+			KEY student_wu_id (student_wu_id)
 		) $charset_collate;";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';

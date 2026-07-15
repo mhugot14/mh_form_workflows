@@ -190,6 +190,63 @@ if ( ! defined( 'ABSPATH' ) ) exit;
             </table>
         </div>
 
+        <!-- ABSENTISMUS -->
+        <div class="mh-info-section">
+            <h2>Absentismus-Verfahren (Fehlzeiten-Eskalation)</h2>
+            <p style="color:#646970; margin-top:-10px; margin-bottom:20px; line-height:1.6;">
+                Bildet den mehrstufigen Eskalationsprozess bei unentschuldigten Fehlzeiten ab: von den
+                pädagogischen Gesprächen über Mahnung, Bußgeldverfahren und Teilkonferenz bis zur Beendigung
+                des Schulverhältnisses. Ein <strong>Fall</strong> bündelt alle Schritte eines Schülers/einer
+                Schülerin und wird über <code>[mh_absentismus_fall]</code> eröffnet und bearbeitet;
+                <code>[mh_absentismus_liste]</code> zeigt die Übersicht aller Fälle. Jeder Schritt steht
+                zusätzlich als eigenständiges Einzelformular zur Verfügung, falls kein vollständiger Fall
+                geführt werden soll.
+            </p>
+
+            <table class="mh-shortcode-table">
+                <thead>
+                    <tr>
+                        <th width="25%">Funktion</th>
+                        <th width="35%">Shortcode</th>
+                        <th width="40%">Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Fall-Workflow</strong></td>
+                        <td><code>[mh_absentismus_fall]</code></td>
+                        <td>Zentrale Seite zum Eröffnen eines Falls, zum Anlegen/Bearbeiten der einzelnen Schritte sowie zur Timeline-Ansicht eines Falls.</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Fallliste</strong></td>
+                        <td><code>[mh_absentismus_liste]</code></td>
+                        <td>Übersicht aller Fälle. Admins sehen alle Fälle, alle anderen Nutzer nur die selbst eröffneten.</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="margin-top:25px; margin-bottom:10px; font-size:15px; color:#23282d;">Eigenständige Einzelformulare (ohne Fall-Bindung)</h3>
+            <table class="mh-shortcode-table">
+                <thead>
+                    <tr>
+                        <th width="28%">Schritt</th>
+                        <th width="30%">Shortcode</th>
+                        <th width="42%">Regulärer Auslöser</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>1. Pädagogisches Gespräch</td><td><code>[mh_absentismus_gespraech_1]</code></td><td>ca. 10 unentschuldigte Fehlstunden (kumulativ)</td></tr>
+                    <tr><td>2. Pädagogisches Gespräch</td><td><code>[mh_absentismus_gespraech_2]</code></td><td>weitere ca. 10 unentschuldigte Fehlstunden nach dem 1. Gespräch</td></tr>
+                    <tr><td>Schriftliche Mahnung / Aufforderung Schulbesuch</td><td><code>[mh_absentismus_mahnung]</code></td><td>weiterhin unentschuldigte Fehlstunden nach dem 2. Gespräch</td></tr>
+                    <tr><td>Einleitung Bußgeldverfahren / Anhörung</td><td><code>[mh_absentismus_bussgeld]</code></td><td>weitere Eskalation nach der Mahnung</td></tr>
+                    <tr><td>Teilkonferenz</td><td><code>[mh_absentismus_teilkonferenz]</code></td><td>20 unentschuldigte Fehlstunden innerhalb von 30 Tagen</td></tr>
+                    <tr><td>Zuführung durch das Ordnungsamt</td><td><code>[mh_absentismus_ordnungsamt]</code></td><td>3 Tage in Folge unentschuldigt gefehlt (nur schulpflichtige Schüler*innen)</td></tr>
+                    <tr><td>Beendigung Schulverhältnis § 47 Abs. 1 Nr. 8 SchulG</td><td><code>[mh_absentismus_beendigung_47]</code></td><td>15 Tage in Folge unentschuldigt <em>oder</em> Teilkonferenz-Beschluss „Entlassung“ (nur <u>nicht mehr</u> schulpflichtige Schüler*innen)</td></tr>
+                    <tr><td>Attestauflage</td><td><code>[mh_absentismus_attestauflage]</code></td><td>begründete Zweifel an einer krankheitsbedingten (entschuldigten) Abwesenheit</td></tr>
+                </tbody>
+            </table>
+        </div>
+
         <!-- HINWEISE -->
         <div class="mh-info-section">
             <h2>Wichtige Hinweise</h2>
@@ -206,6 +263,13 @@ if ( ! defined( 'ABSPATH' ) ) exit;
                     <div>
                         <strong>PDF-Generierung:</strong><br>
                         Die Dokumente werden als PDF/A-kompatible Dateien erzeugt. Das Datum im Dateinamen entspricht immer dem Datum der letzten Speicherung.
+                    </div>
+                </li>
+                <li>
+                    <span class="dashicons dashicons-lock" style="color:#0073aa;"></span>
+                    <div>
+                        <strong>Absentismus nur für eingeloggte Nutzer:</strong><br>
+                        Alle Absentismus-Shortcodes sind bewusst nicht für Gäste freigegeben, da sie sensible Schülerdaten anzeigen. Nicht angemeldete Besucher sehen nur den Hinweis „Bitte anmelden“.
                     </div>
                 </li>
             </ul>

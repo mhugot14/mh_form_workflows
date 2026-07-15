@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Mh\FormWorkflows\Setup;
 
 use Mh\FormWorkflows\Controller\Form_Controller;
+use Mh\FormWorkflows\Controller\Fall_Controller;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Class_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
 use Mh\FormWorkflows\Repository\Student_Repository;
 use Mh\FormWorkflows\Repository\Subject_Repository;
+use Mh\FormWorkflows\Repository\Absentismus_Fall_Repository;
 use Mh\FormWorkflows\Service\Pdf_Generator;
 
 /**
@@ -23,6 +25,11 @@ class Plugin_Bootstrap {
 	 * @var Form_Controller Speichert den Controller für Admin-Callbacks.
 	 */
 	private Form_Controller $form_controller;
+
+	/**
+	 * @var Fall_Controller Speichert den Controller für den Absentismus-Fall-Workflow.
+	 */
+	private Fall_Controller $fall_controller;
 
 	/**
 	 * Startet das Plugin.
@@ -44,15 +51,23 @@ class Plugin_Bootstrap {
 		 $student_repo =   new Student_Repository( $wpdb );
 		$pdf_generator   = new Pdf_Generator();
                 $subject_repo = new Subject_Repository( $wpdb );
+		$fall_repo       = new Absentismus_Fall_Repository( $wpdb );
 
 		// 2. Controller instanziieren und in Property speichern
-		$this->form_controller = new Form_Controller( 
-			$submission_repo, 
-			$class_repo, 
+		$this->form_controller = new Form_Controller(
+			$submission_repo,
+			$class_repo,
 			$teacher_repo,
 			$student_repo,
                         $subject_repo,
-			$pdf_generator 
+			$pdf_generator
+		);
+
+		$this->fall_controller = new Fall_Controller(
+			$fall_repo,
+			$class_repo,
+			$student_repo,
+			$pdf_generator
 		);
 
 		// 3. Hooks registrieren
@@ -65,6 +80,9 @@ class Plugin_Bootstrap {
 		// Admin Menü & Settings
 		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
+		// Muss früh (admin_init) laufen, NICHT im Seiten-Callback selbst — dort sind
+		// die Header bereits gesendet (WP hat Admin-Header/Skripte schon ausgegeben).
+		add_action( 'admin_init', [ $this, 'maybe_redirect_absentismus_liste' ] );
 
 		// Admin Aktionen (Löschen/Download)
 		add_action( 'admin_init', function() {
@@ -85,9 +103,35 @@ class Plugin_Bootstrap {
             }
         });
 		add_action('wp_ajax_mh_get_students', [$this->form_controller, 'ajax_get_students']);
-		
+
 		add_shortcode( 'mh_form_workflow', [ $this->form_controller, 'render_form' ] );
 		add_shortcode( 'mh_my_submissions', [ $this->form_controller, 'render_dashboard' ] );
+
+		// Absentismus-Fall-Workflow: eingeloggte Nutzer only, keine nopriv-Hooks
+		// (sensible Schülerdaten, siehe Fall_Controller-Berechtigungsprüfungen).
+		add_action( 'admin_post_mh_absentismus_open_case', [ $this->fall_controller, 'handle_open_case_submission' ] );
+		add_action( 'admin_post_mh_absentismus_step_submit', [ $this->fall_controller, 'handle_step_submission' ] );
+		add_action( 'admin_post_mh_absentismus_finalize_step', [ $this->fall_controller, 'handle_finalize_step' ] );
+		add_action( 'admin_post_mh_absentismus_close_case', [ $this->fall_controller, 'handle_close_case' ] );
+		add_action( 'admin_post_mh_absentismus_reopen_case', [ $this->fall_controller, 'handle_reopen_case' ] );
+		add_action( 'admin_post_mh_absentismus_archive_case', [ $this->fall_controller, 'handle_archive_case' ] );
+		add_action( 'admin_post_mh_absentismus_unarchive_case', [ $this->fall_controller, 'handle_unarchive_case' ] );
+		add_action( 'admin_post_mh_absentismus_bulk_archive', [ $this->fall_controller, 'handle_bulk_archive' ] );
+		add_action( 'admin_post_mh_absentismus_download_pdf', [ $this->fall_controller, 'handle_download_step_pdf' ] );
+		add_action( 'admin_post_mh_absentismus_add_note', [ $this->fall_controller, 'handle_add_note' ] );
+		add_action( 'admin_post_mh_absentismus_delete_note', [ $this->fall_controller, 'handle_delete_note' ] );
+		add_action( 'admin_post_mh_absentismus_update_contacts', [ $this->fall_controller, 'handle_update_contacts' ] );
+		add_action( 'admin_post_mh_absentismus_standalone_submit', [ $this->fall_controller, 'handle_standalone_step_submission' ] );
+
+		add_shortcode( 'mh_absentismus_fall', [ $this->fall_controller, 'render_fall_view' ] );
+		add_shortcode( 'mh_absentismus_liste', [ $this->fall_controller, 'render_fall_liste' ] );
+
+		// Die 8 Einzelformulare (unabhängig von einem Fall) — Typ ergibt sich im
+		// Controller aus dem jeweils aufgerufenen Shortcode-Tag, daher genügt hier
+		// eine Schleife über dieselbe Zuordnungstabelle statt 8 einzelner Zeilen.
+		foreach ( array_keys( Fall_Controller::STANDALONE_SHORTCODES ) as $shortcode_tag ) {
+			add_shortcode( $shortcode_tag, [ $this->fall_controller, 'render_standalone_step_form' ] );
+		}
 	}
 
 	/**
@@ -134,6 +178,51 @@ class Plugin_Bootstrap {
 			'mh-form-workflows-settings',
 			[ $this, 'render_settings_page' ]
 		);
+
+		// Unterpunkt 4: Absentismus-Fälle (verlinkt auf die konfigurierte Frontend-Seite,
+		// keine eigene wp-admin-Ansicht, um die Fall-Übersicht nicht doppelt zu bauen).
+		add_submenu_page(
+			'mh-form-admin-help',
+			'Absentismus-Fälle',
+			'Absentismus-Fälle',
+			'manage_options',
+			'mh-form-absentismus-list',
+			[ $this, 'render_absentismus_liste_placeholder' ]
+		);
+	}
+
+	/**
+	 * Leitet vom Admin-Menüpunkt zur konfigurierten Frontend-Seite mit dem
+	 * Shortcode [mh_absentismus_liste] weiter. Muss auf admin_init laufen,
+	 * bevor irgendein Output (Admin-Header, Skripte) gesendet wurde.
+	 */
+	public function maybe_redirect_absentismus_liste(): void {
+		if ( ! isset( $_GET['page'] ) || 'mh-form-absentismus-list' !== $_GET['page'] ) {
+			return;
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		$options = get_option( 'mh_fw_settings', [] );
+		$page_id = (int) ( $options['page_id_mh_absentismus_liste'] ?? 0 );
+		$url     = $page_id > 0 ? get_permalink( $page_id ) : false;
+
+		if ( $url ) {
+			wp_redirect( $url );
+			exit;
+		}
+	}
+
+	/**
+	 * Fallback-Anzeige, falls noch keine Seite mit [mh_absentismus_liste]
+	 * konfiguriert ist (dann greift der Redirect in maybe_redirect_absentismus_liste() nicht).
+	 */
+	public function render_absentismus_liste_placeholder(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+		echo '<div class="wrap"><h1>Absentismus-Fälle</h1><p>Bitte zunächst unter Einstellungen eine Seite mit dem Shortcode <code>[mh_absentismus_liste]</code> festlegen.</p></div>';
 	}
 
 	/**
@@ -172,6 +261,28 @@ class Plugin_Bootstrap {
 								'selected' => $options['page_id_service_leave_v1'] ?? 0,
 								'show_option_none' => '-- Seite wählen --'
 							]); ?>
+						</td>
+					</tr>
+					<tr>
+						<th>Seite für Absentismus-Fall (Formular)</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_absentismus_fall]',
+								'selected' => $options['page_id_mh_absentismus_fall'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">Seite mit dem Shortcode <code>[mh_absentismus_fall]</code>.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Seite für Absentismus-Fälle (Übersicht)</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_absentismus_liste]',
+								'selected' => $options['page_id_mh_absentismus_liste'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">Seite mit dem Shortcode <code>[mh_absentismus_liste]</code>.</p>
 						</td>
 					</tr>
 				</table>
