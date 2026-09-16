@@ -6,12 +6,19 @@ namespace Mh\FormWorkflows\Setup;
 
 use Mh\FormWorkflows\Controller\Form_Controller;
 use Mh\FormWorkflows\Controller\Fall_Controller;
+use Mh\FormWorkflows\Controller\Noten_Controller;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Class_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
 use Mh\FormWorkflows\Repository\Student_Repository;
 use Mh\FormWorkflows\Repository\Subject_Repository;
+use Mh\FormWorkflows\Repository\Track_Subject_Repository;
+use Mh\FormWorkflows\Repository\Student_Course_Repository;
 use Mh\FormWorkflows\Repository\Absentismus_Fall_Repository;
+use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
+use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
+use Mh\FormWorkflows\Service\Mail_Service;
+use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
 
 /**
@@ -30,6 +37,16 @@ class Plugin_Bootstrap {
 	 * @var Fall_Controller Speichert den Controller für den Absentismus-Fall-Workflow.
 	 */
 	private Fall_Controller $fall_controller;
+
+	/**
+	 * @var Noten_Controller Controller der digitalen Noteneinsammlung.
+	 */
+	private Noten_Controller $noten_controller;
+
+	/**
+	 * @var Reminder_Service Wird auch vom Cron-Hook gebraucht.
+	 */
+	private Reminder_Service $reminder_service;
 
 	/**
 	 * Startet das Plugin.
@@ -51,7 +68,14 @@ class Plugin_Bootstrap {
 		 $student_repo =   new Student_Repository( $wpdb );
 		$pdf_generator   = new Pdf_Generator();
                 $subject_repo = new Subject_Repository( $wpdb );
+		$track_subject_repo  = new Track_Subject_Repository( $wpdb );
+		$student_course_repo = new Student_Course_Repository( $wpdb );
 		$fall_repo       = new Absentismus_Fall_Repository( $wpdb );
+		$noten_repo      = new Noten_Fall_Repository( $wpdb );
+		$account_repo    = new Teacher_Account_Repository( $wpdb );
+		$mail_service    = new Mail_Service();
+
+		$this->reminder_service = new Reminder_Service( $noten_repo, $account_repo, $mail_service );
 
 		// 2. Controller instanziieren und in Property speichern
 		$this->form_controller = new Form_Controller(
@@ -59,8 +83,22 @@ class Plugin_Bootstrap {
 			$class_repo,
 			$teacher_repo,
 			$student_repo,
-                        $subject_repo,
+			$subject_repo,
+			$track_subject_repo,
+			$student_course_repo,
+			$noten_repo,
+			$account_repo,
+			$mail_service,
+			$this->reminder_service,
 			$pdf_generator
+		);
+
+		$this->noten_controller = new Noten_Controller(
+			$noten_repo,
+			$account_repo,
+			$submission_repo,
+			$mail_service,
+			$this->reminder_service
 		);
 
 		$this->fall_controller = new Fall_Controller(
@@ -103,9 +141,27 @@ class Plugin_Bootstrap {
             }
         });
 		add_action('wp_ajax_mh_get_students', [$this->form_controller, 'ajax_get_students']);
+		add_action('wp_ajax_mh_get_subject_rows', [$this->form_controller, 'ajax_get_subject_rows']);
 
 		add_shortcode( 'mh_form_workflow', [ $this->form_controller, 'render_form' ] );
 		add_shortcode( 'mh_my_submissions', [ $this->form_controller, 'render_dashboard' ] );
+
+		// Digitale Noteneinsammlung: nur für eingeloggte Nutzer, deshalb keine nopriv-Hooks.
+		add_action( 'admin_post_mh_noten_save_item', [ $this->noten_controller, 'handle_save_item' ] );
+		add_action( 'admin_post_mh_noten_remind_now', [ $this->noten_controller, 'handle_remind_now' ] );
+
+		add_shortcode( 'mh_noten_eingabe', [ $this->noten_controller, 'render_eingabe' ] );
+		add_shortcode( 'mh_noten_liste', [ $this->noten_controller, 'render_liste' ] );
+		add_shortcode( 'mh_noten_fall', [ $this->noten_controller, 'render_fall' ] );
+
+		// Erinnerungen. WP-Cron feuert nur bei Seitenaufrufen — für verlässliche Fristen
+		// sollte auf dem Server ein echter Cron-Job wp-cron.php aufrufen.
+		add_action( Reminder_Service::CRON_HOOK, [ $this->reminder_service, 'run' ] );
+		add_action( 'init', function (): void {
+			if ( ! wp_next_scheduled( Reminder_Service::CRON_HOOK ) ) {
+				wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', Reminder_Service::CRON_HOOK );
+			}
+		} );
 
 		// Absentismus-Fall-Workflow: eingeloggte Nutzer only, keine nopriv-Hooks
 		// (sensible Schülerdaten, siehe Fall_Controller-Berechtigungsprüfungen).
@@ -283,6 +339,55 @@ class Plugin_Bootstrap {
 								'show_option_none' => '-- Seite wählen --'
 							]); ?>
 							<p class="description">Seite mit dem Shortcode <code>[mh_absentismus_liste]</code>.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Seite für Noteneingabe (Fachlehrkraft)</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_noten_eingabe]',
+								'selected' => $options['page_id_mh_noten_eingabe'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">Seite mit dem Shortcode <code>[mh_noten_eingabe]</code>. Ziel der Einladungs- und Erinnerungsmails.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Seite für „Meine Noteneingaben"</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_noten_liste]',
+								'selected' => $options['page_id_mh_noten_liste'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">Seite mit dem Shortcode <code>[mh_noten_liste]</code>.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Seite für Noteneinsammlung (Klassenlehrer)</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_noten_fall]',
+								'selected' => $options['page_id_mh_noten_fall'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">Seite mit dem Shortcode <code>[mh_noten_fall]</code>.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Erinnerung nach (Tagen)</th>
+						<td>
+							<input type="number" min="1" max="60" name="mh_fw_settings[noten_reminder_days]"
+							       value="<?= esc_attr( $options['noten_reminder_days'] ?? 3 ) ?>" class="small-text">
+							<p class="description">Abstand zwischen zwei Erinnerungen an eine Fachlehrkraft.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Klassenlehrer informieren nach</th>
+						<td>
+							<input type="number" min="1" max="20" name="mh_fw_settings[noten_escalate_after]"
+							       value="<?= esc_attr( $options['noten_escalate_after'] ?? 2 ) ?>" class="small-text">
+							<p class="description">Anzahl erfolgloser Erinnerungen, nach der zusätzlich der Klassenlehrer benachrichtigt wird (einmalig).</p>
 						</td>
 					</tr>
 				</table>

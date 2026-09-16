@@ -132,3 +132,26 @@ Weise proaktiv darauf hin, wenn eine Änderung dieses Wiring betrifft, und zeige
 ## Testing & Tooling
 
 *(Noch nicht eingerichtet – bei Bedarf ergänzen.)* Falls Tests eingeführt werden: PHPUnit mit WP-Test-Suite oder Brain Monkey, PHPCS mit WordPress-Coding-Standards-Ruleset, ggf. PHPStan. Wenn du hier Setup-Vorschläge machst, halte sie mit der bestehenden Struktur kompatibel.
+
+## Datenschutz — verbindlich
+
+**Echte Schüler- und Lehrerdaten dürfen nicht gelesen oder ausgegeben werden.**
+
+Was ein KI-Assistent liest, verlässt diesen Rechner und wird an den Anbieter übertragen. Das
+wäre eine Übermittlung personenbezogener Daten an einen Dritten, für die hier weder
+Rechtsgrundlage noch Auftragsverarbeitungsvertrag vorliegen. Betroffen sind nicht nur Namen und
+Geburtsdaten, sondern auch Noten, Abmeldegründe und Absentismus-Vorgänge bis hin zu Bußgeld- und
+Ordnungsamtsverfahren.
+
+Konkret:
+
+- Keine Inhalte aus `wa_students`, `wa_teachers`, `wa_teacher_accounts`, `wa_student_courses`
+  oder `mh_form_submissions` ausgeben. Schema, Spaltennamen und `COUNT(*)` sind in Ordnung —
+  Zeileninhalte nicht.
+- Keine echten CSV-/XLSX-Importdateien öffnen. Stattdessen eine anonymisierte Beispieldatei
+  anfordern.
+- In Testskripten ausschließlich erfundene Datensätze anlegen und danach wieder entfernen.
+- Wenn eine Fehlersuche echte Daten zu brauchen scheint: nachfragen statt selbst entscheiden.
+
+Diese Regel ist eine Verhaltensvorgabe, **kein technischer Schutz**. Die eigentliche Absicherung
+ist, dass im Entwicklungssystem nur synthetische Daten liegen.

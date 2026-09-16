@@ -20,6 +20,14 @@ if ( ! empty( $form_data['subjects'] ) ) {
     }
 }
 
+// Fächer-Vorbelegung aus Schild (Stundentafel + Kurse): darf niemals über bereits
+// erfasste Zeilen laufen — weder im Bearbeiten-Modus noch nach einem Validierungs-Reload.
+$has_existing_subjects = ! empty( $form_data['subjects'] );
+
+// Grundgerüst bleibt bei 12 Zeilen; gespeicherte Formulare können mehr enthalten,
+// weitere Zeilen hängt die Vorbelegung bei Bedarf per JS an.
+$subject_row_count = max( 12, count( $form_data['subjects'] ?? [] ) );
+
 // Warnung extrahieren
 $warning_msg = '';
 if ( isset( $form_errors['date_autocorrect'] ) ) {
@@ -145,6 +153,9 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
 		cursor: pointer !important;
 	}
 	.mh-grades-overlay-box button:hover { background: #005a87 !important; }
+	/* Höhere Spezifität als .mh-grades-overlay nötig: beide Regeln nutzen !important,
+	   und .mh-grades-overlay steht im Stylesheet später, würde .mh-hidden sonst immer schlagen. */
+	.mh-grades-overlay.mh-hidden { display: none !important; }
    /* Gehärtetes CSS für die Hilfe-Box */
 details.mh-help-notice-box {
     background-color: #f0f6fb !important;
@@ -453,9 +464,9 @@ details.mh-help-notice-box[open] summary::before {
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
-                    // Wir zeigen 12 Zeilen an
-                    for($i=0; $i<12; $i++): 
+                    <?php
+                    // Grundgerüst: 12 Zeilen, bei gespeicherten Formularen ggf. mehr
+                    for($i=0; $i<$subject_row_count; $i++):
                         $s = $form_data['subjects'][$i] ?? [];
                     ?>
                     <tr>
@@ -518,7 +529,14 @@ details.mh-help-notice-box[open] summary::before {
         <div class="btn-group">
             <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
             <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
+            <button type="submit" name="submit_mode" value="collect" class="button button-secondary button-large" style="background:#1b5e20 !important; color:#fff !important; border-color:#1b5e20 !important;">Noteneinsammlung digital starten</button>
         </div>
+        <p style="font-size:0.9em; color:#555; margin-top:10px;">
+            <strong>Noteneinsammlung digital starten:</strong> Statt die Noten auf Papier einzusammeln,
+            wird jede eingetragene Fachlehrkraft per E-Mail um ihre Note gebeten und bei Bedarf automatisch
+            erinnert. Sobald alle Noten vorliegen, wirst du benachrichtigt und kannst das fertige Formular
+            herunterladen. Dafür muss in jeder Fächerzeile eine Lehrkraft ausgewählt sein.
+        </p>
     </form>
 </div>
 
@@ -574,7 +592,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success && data.data) {
                 data.data.forEach(s => {
                     const isSelected = (selectedStudentId && s.wu_id == selectedStudentId) ? 'selected' : '';
-                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
+                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" data-schild="${s.schild_id || ''}" data-track="${s.track_key || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
                 });
             }
         }).catch(err => console.error("Fehler:", err));
@@ -640,6 +658,8 @@ document.addEventListener('DOMContentLoaded', function() {
             f_last.style.backgroundColor = '#e9e9e9'; f_first.style.backgroundColor = '#e9e9e9'; f_dob.style.backgroundColor = '#e9e9e9';
             h_last.value = f_last.value; h_first.value = f_first.value;
             calcAge();
+            // Fächer aus Stundentafel des Bildungsgangs + Kursbelegungen vorbelegen
+            fetchSubjectRows(opt.dataset.track || '', opt.dataset.schild || '');
         }
     });
 
@@ -715,12 +735,12 @@ document.addEventListener('DOMContentLoaded', function() {
     triggers.forEach(r => r.addEventListener('change', updateToggles));
     setTimeout(() => { updateToggles(); }, 100);
 	// Logik für NB -> Bemerkungspflicht
-    const gradeSelects = document.querySelectorAll('.mh-grade-select');
     const remarksField = document.querySelector('textarea[name="prot_remarks"]');
 
     function checkNBRequirement() {
         let nbFound = false;
-        gradeSelects.forEach(select => {
+        // Frisch abfragen: die Vorbelegung kann Zeilen nachträglich angehängt haben.
+        document.querySelectorAll('.mh-grade-select').forEach(select => {
             if (select.value === 'NB') nbFound = true;
         });
 
@@ -735,9 +755,125 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    gradeSelects.forEach(select => select.addEventListener('change', checkNBRequirement));
+    // Delegation statt Einzel-Listener: die Vorbelegung kann Zeilen nachträglich anhängen.
+    const subjectTableEl = document.querySelector('.mh-subject-table');
+    if (subjectTableEl) {
+        subjectTableEl.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('mh-grade-select')) checkNBRequirement();
+        });
+    }
     // Initialer Check beim Laden (für Edit-Modus)
     checkNBRequirement();
+
+    // ---------------------------------------------------------------
+    // FÄCHER-VORBELEGUNG (Stundentafel des Bildungsgangs + Kursbelegungen)
+    // ---------------------------------------------------------------
+    const subjectTbody = document.querySelector('.mh-subject-table tbody');
+    // Stehen schon Fächer im Formular (Bearbeiten-Modus / Reload nach Fehler),
+    // wird nicht vorbelegt — sonst gingen erfasste Noten verloren.
+    const subjectsLocked = <?= $has_existing_subjects ? 'true' : 'false' ?>;
+
+    function subjectRows() {
+        return subjectTbody ? Array.from(subjectTbody.rows) : [];
+    }
+
+    // subj_name/subj_teacher/subj_grade laufen über [], die Checkboxen über feste
+    // Indizes — das Model greift sie per Index ab. Beim Klonen müssen die Indizes
+    // deshalb lückenlos weiterlaufen.
+    function renumberRow(row, index) {
+        const wu = row.querySelector('input[name^="subj_webuntis"]');
+        const co = row.querySelector('input[name^="subj_completed"]');
+        if (wu) wu.name = 'subj_webuntis[' + index + ']';
+        if (co) co.name = 'subj_completed[' + index + ']';
+    }
+
+    function ensureRowCount(needed) {
+        const rows = subjectRows();
+        if (!subjectTbody || rows.length === 0 || rows.length >= needed) return;
+        const blueprint = rows[rows.length - 1];
+        for (let i = rows.length; i < needed; i++) {
+            const clone = blueprint.cloneNode(true);
+            clone.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+            clone.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            subjectTbody.appendChild(clone);
+            renumberRow(clone, i);
+        }
+    }
+
+    function buildSubjectOptions(select, trackOptions, otherOptions, selectedValue) {
+        select.innerHTML = '';
+        select.add(new Option('-- Fach wählen --', ''));
+
+        if (trackOptions.length) {
+            const g = document.createElement('optgroup');
+            g.label = 'Fächer des Bildungsgangs';
+            trackOptions.forEach(o => g.appendChild(new Option(o.label, o.value)));
+            select.add(g);
+        }
+        if (otherOptions.length) {
+            const g2 = document.createElement('optgroup');
+            // Notausgang für Fachwechsler/Wiederholer: der Rest der Schild-Fächerliste
+            // bleibt erreichbar, steht aber unterhalb der Bildungsgang-Fächer.
+            g2.label = trackOptions.length ? 'Weitere Fächer' : 'Alle Fächer';
+            otherOptions.forEach(o => g2.appendChild(new Option(o.label, o.value)));
+            select.add(g2);
+        }
+        if (selectedValue) {
+            // Kursbezeichnungen stehen in keiner Fächerliste — Option ergänzen.
+            if (!Array.from(select.options).some(o => o.value === selectedValue)) {
+                select.add(new Option(selectedValue, selectedValue));
+            }
+            select.value = selectedValue;
+        }
+    }
+
+    function fillSubjectRows(payload) {
+        if (!subjectTbody || subjectsLocked) return;
+
+        const rowsData     = payload.rows || [];
+        const trackOptions = payload.track_options || [];
+        const otherOptions = payload.other_options || [];
+
+        ensureRowCount(Math.max(rowsData.length, subjectRows().length));
+
+        subjectRows().forEach((row, i) => {
+            const nameSel  = row.querySelector('select[name="subj_name[]"]');
+            const teachSel = row.querySelector('select[name="subj_teacher[]"]');
+            const gradeSel = row.querySelector('select[name="subj_grade[]"]');
+            const data     = rowsData[i];
+
+            if (nameSel) buildSubjectOptions(nameSel, trackOptions, otherOptions, data ? data.value : '');
+            if (gradeSel) gradeSel.value = '';
+            if (teachSel) {
+                // Lehrkraft nur bei Kursen: die Stundentafel kennt keine Fachlehrer.
+                const wanted = (data && data.teacher) ? data.teacher : '';
+                teachSel.value = Array.from(teachSel.options).some(o => o.value === wanted) ? wanted : '';
+            }
+            row.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            renumberRow(row, i);
+        });
+
+        // Neu angehängte Zeilen müssen denselben Aktiv/Inaktiv-Zustand bekommen
+        // wie der Rest des Protokollbereichs.
+        if (typeof updateToggles === 'function') updateToggles();
+        checkNBRequirement();
+    }
+
+    function fetchSubjectRows(trackKey, schildId) {
+        if (!subjectTbody || subjectsLocked) return;
+        if (!trackKey && !schildId) return;
+
+        const fd = new FormData();
+        fd.append('action', 'mh_get_subject_rows');
+        fd.append('track_key', trackKey || '');
+        fd.append('schild_id', schildId || '');
+        fd.append('nonce', '<?php echo wp_create_nonce("mh_form_nonce"); ?>');
+
+        fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => { if (data.success && data.data) fillSubjectRows(data.data); })
+        .catch(err => console.error("Fehler bei der Fächer-Vorbelegung:", err));
+    }
 
     // Überblendung Notensammlung: erst nach Klick Noteneingabe freigeben
     const gradesOverlay = document.getElementById('grades_overlay');

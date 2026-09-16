@@ -2,7 +2,7 @@
 /**
  * Plugin Name: MH Form Workflows
  * Description: Digitalisierte Formularprozesse mit PDF-Generierung.
- * Version: 1.3.0
+ * Version: 1.5.0
  * Author: Michael Hugot
  * Text Domain: mh-form-workflows
  * Requires PHP: 8.0
@@ -32,7 +32,7 @@ use Mh\FormWorkflows\Setup\Plugin_Bootstrap;
  */
 define( 'MH_FW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MH_FW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'MH_FW_VERSION', '1.3.0' );
+define( 'MH_FW_VERSION', '1.5.0' );
 define( 'MH_FW_DB_VERSION', '4' );
 
 /**
@@ -40,6 +40,14 @@ define( 'MH_FW_DB_VERSION', '4' );
  */
 register_activation_hook( __FILE__, function () {
 	Activator::activate();
+} );
+
+/**
+ * Deaktivierungs-Hook: geplante Erinnerungen abbestellen, damit nach dem Abschalten
+ * des Plugins kein verwaister Cron-Eintrag zurückbleibt.
+ */
+register_deactivation_hook( __FILE__, function () {
+	wp_clear_scheduled_hook( \Mh\FormWorkflows\Service\Reminder_Service::CRON_HOOK );
 } );
 
 /**
