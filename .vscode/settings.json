@@ -1,0 +1,20 @@
+{
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4,
+    "files.encoding": "utf8",
+    "files.eol": "\n",
+    "files.exclude": {
+        "**/nbproject": true
+    },
+    "intelephense.environment.phpVersion": "8.2.0",
+    "intelephense.stubs": [
+        "apache", "bcmath", "Core", "ctype", "curl", "date", "dom", "fileinfo",
+        "filter", "gd", "hash", "iconv", "json", "libxml", "mbstring", "mysqli",
+        "openssl", "pcre", "PDO", "pdo_mysql", "Phar", "posix", "readline",
+        "Reflection", "session", "SimpleXML", "SPL", "standard", "tokenizer",
+        "xml", "xmlreader", "xmlwriter", "zip", "zlib", "wordpress"
+    ],
+    "intelephense.files.exclude": [
+        "**/vendor/**/{Tests,tests}/**"
+    ]
+}
