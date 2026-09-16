@@ -1,0 +1,11 @@
+# Einheitliche Zeilenenden für alle Rechner im Team (Windows wie Unix):
+# Textdateien werden im Repo und im Working Tree immer mit LF gespeichert.
+* text=auto eol=lf
+
+# Binärdateien nie normalisieren
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.gif   binary
+*.ttf   binary
+*.zip   binary
