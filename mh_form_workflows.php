@@ -5,7 +5,7 @@
  * Version: 1.5.0
  * Author: Michael Hugot
  * Text Domain: mh-form-workflows
- * Requires PHP: 8.0
+ * Requires PHP: 8.1
  */
 
 declare(strict_types=1);

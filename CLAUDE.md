@@ -13,7 +13,7 @@ Aktuell umgesetzte Formulare:
 - **Dienstbefreiung** (`service_leave_v1`) – wird **nicht** gespeichert, nur als PDF gestreamt.
 
 - Text Domain: `mh-form-workflows`
-- Requires PHP: 8.0
+- Requires PHP: 8.1
 - Version: siehe Header in `mh_form_workflows.php`
 
 ## Tech Stack
