@@ -50,7 +50,11 @@ class Mail_Service {
 				 <strong>%s</strong> benötigt.</p>
 				 <p>Bitte trage sie über den folgenden Link ein:</p>
 				 <p><a href="%s" style="background:#0073aa;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;">Note jetzt eintragen</a></p>
-				 <p style="font-size:12px;color:#666;">Falls der Button nicht funktioniert: %s</p>',
+				 <p style="font-size:12px;color:#666;">Falls der Button nicht funktioniert: %s</p>
+				 <p style="font-size:12px;color:#666;border-top:1px solid #e0e0e0;padding-top:10px;margin-top:16px;">
+				 <strong>Hinweis:</strong> Die digitale Noteneingabe wird gerade erprobt (BETA). Wenn etwas nicht
+				 funktioniert, gib der Klassenleitung Bescheid &ndash; die Note kann auch auf dem üblichen Weg
+				 weitergegeben werden.</p>',
 				esc_html( $teacher_name ),
 				esc_html( (string) ( $case['form_data']['lastname'] ?? '' ) ),
 				esc_html( (string) ( $case['form_data']['firstname'] ?? '' ) ),
@@ -82,7 +86,11 @@ class Mail_Service {
 				 <p>für die Ausschulung von <strong>%s, %s</strong> (Klasse %s) fehlt weiterhin deine Note
 				 im Fach <strong>%s</strong>. Dies ist Erinnerung Nr. %d.</p>
 				 <p><a href="%s" style="background:#0073aa;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;">Note jetzt eintragen</a></p>
-				 <p style="font-size:12px;color:#666;">Falls der Button nicht funktioniert: %s</p>',
+				 <p style="font-size:12px;color:#666;">Falls der Button nicht funktioniert: %s</p>
+				 <p style="font-size:12px;color:#666;border-top:1px solid #e0e0e0;padding-top:10px;margin-top:16px;">
+				 <strong>Hinweis:</strong> Die digitale Noteneingabe wird gerade erprobt (BETA). Wenn etwas nicht
+				 funktioniert, gib der Klassenleitung Bescheid &ndash; die Note kann auch auf dem üblichen Weg
+				 weitergegeben werden.</p>',
 				esc_html( $teacher_name ),
 				esc_html( (string) ( $case['form_data']['lastname'] ?? '' ) ),
 				esc_html( (string) ( $case['form_data']['firstname'] ?? '' ) ),

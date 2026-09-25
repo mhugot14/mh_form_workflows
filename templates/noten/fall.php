@@ -86,7 +86,11 @@ $abm_page_id  = (int) ( $dash_options['page_id_abmeldung_student_v1'] ?? 0 );
 			if ( $is_done && ! empty( $item['entered_by'] ) ) {
 				$u       = get_userdata( (int) $item['entered_by'] );
 				$who     = $u ? $u->display_name : 'unbekannt';
-				$role    = 'klassenlehrer' === ( $item['entered_by_role'] ?? '' ) ? ' (nachgetragen)' : '';
+				$role    = match ( $item['entered_by_role'] ?? '' ) {
+					'klassenlehrer' => ' (nachgetragen)',
+					'vorab'         => ' (beim Anlegen eingetragen)',
+					default         => '',
+				};
 				$entered = $who . $role;
 			}
 		?>

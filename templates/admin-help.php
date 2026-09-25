@@ -460,10 +460,39 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
 
         <!-- NOTENEINSAMMLUNG -->
         <div class="mh-info-section" id="mh-noten">
-            <h2>Digitale Noteneinsammlung</h2>
+            <h2>Digitale Noteneinsammlung <span style="display:inline-block; padding:2px 8px; border-radius:3px; background:#1b5e20; color:#fff; font-size:0.55em; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">BETA</span></h2>
             <p class="mh-lead">
-                Ersetzt den Umlauf des Abgangszeugnis-Protokolls: Die Klassenleitung startet den Prozess aus der Abmeldung, jede Fachlehrkraft trägt
+                Ersetzt den Umlauf des Abgangszeugnis-Protokolls: Die Klassenleitung startet den Prozess aus der Abmeldung, jede angefragte Fachlehrkraft trägt
                 ihre Note selbst ein, das Plugin erinnert automatisch und schreibt die Noten zurück in die Abmeldung – das fertige PDF enthält dann alle Noten.
+            </p>
+
+            <div class="mh-inline-note">
+                <strong>Dieses Verfahren ist noch in der Erprobung.</strong> Es ist im Formular und in den Mails als BETA
+                gekennzeichnet. Der Papierweg bleibt unverändert möglich: PDF erzeugen, Noten im Umlauf sammeln und später
+                über „Bearbeiten“ nachtragen.
+            </div>
+
+            <h3>Pro Fach entscheiden</h3>
+            <p>
+                Es gibt keine Grundsatzentscheidung „alles selbst“ oder „alles digital“. In der Fächertabelle des
+                Abmeldeformulars wird <strong>je Zeile</strong> festgelegt, woher die Note kommt &ndash; über dasselbe
+                Dropdown, in dem sonst die Note steht:
+            </p>
+            <ul style="list-style: disc; padding-left: 20px; line-height:1.6;">
+                <li><strong>Eine Note (1&ndash;6, NB, NE)</strong> &ndash; die Klassenleitung trägt sie selbst ein, etwa aus dem
+                    eigenen Unterricht oder weil die Kollegin sie ihr genannt hat. Für diese Fächer geht keine Mail raus,
+                    und es muss auch keine Lehrkraft-Adresse auflösbar sein.</li>
+                <li><strong>„✉ per Mail anfragen“</strong> &ndash; nur diese Fächer werden eingesammelt.</li>
+            </ul>
+            <p>
+                Beides lässt sich mischen. Der Knopf „Noteneinsammlung starten“ erscheint erst, wenn mindestens ein Fach
+                zum Anfragen markiert ist, und nennt die Anzahl. Ist kein Fach markiert, reicht „Prüfen &amp; PDF erstellen“.
+            </p>
+            <p>
+                Intern nimmt der Noten-Fall trotzdem <strong>alle</strong> Fächer auf; die selbst eingetragenen kommen
+                fertig herein und halten den Fall nicht offen. Das ist nötig, weil beim Abschluss die Fächerliste der
+                Abmeldung vollständig aus dem Fall ersetzt wird &ndash; sonst gingen die selbst erfassten Noten verloren.
+                In der Fall-Ansicht sind sie als „beim Anlegen eingetragen“ erkennbar.
             </p>
 
             <h3>Shortcodes</h3>
@@ -500,13 +529,13 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
 
             <h3>Ablauf</h3>
             <ol class="mh-process">
-                <li><strong>Start:</strong> Klassenleitung füllt die Abmeldung aus, trägt im Protokollbereich Fächer und Lehrkräfte ein und klickt „Noteneinsammlung digital starten“.</li>
-                <li><strong>Vorprüfung:</strong> Jedes Fach braucht eine Lehrkraft, und zu jedem Kürzel muss sich eine E-Mail-Adresse auflösen lassen (WebUntis Analyser → „Lehrer-Zuordnung“, Hauptadresse; Rückfall: E-Mail des verknüpften WordPress-Kontos). Fehlt etwas, startet der Prozess nicht und das Formular zeigt an, welche Fächer betroffen sind.</li>
+                <li><strong>Start:</strong> Klassenleitung füllt die Abmeldung aus, trägt im Protokollbereich Fächer und Lehrkräfte ein, setzt die anzufragenden Fächer auf „✉ per Mail anfragen“ und klickt „Noteneinsammlung starten“.</li>
+                <li><strong>Vorprüfung:</strong> Jedes <em>angefragte</em> Fach braucht eine Lehrkraft, und zu deren Kürzel muss sich eine E-Mail-Adresse auflösen lassen (WebUntis Analyser → „Lehrer-Zuordnung“, Hauptadresse; Rückfall: E-Mail des verknüpften WordPress-Kontos). Fehlt etwas, startet der Prozess nicht und das Formular zeigt an, welche Fächer betroffen sind. Fächer mit selbst eingetragener Note werden dabei nicht geprüft.</li>
                 <li><strong>Einladung:</strong> Jede Fachlehrkraft erhält eine Mail mit Schülername, Klasse und Link auf die Seite mit <code class="mh-code-soft">[mh_noten_eingabe]</code>. In keiner Mail steht eine Note.</li>
                 <li><strong>Eingabe:</strong> Die Fachlehrkraft meldet sich an und trägt ihre Note ein. Ein Doppelstart für dieselbe Abmeldung wird verhindert – es wird auf den bestehenden Fall weitergeleitet.</li>
                 <li><strong>Erinnerung:</strong> Ein täglicher Cron-Lauf erinnert säumige Lehrkräfte im eingestellten Abstand („Erinnerung nach Tagen“). Nach der eingestellten Anzahl erfolgloser Erinnerungen wird zusätzlich einmalig die Klassenleitung informiert („Klassenlehrer informieren nach“).</li>
                 <li><strong>Nachtragen:</strong> Die Klassenleitung kann fehlende Noten in der Fall-Ansicht selbst nachtragen (z.&nbsp;B. nach Rücksprache).</li>
-                <li><strong>Abschluss:</strong> Sind alle Noten erfasst, wird der Fall automatisch abgeschlossen und die Noten in die Abmeldung zurückgeschrieben. Das PDF aus dem Dashboard enthält dann das vollständige Protokoll.</li>
+                <li><strong>Abschluss:</strong> Sind alle angefragten Noten erfasst, wird der Fall automatisch abgeschlossen und die Noten in die Abmeldung zurückgeschrieben &ndash; zusammen mit den selbst eingetragenen. Das PDF aus dem Dashboard enthält dann das vollständige Protokoll.</li>
             </ol>
 
             <div class="mh-inline-note">

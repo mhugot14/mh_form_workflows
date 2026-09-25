@@ -297,13 +297,18 @@ class Form_Controller {
 
 		$missing_teacher = [];
 		$missing_address = [];
+		$collect_count   = 0;
 
+		// Geprüft wird nur, was auch angefragt werden soll. Fächer, deren Note die
+		// Klassenleitung selbst einträgt, brauchen keine erreichbare Lehrkraft - sonst
+		// müsste sie Adressen pflegen für Mails, die nie rausgehen.
 		foreach ( $subjects as $s ) {
 			$name    = trim( (string) ( $s['name'] ?? '' ) );
 			$kuerzel = trim( (string) ( $s['teacher'] ?? '' ) );
-			if ( '' === $name ) {
+			if ( '' === $name || '1' !== ( $s['collect'] ?? '0' ) ) {
 				continue;
 			}
+			$collect_count++;
 			if ( '' === $kuerzel ) {
 				$missing_teacher[] = $name;
 				continue;
@@ -314,6 +319,9 @@ class Form_Controller {
 		}
 
 		$errors = [];
+		if ( 0 === $collect_count ) {
+			return [ 'subjects' => 'Es ist kein Fach zum Anfragen markiert. Setze die gewünschten Fächer in der Notenspalte auf „✉ per Mail anfragen“ — oder erstelle das PDF mit den selbst eingetragenen Noten.' ];
+		}
 		if ( ! empty( $missing_teacher ) ) {
 			$errors['subjects_teacher'] = 'Für die Noteneinsammlung fehlt die Lehrkraft in folgenden Fächern: '
 				. implode( ', ', $missing_teacher ) . '.';
@@ -337,23 +345,38 @@ class Form_Controller {
 			exit;
 		}
 
+		// Alle Fächer wandern in den Fall, nicht nur die angefragten: beim Abschluss
+		// ersetzt write_back_to_submission() die subjects der Einsendung vollständig
+		// durch die Positionen des Falls. Fehlten die selbst eingetragenen Noten hier,
+		// wären sie hinterher weg.
 		$items = [];
 		foreach ( $valid_data['subjects'] ?? [] as $s ) {
-			$name    = trim( (string) ( $s['name'] ?? '' ) );
-			$kuerzel = trim( (string) ( $s['teacher'] ?? '' ) );
-			if ( '' === $name || '' === $kuerzel ) {
+			$name = trim( (string) ( $s['name'] ?? '' ) );
+			if ( '' === $name ) {
 				continue;
 			}
-			$recipient = $this->account_repo->resolve_recipient( $kuerzel );
-			if ( null === $recipient ) {
-				continue; // von check_collect_preconditions() bereits ausgeschlossen
+
+			$kuerzel    = trim( (string) ( $s['teacher'] ?? '' ) );
+			$is_collect = ( '1' === ( $s['collect'] ?? '0' ) );
+
+			$recipient = null;
+			if ( $is_collect ) {
+				$recipient = $this->account_repo->resolve_recipient( $kuerzel );
+				if ( null === $recipient ) {
+					continue; // von check_collect_preconditions() bereits ausgeschlossen
+				}
 			}
+
 			$items[] = [
 				'subject'           => $name,
 				'teacher_kuerzel'   => $kuerzel,
-				'recipient_user_id' => $recipient['user_id'],
-				'recipient_email'   => $recipient['email'],
-				'is_fallback'       => $recipient['is_fallback'],
+				'recipient_user_id' => $recipient['user_id'] ?? 0,
+				'recipient_email'   => $recipient['email'] ?? '',
+				'is_fallback'       => $recipient['is_fallback'] ?? false,
+				'collect'           => $is_collect,
+				'grade'             => (string) ( $s['grade'] ?? '' ),
+				'webuntis'          => (string) ( $s['webuntis'] ?? '0' ),
+				'completed'         => (string) ( $s['completed'] ?? '0' ),
 			];
 		}
 
@@ -371,8 +394,12 @@ class Form_Controller {
 			wp_die( 'Die Noteneinsammlung konnte nicht angelegt werden (DB-Fehler).' );
 		}
 
+		// Eingeladen wird nur, wo auch wirklich eine Note fehlt.
 		$case = $this->noten_repo->get_by_id( $case_id );
 		foreach ( $case['form_data']['items'] as $item ) {
+			if ( '1' !== ( $item['collect'] ?? '0' ) ) {
+				continue;
+			}
 			$idx = (int) $item['idx'];
 			$this->mail->send_invitation(
 				(string) $item['recipient_email'],

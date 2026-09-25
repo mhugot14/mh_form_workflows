@@ -28,6 +28,9 @@ $has_existing_subjects = ! empty( $form_data['subjects'] );
 // weitere Zeilen hängt die Vorbelegung bei Bedarf per JS an.
 $subject_row_count = max( 12, count( $form_data['subjects'] ?? [] ) );
 
+// Marker im Noten-Dropdown fuer "Note per Mail anfragen".
+$collect_marker = \Mh\FormWorkflows\Model\Form\Abmeldung_Student_Form::GRADE_COLLECT_MARKER;
+
 // Protokoll-Modus. Rueckwaertskompatibel: aeltere Datensaetze kennen nur das
 // Haekchen protocol_attached. Ein Altdatensatz OHNE Protokoll bekommt bewusst
 // keine Vorauswahl - die Entscheidung soll bewusst getroffen werden, statt ihm
@@ -468,14 +471,24 @@ details.mh-help-notice-box[open] summary::before {
             </div>
 <!-- SEKTION: FÄCHER & NOTEN -->
         <div style="margin-top: 25px; margin-bottom: 20px;">
-            <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer & Noten (Vorausfüllung für Protokoll)</h5>
+            <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer &amp; Noten (Vorausfüllung für Protokoll)</h5>
+
+            <div style="background:#f6f7f7; border:1px solid #dcdcde; border-left:4px solid #0073aa; padding:12px 15px; margin-bottom:15px; font-size:0.9em; line-height:1.5;">
+                <p style="margin:0 0 8px;"><strong>Pro Fach entscheidest du, woher die Note kommt:</strong></p>
+                <ul style="margin:0 0 8px 18px; list-style:disc;">
+                    <li><strong>Note eintragen</strong> – wenn sie dir schon vorliegt, etwa aus deinem eigenen Unterricht oder weil die Kollegin sie dir genannt hat.</li>
+                    <li><strong>✉ per Mail anfragen</strong> – die eingetragene Fachlehrkraft bekommt eine E-Mail mit Link zur Noteneingabe und wird bei Bedarf automatisch erinnert. Sobald alle angefragten Noten da sind, wirst du benachrichtigt und lädst das fertige PDF im Dashboard herunter.</li>
+                </ul>
+                <p style="margin:0;">Du kannst beides mischen. Trägst du überall selbst ein, brauchst du nur „Prüfen &amp; PDF erstellen“. Der Papierweg bleibt möglich: PDF erzeugen, Noten im Umlauf sammeln, später über „Bearbeiten“ nachtragen.</p>
+            </div>
 
             <div class="mh-grades-overlay-wrap">
             <div id="grades_overlay" class="mh-grades-overlay <?= $has_existing_grades ? 'mh-hidden' : '' ?>">
                 <div class="mh-grades-overlay-box">
-                    <p><strong>Liegen dir die Noten jetzt schon vor?</strong> Dann trage die Noten jetzt ein.</p>
-                    <p>Falls nicht, generiere das PDF trotzdem schon und sammle die Noten auf Papier im Umlaufverfahren.</p>
-                    <button type="button" id="btn_show_grades">Jetzt Noten eingeben</button>
+                    <p><strong>Noten eintragen oder anfragen?</strong></p>
+                    <p>Trage ein, was dir vorliegt, und setze die übrigen Fächer auf „✉ per Mail anfragen“.<br>
+                    Du kannst das PDF auch ohne Noten erzeugen und sie später über „Bearbeiten“ nachtragen.</p>
+                    <button type="button" id="btn_show_grades">Fächer &amp; Noten bearbeiten</button>
                 </div>
             </div>
 
@@ -524,6 +537,7 @@ details.mh-help-notice-box[open] summary::before {
 							<?php foreach(['1','2','3','4','5','6','NB','NE'] as $n): ?>
 								<option value="<?= $n ?>" <?= selected($s['grade'] ?? '', $n) ?>><?= $n ?></option>
 							<?php endforeach; ?>
+							<option value="<?= esc_attr($collect_marker) ?>" <?= selected(($s['collect'] ?? '0'), '1') ?>>✉ per Mail anfragen</option>
 						</select>
 					</td>
                         <td>
@@ -555,13 +569,18 @@ details.mh-help-notice-box[open] summary::before {
         <div class="btn-group">
             <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
             <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
-            <button type="submit" name="submit_mode" value="collect" class="button button-secondary button-large" style="background:#1b5e20 !important; color:#fff !important; border-color:#1b5e20 !important;">Noteneinsammlung digital starten</button>
+            <button type="submit" name="submit_mode" value="collect" id="btn_collect" class="button button-secondary button-large" style="background:#1b5e20 !important; color:#fff !important; border-color:#1b5e20 !important; display:none;">
+                Noteneinsammlung starten <span id="btn_collect_count"></span>
+                <span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:3px; background:#fff; color:#1b5e20; font-size:0.7em; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">BETA</span>
+            </button>
         </div>
-        <p id="collect_hint" style="font-size:0.9em; color:#555; margin-top:10px;">
-            <strong>Noteneinsammlung digital starten:</strong> Statt die Noten auf Papier einzusammeln,
-            wird jede eingetragene Fachlehrkraft per E-Mail um ihre Note gebeten und bei Bedarf automatisch
-            erinnert. Sobald alle Noten vorliegen, wirst du benachrichtigt und kannst das fertige Formular
-            herunterladen. Dafür muss in jeder Fächerzeile eine Lehrkraft ausgewählt sein.
+        <p id="collect_hint" style="font-size:0.9em; color:#555; margin-top:10px; display:none;">
+            <strong>Noteneinsammlung <span style="color:#1b5e20;">(BETA)</span>:</strong> Dieses Verfahren ist neu und
+            wird noch erprobt. Die angefragten Fachlehrkräfte erhalten eine E-Mail mit Link zur Noteneingabe und werden
+            bei Bedarf automatisch erinnert; in keiner Mail steht eine Note. Sobald alle angefragten Noten vorliegen,
+            wirst du benachrichtigt und lädst das fertige Formular im Dashboard herunter. Bis dahin gibt es hier kein
+            PDF. Für jedes angefragte Fach muss eine Lehrkraft ausgewählt sein, zu der sich eine E-Mail-Adresse
+            auflösen lässt. Wenn etwas klemmt, sag Bescheid – und sammle im Zweifel auf Papier.
         </p>
     </form>
 </div>
@@ -790,15 +809,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const collectBtn       = document.querySelector('button[name="submit_mode"][value="collect"]');
     const collectHint      = document.getElementById('collect_hint');
 
+    // Der Knopf zur Noteneinsammlung erscheint nur, wenn es tatsächlich etwas
+    // einzusammeln gibt - also mindestens eine Fächerzeile auf "per Mail anfragen"
+    // steht. So kann es keinen Widerspruch zwischen Knopf und Tabelle geben, und der
+    // Knopf erklärt sich aus der Tabelle heraus.
+    const COLLECT_MARKER = <?= json_encode($collect_marker) ?>;
+    const countLabel     = document.getElementById('btn_collect_count');
+
+    function countCollectRows() {
+        let n = 0;
+        document.querySelectorAll('select[name="subj_grade[]"]').forEach(sel => {
+            if (sel.value === COLLECT_MARKER && !sel.disabled) n++;
+        });
+        return n;
+    }
+
     function updateProtocolMode() {
         const existing = protModeExisting && protModeExisting.checked;
+        const n        = existing ? 0 : countCollectRows();
+        const show     = n > 0;
+
         if (protExistingHint) protExistingHint.style.display = existing ? 'block' : 'none';
-        if (collectBtn)  collectBtn.style.display  = existing ? 'none' : '';
-        if (collectHint) collectHint.style.display = existing ? 'none' : '';
+        if (collectBtn)  collectBtn.style.display  = show ? '' : 'none';
+        if (collectHint) collectHint.style.display = show ? '' : 'none';
+        if (countLabel)  countLabel.textContent    = show ? '(' + n + (n === 1 ? ' Fach)' : ' Fächer)') : '';
     }
 
     if (protModeCreate)   protModeCreate.addEventListener('change', updateProtocolMode);
     if (protModeExisting) protModeExisting.addEventListener('change', updateProtocolMode);
+
+    // Auch auf später per Vorbelegung angehängte Zeilen reagieren: ein Listener am
+    // Container statt einer pro Select.
+    const subjTable = document.querySelector('.mh-subject-table');
+    if (subjTable) subjTable.addEventListener('change', updateProtocolMode);
+
     updateProtocolMode();
 	// Logik für NB -> Bemerkungspflicht
     const remarksField = document.querySelector('textarea[name="prot_remarks"]');

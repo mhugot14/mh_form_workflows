@@ -8,6 +8,13 @@ use Mh\FormWorkflows\Service\School_Date_Calculator;
 
 class Abmeldung_Student_Form extends Abstract_Form {
 
+	/**
+	 * Wert im Noten-Dropdown, der statt einer Note bedeutet: diese Note wird bei der
+	 * Fachlehrkraft per Mail angefragt. Bewusst kein gueltiger Notenwert, damit er
+	 * sich nicht mit 1-6/NB/NE beissen kann.
+	 */
+	public const GRADE_COLLECT_MARKER = '__collect__';
+
 	public function get_slug(): string {
 		return 'abmeldung_student_v1';
 	}
@@ -194,10 +201,21 @@ class Abmeldung_Student_Form extends Abstract_Form {
 				$s_name = $this->sanitize_text( $data['subj_name'][$i] );
 				// Nur speichern, wenn ein Fachname eingegeben wurde
 				if ( ! empty( $s_name ) ) {
+					// Der Marker steht im selben Dropdown wie die Noten, damit es pro Zeile
+					// nur eine Quelle der Wahrheit gibt: entweder liegt eine Note vor, oder
+					// sie wird angefragt. Er darf aber nie als "Note" weiterwandern - im
+					// Protokoll-PDF stuende sonst Kauderwelsch in der Notenspalte.
+					$s_grade   = $this->sanitize_text( $data['subj_grade'][$i] ?? '' );
+					$s_collect = ( self::GRADE_COLLECT_MARKER === $s_grade ) ? '1' : '0';
+					if ( '1' === $s_collect ) {
+						$s_grade = '';
+					}
+
 					$subjects[] = [
 						'name'      => $s_name,
 						'teacher'   => $this->sanitize_text( $data['subj_teacher'][$i] ?? '' ),
-						'grade'     => $this->sanitize_text( $data['subj_grade'][$i] ?? '' ),
+						'grade'     => $s_grade,
+						'collect'   => $s_collect,
 						'webuntis'  => isset( $data['subj_webuntis'][$i] ) ? '1' : '0',
 						'completed' => isset( $data['subj_completed'][$i] ) ? '1' : '0',
 					];

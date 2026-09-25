@@ -38,8 +38,17 @@ class Noten_Fall_Repository {
 	public function create_case( array $meta, array $items, int $created_by ): int {
 		$now = current_time( 'mysql' );
 
+		// Ein Fall bildet IMMER die komplette Fächerliste ab, auch die Fächer, deren Note
+		// die Klassenleitung selbst einträgt. Sonst würde write_back_to_submission() beim
+		// Abschluss die selbst erfassten Noten aus der Einsendung werfen - es ersetzt
+		// subjects vollständig durch die Positionen des Falls.
+		// Angefragt wird nur, was 'collect' markiert; alles andere kommt fertig herein und
+		// hält den Fall nicht offen (count_open_items zählt nur Status != erledigt).
 		$prepared = [];
 		foreach ( array_values( $items ) as $idx => $item ) {
+			$is_collect = ! empty( $item['collect'] );
+			$grade      = (string) ( $item['grade'] ?? '' );
+
 			$prepared[] = [
 				'idx'               => $idx,
 				'subject'           => (string) ( $item['subject'] ?? '' ),
@@ -47,14 +56,15 @@ class Noten_Fall_Repository {
 				'recipient_user_id' => (int) ( $item['recipient_user_id'] ?? 0 ),
 				'recipient_email'   => (string) ( $item['recipient_email'] ?? '' ),
 				'is_fallback'       => ! empty( $item['is_fallback'] ),
-				'grade'             => '',
+				'collect'           => $is_collect ? '1' : '0',
+				'grade'             => $is_collect ? '' : $grade,
 				'remark'            => '',
-				'webuntis'          => '0',
-				'completed'         => '0',
-				'status'            => 'offen',
-				'entered_by'        => null,
-				'entered_at'        => null,
-				'entered_by_role'   => null,
+				'webuntis'          => ( ! $is_collect && ! empty( $item['webuntis'] ) ) ? '1' : '0',
+				'completed'         => ( ! $is_collect && ! empty( $item['completed'] ) ) ? '1' : '0',
+				'status'            => $is_collect ? 'offen' : 'erledigt',
+				'entered_by'        => $is_collect ? null : $created_by,
+				'entered_at'        => $is_collect ? null : $now,
+				'entered_by_role'   => $is_collect ? null : 'vorab',
 				'notified_at'       => null,
 				'reminder_count'    => 0,
 				'last_reminder_at'  => null,
@@ -173,7 +183,9 @@ class Noten_Fall_Repository {
 	 * Trägt eine Note ein. Gibt false zurück, wenn der Fall oder das Item fehlt —
 	 * die Berechtigungsprüfung liegt beim Controller.
 	 *
-	 * @param string $role 'fachlehrer' oder 'klassenlehrer' (Nachtrag durch den Klassenlehrer)
+	 * @param string $role 'fachlehrer' oder 'klassenlehrer' (Nachtrag durch den Klassenlehrer).
+	 *                     Positionen, deren Note beim Anlegen des Falls schon feststand,
+	 *                     tragen stattdessen 'vorab'.
 	 */
 	public function set_item_grade( int $case_id, int $idx, array $values, int $user_id, string $role ): bool {
 		$case = $this->get_by_id( $case_id );
@@ -291,6 +303,9 @@ class Noten_Fall_Repository {
 				'name'      => (string) ( $item['subject'] ?? '' ),
 				'teacher'   => (string) ( $item['teacher_kuerzel'] ?? '' ),
 				'grade'     => (string) ( $item['grade'] ?? '' ),
+				// Noch offene Positionen bleiben im Formular als "angefragt" markiert,
+				// damit ein zwischenzeitlicher Blick ins Formular den Stand zeigt.
+				'collect'   => ( 'erledigt' === ( $item['status'] ?? 'offen' ) ) ? '0' : '1',
 				'webuntis'  => (string) ( $item['webuntis'] ?? '0' ),
 				'completed' => (string) ( $item['completed'] ?? '0' ),
 			];
