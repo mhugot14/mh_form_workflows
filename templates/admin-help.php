@@ -493,8 +493,10 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
             </p>
             <p>
                 Die beiden Häkchen <em>„Teilnoten in WebUntis eingetragen“</em> und <em>„Fach vorher abgeschlossen“</em>
-                gelten nur für selbst eingetragene Noten und sind bei eingesammelten Fächern gesperrt. Den WebUntis-Eintrag
-                bestätigt dort die Fachlehrkraft in ihrem eigenen Formular; mehr wird ihr nicht abverlangt.
+                beziehen sich immer auf eine konkrete Note. Sie sind deshalb gesperrt, solange die Zeile leer ist oder auf
+                „automatisch einsammeln“ steht, und werden erst frei, sobald eine Note ausgewählt ist. Bei eingesammelten
+                Fächern bestätigt die Fachlehrkraft den WebUntis-Eintrag in ihrem eigenen Formular; mehr wird ihr nicht
+                abverlangt.
             </p>
             <p>
                 Intern nimmt der Noten-Fall trotzdem <strong>alle</strong> Fächer auf; die selbst eingetragenen kommen

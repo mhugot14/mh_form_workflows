@@ -499,8 +499,9 @@ details.mh-help-notice-box[open] summary::before {
                 </div>
 
                 <p style="margin:0; padding-top:9px; border-top:1px solid #dcdcde; color:#50575e;">
-                    Die beiden Häkchen rechts (<em>WebUntis</em>, <em>vorher abgeschlossen</em>) gelten nur für selbst
-                    eingetragene Noten. Bei eingesammelten Fächern bestätigt die Fachlehrkraft den WebUntis-Eintrag selbst.
+                    Die beiden Häkchen rechts (<em>WebUntis</em>, <em>vorher abgeschlossen</em>) werden erst bedienbar,
+                    sobald in der Zeile eine Note steht – sie beziehen sich immer auf eine konkrete Note. Bei
+                    eingesammelten Fächern bestätigt die Fachlehrkraft den WebUntis-Eintrag in ihrem eigenen Formular.
                 </p>
             </div>
 
@@ -846,24 +847,31 @@ document.addEventListener('DOMContentLoaded', function() {
         return n;
     }
 
-    // Die beiden Häkchen gehören zur selbst eingetragenen Note. Wird ein Fach
-    // eingesammelt, bestätigt die Fachlehrkraft den WebUntis-Eintrag im eigenen
-    // Formular - dann darf hier nichts stehen, was sie gleich überschreibt.
+    // Die beiden Häkchen beziehen sich auf eine konkrete, selbst eingetragene Note.
+    // Sie sind deshalb standardmäßig gesperrt und werden erst frei, sobald in der
+    // Zeile wirklich eine Note steht. Solange das Fach leer ist, gäbe es nichts zu
+    // bestätigen; wird es eingesammelt, bestätigt die Fachlehrkraft den
+    // WebUntis-Eintrag im eigenen Formular und würde alles hier gleich überschreiben.
     function syncRowChecks() {
         document.querySelectorAll('select[name="subj_grade[]"]').forEach(sel => {
             const row = sel.closest('tr');
             if (!row) return;
+
             const isCollect = sel.value === COLLECT_MARKER;
+            const hasGrade  = sel.value !== '' && !isCollect;
+
             row.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                if (isCollect) {
+                if (!hasGrade) {
                     cb.checked  = false;
                     cb.disabled = true;
-                    cb.title    = 'Wird von der Fachlehrkraft beim Eintragen der Note bestätigt.';
+                    cb.title    = isCollect
+                        ? 'Wird von der Fachlehrkraft beim Eintragen der Note bestätigt.'
+                        : 'Erst auswählbar, sobald eine Note eingetragen ist.';
                 } else {
                     cb.disabled = false;
                     cb.title    = '';
                 }
-                cb.parentElement.style.opacity = isCollect ? '0.35' : '1';
+                cb.parentElement.style.opacity = hasGrade ? '1' : '0.35';
             });
         });
     }
