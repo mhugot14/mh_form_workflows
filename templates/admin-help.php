@@ -747,6 +747,25 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
 
         <!-- HINWEISE -->
         <div class="mh-info-section" id="mh-hinweise">
+            <h2>Wartung: Altlasten entfernen</h2>
+            <p>
+                Dienstbefreiungen werden <strong>nicht</strong> gespeichert &ndash; das PDF wird direkt ausgeliefert.
+                In älteren Plugin-Versionen war das anders, weshalb in bestehenden Installationen noch Zeilen vom
+                Typ <code class="mh-code-soft">service_leave_v1</code> in der Tabelle liegen können. Sie erscheinen in
+                keiner Liste mehr und wären sonst nur über einen direkten Datenbankzugriff erreichbar.
+            </p>
+            <p>
+                Unter <strong>MH Formulare → Einstellungen → Wartung</strong> werden solche Zeilen mit Anzahl, IDs und
+                Zeitraum angezeigt und lassen sich nach Rückfrage entfernen. Gelöscht wird ausschliesslich dieser eine
+                Formulartyp; Abmeldungen, Absentismus- und Noten-Fälle bleiben unangetastet. Vorher bitte ein Backup
+                der Tabelle ziehen &ndash; der Vorgang lässt sich nicht rückgängig machen.
+            </p>
+            <p>
+                Mit Shell-Zugang geht dasselbe über
+                <code class="mh-code-soft">php tools/cleanup-legacy-submissions.php</code> (Probelauf) bzw. mit
+                <code class="mh-code-soft">--delete</code>.
+            </p>
+
             <h2>Wichtige Hinweise</h2>
             <ul class="mh-notice-list">
                 <li>

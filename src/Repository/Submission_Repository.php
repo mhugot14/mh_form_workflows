@@ -92,6 +92,48 @@ class Submission_Repository implements Submission_Repository_Interface {
 	}
 
 	/**
+	 * Zählt Einträge eines Formulartyps — für die Altlasten-Prüfung.
+	 *
+	 * Gibt bewusst nur Anzahl, IDs, Zeitstempel und Benutzer-IDs zurück, keine
+	 * form_data: Dienstbefreiungen enthalten personenbezogene Angaben, und für das
+	 * Aufräumen braucht es sie nicht.
+	 *
+	 * @return array{count:int, ids:int[], first:?string, last:?string, users:int[]}
+	 */
+	public function inspect_form_type( string $form_type ): array {
+		$rows = $this->db->get_results( $this->db->prepare(
+			"SELECT id, user_id, created_at FROM {$this->table_name}
+			 WHERE form_type = %s ORDER BY created_at ASC",
+			$form_type
+		), ARRAY_A );
+
+		if ( empty( $rows ) ) {
+			return [ 'count' => 0, 'ids' => [], 'first' => null, 'last' => null, 'users' => [] ];
+		}
+
+		return [
+			'count' => count( $rows ),
+			'ids'   => array_map( 'intval', array_column( $rows, 'id' ) ),
+			'first' => (string) $rows[0]['created_at'],
+			'last'  => (string) $rows[ count( $rows ) - 1 ]['created_at'],
+			'users' => array_values( array_unique( array_map( 'intval', array_column( $rows, 'user_id' ) ) ) ),
+		];
+	}
+
+	/**
+	 * Entfernt alle Einträge eines Formulartyps. Ausschliesslich für Altlasten gedacht,
+	 * die durch einen geänderten Ablauf entstanden sind — der Aufrufer muss die
+	 * Rückfrage stellen, hier wird ohne Nachfrage gelöscht.
+	 *
+	 * @return int Anzahl der gelöschten Zeilen.
+	 */
+	public function delete_by_form_type( string $form_type ): int {
+		$deleted = $this->db->delete( $this->table_name, [ 'form_type' => $form_type ], [ '%s' ] );
+
+		return false === $deleted ? 0 : (int) $deleted;
+	}
+
+	/**
 	 * Löscht einen Eintrag (nur wenn er dem User gehört).
 	 */
 	public function delete_submission( int $entry_id, int $user_id ): bool {

@@ -50,6 +50,11 @@ class Plugin_Bootstrap {
 	private Dashboard_Controller $dashboard_controller;
 
 	/**
+	 * @var Submission_Repository Wird für den Wartungsbereich der Einstellungsseite gebraucht.
+	 */
+	private Submission_Repository $submission_repo;
+
+	/**
 	 * @var Reminder_Service Wird auch vom Cron-Hook gebraucht.
 	 */
 	private Reminder_Service $reminder_service;
@@ -69,6 +74,7 @@ class Plugin_Bootstrap {
 
 		// 1. Repositories & Services
 		$submission_repo = new Submission_Repository( $wpdb );
+		$this->submission_repo = $submission_repo;
 		$class_repo      = new Class_Repository( $wpdb );
 		$teacher_repo    = new Teacher_Repository( $wpdb );
 		 $student_repo =   new Student_Repository( $wpdb );
@@ -133,6 +139,7 @@ class Plugin_Bootstrap {
 		// Admin Menü & Settings
 		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
 		add_action( 'admin_init', [ $this, 'register_settings' ] );
+		add_action( 'admin_post_mh_fw_cleanup_legacy', [ $this, 'handle_cleanup_legacy' ] );
 		// Muss früh (admin_init) laufen, NICHT im Seiten-Callback selbst — dort sind
 		// die Header bereits gesendet (WP hat Admin-Header/Skripte schon ausgegeben).
 		add_action( 'admin_init', [ $this, 'maybe_redirect_absentismus_liste' ] );
@@ -420,8 +427,75 @@ class Plugin_Bootstrap {
 				</table>
 				<?php submit_button(); ?>
 			</form>
+
+			<?php $this->render_maintenance_section(); ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Wartung: Altlasten aus mh_form_submissions.
+	 *
+	 * Dienstbefreiungen werden nicht gespeichert (der Riegel steht in
+	 * Form_Controller::handle_submission()). Aus älteren Plugin-Versionen können aber
+	 * noch Zeilen dieses Typs liegen. Sie erscheinen in keiner Liste und wären ohne
+	 * diesen Abschnitt nur per Datenbankzugriff erreichbar.
+	 */
+	private function render_maintenance_section(): void {
+		$info = $this->submission_repo->inspect_form_type( 'service_leave_v1' );
+		?>
+		<hr style="margin:35px 0 25px;">
+		<h2>Wartung</h2>
+
+		<?php if ( isset( $_GET['mh_cleaned'] ) ) : ?>
+			<div class="notice notice-success is-dismissible" style="margin:0 0 15px;">
+				<p><?= (int) $_GET['mh_cleaned'] ?> Zeile(n) entfernt.</p>
+			</div>
+		<?php endif; ?>
+
+		<?php if ( 0 === $info['count'] ) : ?>
+			<p>Keine Altlasten gefunden &ndash; es liegen keine gespeicherten Dienstbefreiungen in der Datenbank.</p>
+		<?php else : ?>
+			<div class="notice notice-warning inline" style="margin:0 0 15px; padding:10px 12px;">
+				<p style="margin:0 0 6px;">
+					<strong><?= (int) $info['count'] ?></strong> gespeicherte Dienstbefreiung(en) gefunden.
+					Dienstbefreiungen werden nicht mehr gespeichert; diese Zeilen stammen aus einer
+					früheren Plugin-Version und erscheinen in keiner Liste mehr.
+				</p>
+				<p style="margin:0; color:#50575e;">
+					IDs: <?= esc_html( implode( ', ', $info['ids'] ) ) ?>
+					&nbsp;·&nbsp; Zeitraum: <?= esc_html( (string) $info['first'] ) ?>
+					bis <?= esc_html( (string) $info['last'] ) ?>
+				</p>
+			</div>
+
+			<form method="post" action="<?= esc_url( admin_url( 'admin-post.php' ) ) ?>"
+			      onsubmit="return confirm('<?= esc_attr( $info['count'] ) ?> Zeile(n) endgültig löschen? Das lässt sich nicht rückgängig machen.');">
+				<?php wp_nonce_field( 'mh_fw_cleanup_legacy' ); ?>
+				<input type="hidden" name="action" value="mh_fw_cleanup_legacy">
+				<?php submit_button( 'Altlasten jetzt entfernen', 'delete', 'submit', false ); ?>
+				<span class="description" style="margin-left:10px;">Vorher bitte ein Backup der Tabelle ziehen.</span>
+			</form>
+		<?php endif; ?>
+		<?php
+	}
+
+	/**
+	 * Führt das Aufräumen aus. Löscht ausschliesslich Zeilen vom Typ service_leave_v1.
+	 */
+	public function handle_cleanup_legacy(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Keine Berechtigung.' );
+		}
+		check_admin_referer( 'mh_fw_cleanup_legacy' );
+
+		$deleted = $this->submission_repo->delete_by_form_type( 'service_leave_v1' );
+
+		wp_safe_redirect( add_query_arg(
+			[ 'page' => 'mh-form-workflows-settings', 'mh_cleaned' => $deleted ],
+			admin_url( 'admin.php' )
+		) );
+		exit;
 	}
 
 	/**
