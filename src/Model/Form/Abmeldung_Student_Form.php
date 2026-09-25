@@ -65,7 +65,19 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		$education_track = $this->sanitize_text( $data['new_education_track'] ?? '' );
 		
 		$is_minor = ( isset( $data['is_minor'] ) && '1' === $data['is_minor'] );
-		$protocol = isset( $data['protocol_attached'] ) ? '1' : '0';
+		// Protokoll-Modus: Ein Konferenzprotokoll liegt dem Formular IMMER bei. Offen ist
+		// nur, ob es hier erzeugt wird ('create') oder ob die Klassenleitung ein
+		// bestehendes Protokoll der Gesamtkonferenz beilegt ('existing') - letzteres
+		// kommt vor allem zum Schuljahresbeginn vor, wenn Noten und Zeugnisdatum aus
+		// dem Klassenprotokoll uebernommen werden.
+		$protocol_mode = $this->sanitize_text( $data['protocol_mode'] ?? '' );
+		if ( ! in_array( $protocol_mode, [ 'create', 'existing' ], true ) ) {
+			$protocol_mode = '';
+		}
+		// protocol_attached bleibt als abgeleitetes Feld erhalten: daran haengt die
+		// Frage, ob dem PDF die Protokollseite angehaengt wird, und aeltere
+		// Datensaetze tragen ausschliesslich dieses Feld.
+		$protocol = ( 'create' === $protocol_mode ) ? '1' : '0';
 
 		$certificate  = $this->sanitize_text( $data['certificate'] ?? '' );
 		$missed_hours = (int) ( $data['missed_hours'] ?? 0 );
@@ -123,6 +135,10 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( 'av_klasse' === $compulsory && empty( $av_date_start ) ) $this->add_error( 'av_date_start', 'AV-Klasse: Startdatum fehlt.' );
 		if ( 'bildungsgang' === $compulsory && empty( $education_track ) ) $this->add_error( 'new_education_track', 'Bitte Bildungsgang angeben.' );
 		
+
+		if ( '' === $protocol_mode ) {
+			$this->add_error( 'protocol_mode', 'Bitte angeben, ob das Zeugniskonferenzprotokoll jetzt erstellt wird oder ob ein bestehendes beiliegt.' );
+		}
 
 		if ( '1' === $protocol ) {
 			if ( empty( $prot_type ) ) $this->add_error( 'prot_type', 'Bitte Typ für Protokoll wählen.' );
@@ -231,6 +247,7 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			'certificate'         => $certificate,
 			'missed_hours'        => $missed_hours,
 			'missed_ue'           => $missed_ue,
+			'protocol_mode'       => $protocol_mode,
 			'protocol_attached'   => $protocol,
 			'prot_type'           => $prot_type,
 			'prot_chair'          => $prot_chair,

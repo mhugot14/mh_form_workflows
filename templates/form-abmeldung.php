@@ -28,6 +28,19 @@ $has_existing_subjects = ! empty( $form_data['subjects'] );
 // weitere Zeilen hängt die Vorbelegung bei Bedarf per JS an.
 $subject_row_count = max( 12, count( $form_data['subjects'] ?? [] ) );
 
+// Protokoll-Modus. Rueckwaertskompatibel: aeltere Datensaetze kennen nur das
+// Haekchen protocol_attached. Ein Altdatensatz OHNE Protokoll bekommt bewusst
+// keine Vorauswahl - die Entscheidung soll bewusst getroffen werden, statt ihm
+// stillschweigend eine Erklaerung unterzuschieben, die nie abgegeben wurde.
+$protocol_mode = $form_data['protocol_mode'] ?? '';
+if ( '' === $protocol_mode ) {
+    if ( empty( $form_data ) ) {
+        $protocol_mode = 'create'; // Neues Formular: bisheriger Normalfall
+    } elseif ( isset( $form_data['protocol_attached'] ) && '1' === $form_data['protocol_attached'] ) {
+        $protocol_mode = 'create';
+    }
+}
+
 // Warnung extrahieren
 $warning_msg = '';
 if ( isset( $form_errors['date_autocorrect'] ) ) {
@@ -411,10 +424,22 @@ details.mh-help-notice-box[open] summary::before {
             <div class="radio-group"><input type="radio" name="certificate" value="abgang" id="z_ab" required <?= $chk('certificate', 'abgang') ?>> <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small>(Ohne Abschluss)</small></label></div>
             <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb der Schulstufe)</small></label></div>
 
-            <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px;">
+            <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px; <?= isset($form_errors['protocol_mode']) ? 'border:2px solid #d63638; padding:10px;' : '' ?>">
+                <div style="font-weight:bold; margin-bottom:10px;">Zeugniskonferenzprotokoll <span class="req">*</span></div>
+
                 <div class="radio-group">
-                    <input type="checkbox" name="protocol_attached" value="1" id="chk_protocol" class="toggle-trigger" data-target="protocol_wrapper" <?php echo ( empty($form_data) || (isset($form_data['protocol_attached']) && $form_data['protocol_attached'] == '1') ) ? 'checked' : ''; ?>>
-                    <label for="chk_protocol" style="font-weight:bold;">Zeugniskonferenzprotokoll beifügen</label>
+                    <input type="radio" name="protocol_mode" value="create" id="prot_mode_create" class="toggle-trigger" data-target="protocol_wrapper" <?= 'create' === $protocol_mode ? 'checked' : '' ?>>
+                    <label for="prot_mode_create" style="font-weight:bold;">Zeugniskonferenzprotokoll jetzt erstellen</label>
+                </div>
+
+                <div class="radio-group" style="align-items:flex-start; margin-top:12px;">
+                    <input type="radio" name="protocol_mode" value="existing" id="prot_mode_existing" class="toggle-trigger" style="margin-top:3px;" <?= 'existing' === $protocol_mode ? 'checked' : '' ?>>
+                    <label for="prot_mode_existing" style="line-height:1.45;">Ich lege ein bestehendes Zeugniskonferenzprotokoll bei. Konferenzdatum und Zeugnisdatum werden daraus ersichtlich. Änderungen sind mit der Abteilungsleitung abgesprochen und von ihr abgezeichnet.</label>
+                </div>
+
+                <div id="prot_existing_hint" style="margin-top:10px; margin-left:28px; font-size:0.85em; color:#6f6f6f; display:none;">
+                    Abschnitt 4 entfällt, dem PDF wird kein Protokoll angehängt. Die digitale Noteneinsammlung
+                    ist in diesem Fall nicht möglich, weil die Noten aus dem beigefügten Protokoll stammen.
                 </div>
             </div>
         </div>
@@ -532,7 +557,7 @@ details.mh-help-notice-box[open] summary::before {
             <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
             <button type="submit" name="submit_mode" value="collect" class="button button-secondary button-large" style="background:#1b5e20 !important; color:#fff !important; border-color:#1b5e20 !important;">Noteneinsammlung digital starten</button>
         </div>
-        <p style="font-size:0.9em; color:#555; margin-top:10px;">
+        <p id="collect_hint" style="font-size:0.9em; color:#555; margin-top:10px;">
             <strong>Noteneinsammlung digital starten:</strong> Statt die Noten auf Papier einzusammeln,
             wird jede eingetragene Fachlehrkraft per E-Mail um ihre Note gebeten und bei Bedarf automatisch
             erinnert. Sobald alle Noten vorliegen, wirst du benachrichtigt und kannst das fertige Formular
@@ -754,6 +779,27 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     triggers.forEach(r => r.addEventListener('change', updateToggles));
     setTimeout(() => { updateToggles(); }, 100);
+
+    // 8b. PROTOKOLL-MODUS
+    // Liegt ein bestehendes Protokoll bei, gibt es hier nichts einzusammeln - die Noten
+    // stehen im beigefügten Protokoll. Der Button würde sonst einen Umlauf starten,
+    // dessen Ergebnis niemand braucht.
+    const protModeCreate   = document.getElementById('prot_mode_create');
+    const protModeExisting = document.getElementById('prot_mode_existing');
+    const protExistingHint = document.getElementById('prot_existing_hint');
+    const collectBtn       = document.querySelector('button[name="submit_mode"][value="collect"]');
+    const collectHint      = document.getElementById('collect_hint');
+
+    function updateProtocolMode() {
+        const existing = protModeExisting && protModeExisting.checked;
+        if (protExistingHint) protExistingHint.style.display = existing ? 'block' : 'none';
+        if (collectBtn)  collectBtn.style.display  = existing ? 'none' : '';
+        if (collectHint) collectHint.style.display = existing ? 'none' : '';
+    }
+
+    if (protModeCreate)   protModeCreate.addEventListener('change', updateProtocolMode);
+    if (protModeExisting) protModeExisting.addEventListener('change', updateProtocolMode);
+    updateProtocolMode();
 	// Logik für NB -> Bemerkungspflicht
     const remarksField = document.querySelector('textarea[name="prot_remarks"]');
 

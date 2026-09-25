@@ -152,9 +152,25 @@ $date_fmt = function($field) use ($data) {
     </table>
 	
     <!-- 4. ZEUGNIS -->
+    <?php
+    // Ein Konferenzprotokoll liegt immer bei - entweder das hier erzeugte oder ein
+    // bestehendes aus der Gesamtkonferenz. Aeltere Datensaetze tragen nur das
+    // abgeleitete Feld protocol_attached.
+    $prot_mode = $data['protocol_mode'] ?? '';
+    if ( '' === $prot_mode && '1' === ( $data['protocol_attached'] ?? '' ) ) {
+        $prot_mode = 'create';
+    }
+    ?>
     <div style="font-weight: bold; margin-top: 8px; margin-bottom: 2px;">
-        Zeugnis:    &nbsp;&nbsp;&nbsp;      <?= $chk('protocol_attached', '1') ?> Zeugniskonferenzprotokoll liegt bei
+        Zeugnis:    &nbsp;&nbsp;&nbsp;      <?= 'create' === $prot_mode ? $x : $o ?> Zeugniskonferenzprotokoll liegt bei (mit diesem Formular erstellt)
+        &nbsp;&nbsp;&nbsp;<?= 'existing' === $prot_mode ? $x : $o ?> bestehendes Protokoll liegt bei
     </div>
+    <?php if ( 'existing' === $prot_mode ): ?>
+    <div style="border: 1px solid #000; padding: 4px 6px; margin-bottom: 4px; font-size: 8pt; line-height: 1.3;">
+        Ich lege ein bestehendes Zeugniskonferenzprotokoll bei. Konferenzdatum und Zeugnisdatum werden
+        daraus ersichtlich. Änderungen sind mit der Abteilungsleitung abgesprochen und von ihr abgezeichnet.
+    </div>
+    <?php endif; ?>
 
     <table class="mb-0">
         <tr>

@@ -283,6 +283,12 @@ class Form_Controller {
 	 * @return array<string,string> Fehler für die Rückgabe ins Formular.
 	 */
 	private function check_collect_preconditions( array $valid_data ): array {
+		// Liegt ein bestehendes Konferenzprotokoll bei, stehen die Noten bereits darin.
+		// Ein Umlauf würde Lehrkräfte um etwas bitten, das längst entschieden ist.
+		if ( 'existing' === ( $valid_data['protocol_mode'] ?? '' ) ) {
+			return [ 'protocol_mode' => 'Die digitale Noteneinsammlung ist nicht möglich, wenn ein bestehendes Zeugniskonferenzprotokoll beigefügt wird — die Noten ergeben sich aus diesem Protokoll.' ];
+		}
+
 		$subjects = $valid_data['subjects'] ?? [];
 
 		if ( empty( $subjects ) ) {

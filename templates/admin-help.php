@@ -419,14 +419,36 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                     </tr>
                     <tr>
                         <td><strong>Prüfen &amp; PDF erstellen</strong></td>
-                        <td>Validiert, speichert die Abmeldung in der Datenbank (bzw. aktualisiert sie beim Bearbeiten) und liefert das PDF zum Download. Ist das Protokoll angehakt, wird es als weitere Seite angehängt. Dateiname: <code class="mh-code-soft">JJ-MM-TT_ID_Abmeldung_Nachname.pdf</code>.</td>
+                        <td>Validiert, speichert die Abmeldung in der Datenbank (bzw. aktualisiert sie beim Bearbeiten) und liefert das PDF zum Download. Wurde „Zeugniskonferenzprotokoll jetzt erstellen“ gewählt, wird es als weitere Seite angehängt. Dateiname: <code class="mh-code-soft">JJ-MM-TT_ID_Abmeldung_Nachname.pdf</code>.</td>
                     </tr>
                     <tr>
                         <td><strong>Noteneinsammlung digital starten</strong></td>
-                        <td>Validiert, speichert die Abmeldung und legt statt des PDF-Downloads einen Noten-Fall an: Alle in der Fächertabelle eingetragenen Lehrkräfte erhalten eine E-Mail mit Link zur Noteneingabe. Voraussetzungen und Ablauf siehe <a href="#mh-noten">Noteneinsammlung</a>.</td>
+                        <td>Validiert, speichert die Abmeldung und legt statt des PDF-Downloads einen Noten-Fall an: Alle in der Fächertabelle eingetragenen Lehrkräfte erhalten eine E-Mail mit Link zur Noteneingabe. Der Knopf entfällt, wenn ein bestehendes Zeugniskonferenzprotokoll beigefügt wird &ndash; die Noten stehen dann bereits darin. Voraussetzungen und Ablauf siehe <a href="#mh-noten">Noteneinsammlung</a>.</td>
                     </tr>
                 </tbody>
             </table>
+
+            <h3>Zeugniskonferenzprotokoll</h3>
+            <p>
+                Dem Formular liegt <strong>immer</strong> ein Zeugniskonferenzprotokoll bei. In Abschnitt 3 wird
+                entschieden, woher es kommt:
+            </p>
+            <ul style="list-style: disc; padding-left: 20px; line-height:1.6;">
+                <li>
+                    <strong>Zeugniskonferenzprotokoll jetzt erstellen</strong> &ndash; der bisherige Weg. Abschnitt 4
+                    wird eingeblendet, Konferenzdaten, Fehlstunden sowie Fächer und Noten werden erfasst, und das
+                    Protokoll wird dem PDF als weitere Seite angehängt. Nur in diesem Fall ist die digitale
+                    Noteneinsammlung möglich.
+                </li>
+                <li>
+                    <strong>Ein bestehendes Protokoll liegt bei</strong> &ndash; gedacht für Zeugnisse, die auf dem
+                    Konferenzprotokoll der gesamten Klasse beruhen, was vor allem zum Schuljahresbeginn vorkommt.
+                    Noten und Zeugnisdatum stammen dann aus jenem Protokoll. Die Klassenleitung holt es aus den Akten,
+                    bearbeitet es, lässt die Änderungen von der Abteilungsleitung abzeichnen und reicht es zusammen mit
+                    dem Formular ein. Abschnitt 4 entfällt, dem PDF wird kein Protokoll angehängt, und die erforderliche
+                    Erklärung wird auf dem PDF mit ausgedruckt.
+                </li>
+            </ul>
 
             <h3>Bearbeiten &amp; erneuter Download</h3>
             <p>
