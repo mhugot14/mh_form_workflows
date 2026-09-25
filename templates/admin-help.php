@@ -501,6 +501,15 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                 auf „automatisch einsammeln“ steht, und nennt die Anzahl. Sonst reicht „Prüfen &amp; PDF erstellen“.
             </p>
             <p>
+                <strong>Kursbelegungen:</strong> Hat die Person klassenübergreifende Kurse, stehen diese in der Vorbelegung
+                ganz oben und bringen die Kurslehrkraft gleich mit; im Dropdown bilden sie die erste Gruppe
+                „Kurse dieser Person“. Ersetzt ein Kurs ein Fach der Stundentafel, muss die überflüssige Fachzeile von Hand
+                geleert werden &ndash; automatisch erkennen lässt sich das nicht, weil Schild den Kurs keinem Fach zuordnet
+                (das dortige „Trägerfach“ ist nur ein Sammelbegriff wie <code class="mh-code-soft">Kurs_11_12</code>).
+                Heißt ein Kurs zufällig genauso wie ein Fach der Stundentafel, gewinnt die Kurszeile, weil sie die
+                Lehrkraft mitbringt.
+            </p>
+            <p>
                 Die beiden Häkchen <em>„Teilnoten in WebUntis eingetragen“</em> und <em>„Fach vorher abgeschlossen“</em>
                 beziehen sich immer auf eine konkrete Note. Sie sind deshalb gesperrt, solange die Zeile leer ist oder auf
                 „automatisch einsammeln“ steht, und werden erst frei, sobald eine Note ausgewählt ist. Bei eingesammelten

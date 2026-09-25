@@ -61,9 +61,18 @@ class Form_Controller {
 		$rows = [];
 		$seen = [];
 
+		// Kurse stehen in der Vorbelegung VOR den Regelfächern. Ein Kurs kann ein Fach der
+		// Stundentafel ersetzen, nur lässt sich das nicht automatisch erkennen: das
+		// Trägerfach in Schild ist bloß ein Sammelbegriff ("Kurs_11_12"). Statt zu raten,
+		// stehen die Kurse oben, damit die Klassenleitung eine überflüssig gewordene
+		// Fachzeile sofort sieht und selbst entfernen kann.
+		$course_rows = [];
+		$track_rows  = [];
+
 		// 1. Regelfächer aus der Stundentafel des Bildungsgangs.
 		$track_subjects = $this->track_subject_repo->get_subjects_for_track( $track_key );
 		$track_options  = [];
+		$track_labels   = [];
 
 		foreach ( $track_subjects as $s ) {
 			$short   = (string) $s['short_name'];
@@ -72,17 +81,10 @@ class Form_Controller {
 
 			$track_options[] = [ 'value' => $short, 'label' => $label ];
 
-			if ( isset( $seen[ $short ] ) ) {
+			if ( isset( $track_labels[ $short ] ) ) {
 				continue;
 			}
-			$seen[ $short ] = true;
-
-			$rows[] = [
-				'value'     => $short,
-				'label'     => $label,
-				'teacher'   => '',
-				'is_course' => false,
-			];
+			$track_labels[ $short ] = $label;
 		}
 
 		// 2. Klassenübergreifende Kurse. Angezeigt wird die Kursbezeichnung — das Trägerfach
@@ -108,13 +110,32 @@ class Form_Controller {
 				'teacher' => $teacher,
 			];
 
-			$rows[] = [
+			$course_rows[] = [
 				'value'     => $course_name,
 				'label'     => $course_name,
 				'teacher'   => $teacher,
 				'is_course' => true,
 			];
 		}
+
+		// Regelfächer hinter den Kursen einreihen. Ein Fach, das namensgleich mit einem
+		// Kurs ist, entfällt hier - die Kurszeile bringt die Lehrkraft mit und ist damit
+		// die brauchbarere der beiden.
+		foreach ( $track_labels as $short => $label ) {
+			if ( isset( $seen[ $short ] ) ) {
+				continue;
+			}
+			$seen[ $short ] = true;
+
+			$track_rows[] = [
+				'value'     => (string) $short,
+				'label'     => $label,
+				'teacher'   => '',
+				'is_course' => false,
+			];
+		}
+
+		$rows = array_merge( $course_rows, $track_rows );
 
 		// Der Rest der Schild-Fächerliste bleibt als Notausgang erreichbar (Fachwechsler,
 		// Wiederholer), steht im Dropdown aber unterhalb der Bildungsgang-Fächer.

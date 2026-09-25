@@ -585,7 +585,12 @@ details.mh-help-notice-box[open] summary::before {
                 </tbody>
 				
             </table>
-			<p style="margin-top:-10px;font-size:9pt;">NB = nicht bewertbar | NE = nicht erteilt</p>
+			<div id="course_hint" style="display:none; margin-top:8px; padding:8px 11px; background:#fcf9e8; border-left:3px solid #e5a912; font-size:0.85em; line-height:1.45;">
+				<strong>Kursbelegungen ergänzt.</strong> Sie stehen oben in der Tabelle und bringen die Kurslehrkraft mit.
+				Ersetzt ein Kurs ein Fach der Stundentafel, setze die überflüssige Fachzeile unten auf
+				„-- Fach wählen --“. Automatisch erkennen lässt sich das nicht, weil Schild den Kurs keinem Fach zuordnet.
+			</div>
+			<p style="margin-top:8px;font-size:9pt;">NB = nicht bewertbar | NE = nicht erteilt</p>
 			</div>
         </div>
             <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
@@ -1022,6 +1027,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const trackOptions  = payload.track_options || [];
         const otherOptions  = payload.other_options || [];
         const courseOptions = payload.course_options || [];
+
+        const courseHint = document.getElementById('course_hint');
+        if (courseHint) courseHint.style.display = courseOptions.length ? 'block' : 'none';
 
         ensureRowCount(Math.max(rowsData.length, subjectRows().length));
 
