@@ -55,6 +55,33 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
     }
 
     /* Inhaltsverzeichnis */
+    /* Konfigurationscheck */
+    .mh-cfg { background:#fff; border:1px solid #dcdcde; border-radius:6px; padding:20px 24px; margin-bottom:24px; }
+    .mh-cfg-head { display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:10px; }
+    .mh-cfg-head h2 { margin:0; }
+    .mh-cfg-sum { display:flex; gap:8px; flex-wrap:wrap; }
+    .mh-cfg-sum span { padding:4px 11px; border-radius:12px; font-size:0.82em; font-weight:600; }
+    .mh-cfg-lead { margin:0 0 16px; color:#50575e; }
+    .mh-cfg-allgood { margin:0 0 6px; color:#1b7f3a; font-weight:600; }
+    .mh-cfg h3 { margin:20px 0 6px; font-size:0.9em; text-transform:uppercase; letter-spacing:0.6px; color:#6f6f6f; }
+    .mh-cfg-table { width:100%; border-collapse:collapse; }
+    .mh-cfg-table td { padding:9px 8px; border-bottom:1px solid #f0f0f1; vertical-align:top; }
+    .mh-cfg-table tr:last-child td { border-bottom:0; }
+    .mh-cfg-icon { width:30px; }
+    .mh-cfg-icon span { display:inline-block; width:22px; height:22px; line-height:22px; text-align:center;
+        border-radius:50%; font-weight:700; font-size:0.8em; }
+    .mh-cfg-label { width:200px; font-weight:600; }
+    .mh-cfg-text { color:#2c3338; }
+    .mh-cfg-hint { color:#6f6f6f; font-size:0.88em; margin-top:3px; }
+    .mh-cfg-word { width:70px; text-align:right; font-size:0.8em; font-weight:700;
+        text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap; }
+    .mh-cfg-foot { margin:22px 0 0; padding-top:15px; border-top:1px solid #f0f0f1; display:flex; gap:10px; flex-wrap:wrap; }
+    @media (max-width:782px) {
+        .mh-cfg-label, .mh-cfg-word { width:auto; }
+        .mh-cfg-table td { display:block; border-bottom:0; padding:3px 8px; }
+        .mh-cfg-table tr { display:block; border-bottom:1px solid #f0f0f1; padding:8px 0; }
+    }
+
     .mh-help-toc {
         background: #fff;
         border: 1px solid #ddd;
@@ -290,9 +317,71 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
             <p>Digitale Formularprozesse für das LEBK Münster: Schüler-Abmeldung, Dienstbefreiung, digitale Noteneinsammlung und Absentismus-Verfahren – mit PDF-Erzeugung.</p>
         </div>
 
+        <!-- KONFIGURATIONSCHECK -->
+        <?php
+        $mh_lvl = [
+            'error' => [ '#d63638', '#fcf0f0', '✕', 'Fehlt' ],
+            'warn'  => [ '#b7791f', '#fdf8ec', '!', 'Prüfen' ],
+            'ok'    => [ '#1b7f3a', '#f0f7f2', '✓', 'OK' ],
+        ];
+        $mh_c = $report['counts'];
+        ?>
+        <div class="mh-cfg" id="mh-check">
+            <div class="mh-cfg-head">
+                <h2>Konfigurationscheck</h2>
+                <div class="mh-cfg-sum">
+                    <span style="background:#f0f7f2;color:#1b7f3a;"><?= (int) $mh_c['ok'] ?> in Ordnung</span>
+                    <span style="background:#fdf8ec;color:#b7791f;"><?= (int) $mh_c['warn'] ?> zu prüfen</span>
+                    <span style="background:#fcf0f0;color:#d63638;"><?= (int) $mh_c['error'] ?> fehlen</span>
+                </div>
+            </div>
+
+            <?php if ( 0 === $mh_c['error'] && 0 === $mh_c['warn'] ) : ?>
+                <p class="mh-cfg-allgood">Alles eingerichtet. Es ist nichts offen.</p>
+            <?php else : ?>
+                <p class="mh-cfg-lead">
+                    Geprüft wird bei jedem Aufruf dieser Seite. <strong>Rot</strong> heisst, dass ein Ablauf
+                    nicht funktioniert; <strong>gelb</strong> heisst, dass er läuft, aber etwas fehlt oder
+                    nur teilweise eingerichtet ist.
+                </p>
+            <?php endif; ?>
+
+            <?php foreach ( $report['groups'] as $mh_group => $mh_items ) : ?>
+                <?php if ( empty( $mh_items ) ) continue; ?>
+                <h3><?= esc_html( $mh_group ) ?></h3>
+                <table class="mh-cfg-table">
+                    <tbody>
+                    <?php foreach ( $mh_items as $mh_item ) :
+                        [ $mh_color, $mh_bg, $mh_icon, $mh_word ] = $mh_lvl[ $mh_item['level'] ]; ?>
+                        <tr>
+                            <td class="mh-cfg-icon">
+                                <span style="background:<?= $mh_bg ?>;color:<?= $mh_color ?>;"><?= $mh_icon ?></span>
+                            </td>
+                            <td class="mh-cfg-label"><?= esc_html( $mh_item['label'] ) ?></td>
+                            <td class="mh-cfg-text">
+                                <?= esc_html( $mh_item['text'] ) ?>
+                                <?php if ( '' !== $mh_item['hint'] ) : ?>
+                                    <div class="mh-cfg-hint"><?= esc_html( $mh_item['hint'] ) ?></div>
+                                <?php endif; ?>
+                            </td>
+                            <td class="mh-cfg-word" style="color:<?= $mh_color ?>;"><?= $mh_word ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endforeach; ?>
+
+            <p class="mh-cfg-foot">
+                <a class="button" href="<?= esc_url( admin_url( 'admin.php?page=mh-form-workflows-settings' ) ) ?>">Zu den Einstellungen</a>
+                <a class="button" href="<?= esc_url( admin_url( 'admin.php?page=mh-webuntisAnalyser' ) ) ?>">Zum WebUntis Analyser</a>
+                <a class="button" href="<?= esc_url( add_query_arg( 'mh_recheck', time() ) ) ?>">Erneut prüfen</a>
+            </p>
+        </div>
+
         <!-- INHALTSVERZEICHNIS -->
         <div class="mh-help-toc">
             <strong>Inhalt:</strong>
+            <a href="#mh-check">Konfigurationscheck</a>
             <a href="#mh-schnellstart">Schnellstart</a>
             <a href="#mh-module">Module</a>
             <a href="#mh-sc-formulare">Formulare &amp; Dashboard</a>
@@ -312,19 +401,29 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                 <p>Klassen, Schüler*innen, Lehrkräfte und Fächer kommen aus dem Plugin <em>WebUntis Analyser</em>. Dort muss ein aktueller Import vorliegen. Zusätzlich muss dort unter <em>Klassen</em> jeder Klasse ein Bildungsgang zugeordnet sein &ndash; nur dann werden im Abgangsformular die Fächer der Stundentafel vorbelegt.</p>
             </div>
             <div class="mh-step-card">
+                <span class="dashicons dashicons-welcome-learn-more"></span>
+                <h3>2. Bildungsgänge &amp; Stundentafeln</h3>
+                <p>Im <em>WebUntis Analyser</em> unter <em>Bildungsgänge</em> den Schild-Export einspielen und je Bildungsgang eine Stundentafel hinterlegen. Anschließend unter <em>Klassen</em> die Zuordnung ableiten lassen. Ohne diese Kette bleibt die Fächertabelle im Abgangsformular leer.</p>
+            </div>
+            <div class="mh-step-card">
                 <span class="dashicons dashicons-admin-page"></span>
-                <h3>2. Seiten anlegen</h3>
-                <p>Erstellen Sie in WordPress je eine Seite pro Funktion (z.&nbsp;B. „Abmeldung“, „Meine Anträge“, „Noteneingabe“, „Absentismus-Fälle“).</p>
+                <h3>3. Seiten anlegen</h3>
+                <p>Je eine WordPress-Seite pro Funktion: Dashboard, Abmeldung, Meine Abmeldungen, Noteneingabe, Meine Noteneingaben, Noten-Fall, Absentismus-Fall, Absentismus-Übersicht, Dienstbefreiung.</p>
             </div>
             <div class="mh-step-card">
                 <span class="dashicons dashicons-shortcode"></span>
-                <h3>3. Shortcodes einbinden</h3>
+                <h3>4. Shortcodes einbinden</h3>
                 <p>Kopieren Sie den passenden Shortcode aus den Tabellen unten in den Inhalt der jeweiligen Seite (ein Shortcode pro Seite).</p>
             </div>
             <div class="mh-step-card">
                 <span class="dashicons dashicons-admin-settings"></span>
-                <h3>4. Seiten verknüpfen</h3>
+                <h3>5. Seiten verknüpfen</h3>
                 <p>Wählen Sie in den <a href="<?= esc_url( $mh_settings_url ) ?>">Einstellungen</a> die erstellten Seiten aus – sonst funktionieren Links in Mails, Dashboards und Menüs nicht.</p>
+            </div>
+            <div class="mh-step-card">
+                <span class="dashicons dashicons-yes-alt"></span>
+                <h3>6. Check auswerten</h3>
+                <p>Der <a href="#mh-check">Konfigurationscheck</a> oben auf dieser Seite prüft bei jedem Aufruf, was noch fehlt – inklusive der Frage, ob eine verknüpfte Seite den Shortcode überhaupt enthält.</p>
             </div>
         </div>
 

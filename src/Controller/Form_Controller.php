@@ -13,6 +13,8 @@ use Mh\FormWorkflows\Repository\Track_Subject_Repository;
 use Mh\FormWorkflows\Repository\Student_Course_Repository;
 use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
+use Mh\FormWorkflows\Repository\Diagnostics_Repository;
+use Mh\FormWorkflows\Service\Config_Check;
 use Mh\FormWorkflows\Service\Mail_Service;
 use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
@@ -628,6 +630,13 @@ class Form_Controller {
 	 */
 	public function render_admin_help(): void {
 		if ( ! current_user_can( 'manage_options' ) ) return;
+
+		// Der Konfigurationscheck läuft bei jedem Aufruf frisch: eine zwischengespeicherte
+		// Einrichtungsprüfung wäre genau dann falsch, wenn man sie am dringendsten braucht.
+		global $wpdb;
+		$check  = new Config_Check( new Diagnostics_Repository( $wpdb ) );
+		$report = $check->run();
+
 		include MH_FW_PLUGIN_DIR . 'templates/admin-help.php';
 	}
 }
