@@ -89,13 +89,15 @@ $is_stand  = $is_owner && (int) ( $item['recipient_user_id'] ?? 0 ) !== get_curr
 				<?php endif; ?>
 			</div>
 
+			<!--
+				Bewusst nur eine Bestätigung: Beim automatischen Einsammeln soll die
+				Fachlehrkraft die Note eintragen und bestätigen, dass sie in WebUntis steht -
+				mehr nicht. "Fach vorher abgeschlossen" gehört zur selbst eingetragenen Note
+				und wird von der Klassenleitung im Abmeldeformular gesetzt.
+			-->
 			<label class="mh-check">
 				<input type="checkbox" name="webuntis" value="1" <?= checked( $item['webuntis'] ?? '0', '1', false ) ?>>
 				Teilnoten sind in WebUntis eingetragen
-			</label>
-			<label class="mh-check">
-				<input type="checkbox" name="completed" value="1" <?= checked( $item['completed'] ?? '0', '1', false ) ?>>
-				Das Fach wurde vorher abgeschlossen
 			</label>
 
 			<button type="submit">Note speichern</button>

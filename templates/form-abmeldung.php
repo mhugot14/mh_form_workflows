@@ -326,7 +326,7 @@ details.mh-help-notice-box[open] summary::before {
             <div class="mh-grid-row mh-grid-2">
                 <div class="mh-input-group"><label>Klasse (Anzeige)</label><input type="text" id="display_classname" readonly value="<?= $val('class_name') ?>"></div>
                 <div class="mh-input-group">
-                    <label>Klassenlehrer/in (angemeldet) <span class="req">*</span></label>
+                    <label>Klassenlehrer*in (angemeldet) <span class="req">*</span></label>
                     <input type="text" name="teacher" required readonly value="<?= $val('teacher') ?: $teacher_default ?>">
                 </div>  
             </div>
@@ -473,21 +473,43 @@ details.mh-help-notice-box[open] summary::before {
         <div style="margin-top: 25px; margin-bottom: 20px;">
             <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer &amp; Noten (Vorausfüllung für Protokoll)</h5>
 
-            <div style="background:#f6f7f7; border:1px solid #dcdcde; border-left:4px solid #0073aa; padding:12px 15px; margin-bottom:15px; font-size:0.9em; line-height:1.5;">
-                <p style="margin:0 0 8px;"><strong>Pro Fach entscheidest du, woher die Note kommt:</strong></p>
-                <ul style="margin:0 0 8px 18px; list-style:disc;">
-                    <li><strong>Note eintragen</strong> – wenn sie dir schon vorliegt, etwa aus deinem eigenen Unterricht oder weil die Kollegin sie dir genannt hat.</li>
-                    <li><strong>✉ per Mail anfragen</strong> – die eingetragene Fachlehrkraft bekommt eine E-Mail mit Link zur Noteneingabe und wird bei Bedarf automatisch erinnert. Sobald alle angefragten Noten da sind, wirst du benachrichtigt und lädst das fertige PDF im Dashboard herunter.</li>
-                </ul>
-                <p style="margin:0;">Du kannst beides mischen. Trägst du überall selbst ein, brauchst du nur „Prüfen &amp; PDF erstellen“. Der Papierweg bleibt möglich: PDF erzeugen, Noten im Umlauf sammeln, später über „Bearbeiten“ nachtragen.</p>
+            <div style="background:#f6f7f7; border:1px solid #dcdcde; border-left:4px solid #0073aa; padding:14px 16px; margin-bottom:15px; font-size:0.9em; line-height:1.5;">
+                <p style="margin:0 0 12px;"><strong>Du hast drei Möglichkeiten, an die Noten zu kommen – und kannst pro Fach unterschiedlich entscheiden:</strong></p>
+
+                <div style="margin-bottom:11px;">
+                    <strong style="color:#1d2327;">1. Noten im digitalen Formular eintragen</strong><br>
+                    Die Note liegt dir schon vor – aus deinem eigenen Unterricht oder weil die Kolleg*in sie dir
+                    genannt hat. Wähle sie in der Spalte <em>Note</em> aus; sie steht damit direkt im Protokoll-PDF.
+                </div>
+
+                <div style="margin-bottom:11px;">
+                    <strong style="color:#1b5e20;">2. Noten automatisch einsammeln</strong>
+                    <span style="display:inline-block; padding:1px 6px; border-radius:3px; background:#1b5e20; color:#fff; font-size:0.75em; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">BETA</span><br>
+                    Setze die Spalte <em>Note</em> auf <em>„automatisch einsammeln“</em> und wähle die Fachlehrkraft aus.
+                    Sie bekommt eine E-Mail mit Link zur Noteneingabe und wird bei Bedarf automatisch erinnert. Sobald
+                    alle eingesammelten Noten da sind, wirst du benachrichtigt und lädst das fertige PDF im Dashboard
+                    herunter. Bis dahin gibt es hier kein PDF.
+                </div>
+
+                <div style="margin-bottom:11px;">
+                    <strong style="color:#1d2327;">3. Noten im PDF per Hand eintragen</strong><br>
+                    Der Papierweg: Spalte <em>Note</em> leer lassen, PDF erzeugen und die Noten im Umlaufverfahren
+                    handschriftlich ergänzen. Alternativ später über „Bearbeiten“ im Dashboard nachtragen und ein
+                    neues PDF ziehen.
+                </div>
+
+                <p style="margin:0; padding-top:9px; border-top:1px solid #dcdcde; color:#50575e;">
+                    Die beiden Häkchen rechts (<em>WebUntis</em>, <em>vorher abgeschlossen</em>) gelten nur für selbst
+                    eingetragene Noten. Bei eingesammelten Fächern bestätigt die Fachlehrkraft den WebUntis-Eintrag selbst.
+                </p>
             </div>
 
             <div class="mh-grades-overlay-wrap">
             <div id="grades_overlay" class="mh-grades-overlay <?= $has_existing_grades ? 'mh-hidden' : '' ?>">
                 <div class="mh-grades-overlay-box">
-                    <p><strong>Noten eintragen oder anfragen?</strong></p>
-                    <p>Trage ein, was dir vorliegt, und setze die übrigen Fächer auf „✉ per Mail anfragen“.<br>
-                    Du kannst das PDF auch ohne Noten erzeugen und sie später über „Bearbeiten“ nachtragen.</p>
+                    <p><strong>Selbst eintragen, einsammeln lassen oder auf Papier?</strong></p>
+                    <p>Trage ein, was dir vorliegt, setze die übrigen Fächer auf „automatisch einsammeln“<br>
+                    – oder lass die Spalte leer und ergänze die Noten später auf dem PDF.</p>
                     <button type="button" id="btn_show_grades">Fächer &amp; Noten bearbeiten</button>
                 </div>
             </div>
@@ -523,7 +545,7 @@ details.mh-help-notice-box[open] summary::before {
                         </td>
                         <td>
                             <select name="subj_teacher[]">
-                                <option value="">-- Lehrer --</option>
+                                <option value="">-- Lehrkraft --</option>
                                 <?php if(!empty($teachers_list)): foreach($teachers_list as $t): ?>
                                     <option value="<?= esc_attr($t['name']) ?>" <?= selected($s['teacher'] ?? '', $t['name']) ?>>
                                         <?= esc_html($t['name']) ?> (<?= esc_html($t['long_name']) ?>)
@@ -537,7 +559,7 @@ details.mh-help-notice-box[open] summary::before {
 							<?php foreach(['1','2','3','4','5','6','NB','NE'] as $n): ?>
 								<option value="<?= $n ?>" <?= selected($s['grade'] ?? '', $n) ?>><?= $n ?></option>
 							<?php endforeach; ?>
-							<option value="<?= esc_attr($collect_marker) ?>" <?= selected(($s['collect'] ?? '0'), '1') ?>>✉ per Mail anfragen</option>
+							<option value="<?= esc_attr($collect_marker) ?>" <?= selected(($s['collect'] ?? '0'), '1') ?>>automatisch einsammeln</option>
 						</select>
 					</td>
                         <td>
@@ -575,12 +597,12 @@ details.mh-help-notice-box[open] summary::before {
             </button>
         </div>
         <p id="collect_hint" style="font-size:0.9em; color:#555; margin-top:10px; display:none;">
-            <strong>Noteneinsammlung <span style="color:#1b5e20;">(BETA)</span>:</strong> Dieses Verfahren ist neu und
-            wird noch erprobt. Die angefragten Fachlehrkräfte erhalten eine E-Mail mit Link zur Noteneingabe und werden
-            bei Bedarf automatisch erinnert; in keiner Mail steht eine Note. Sobald alle angefragten Noten vorliegen,
-            wirst du benachrichtigt und lädst das fertige Formular im Dashboard herunter. Bis dahin gibt es hier kein
-            PDF. Für jedes angefragte Fach muss eine Lehrkraft ausgewählt sein, zu der sich eine E-Mail-Adresse
-            auflösen lässt. Wenn etwas klemmt, sag Bescheid – und sammle im Zweifel auf Papier.
+            <strong>Noten automatisch einsammeln <span style="color:#1b5e20;">(BETA)</span>:</strong> Dieses Verfahren ist
+            neu und wird noch erprobt. Die betroffenen Fachlehrer*innen erhalten eine E-Mail mit Link zur Noteneingabe und
+            werden bei Bedarf automatisch erinnert; in keiner Mail steht eine Note. Sobald alle eingesammelten Noten
+            vorliegen, wirst du benachrichtigt und lädst das fertige Formular im Dashboard herunter. Bis dahin gibt es
+            hier kein PDF. Für jedes eingesammelte Fach muss eine Lehrkraft ausgewählt sein, zu der sich eine
+            E-Mail-Adresse auflösen lässt. Wenn etwas klemmt, sag Bescheid – und sammle im Zweifel auf Papier.
         </p>
     </form>
 </div>
@@ -612,7 +634,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         studentSelect.disabled = false; 
         studentSelect.innerHTML = `
-            <option value="">-- Schüler wählen --</option>
+            <option value="">-- Schüler*in wählen --</option>
             <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in Liste) --</option>
         `;
 
@@ -631,7 +653,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             studentSelect.innerHTML = `
-                <option value="">-- Schüler wählen --</option>
+                <option value="">-- Schüler*in wählen --</option>
                 <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in Liste) --</option>
             `;
             if (data.success && data.data) {
@@ -797,7 +819,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     triggers.forEach(r => r.addEventListener('change', updateToggles));
-    setTimeout(() => { updateToggles(); }, 100);
+    setTimeout(() => { updateToggles(); updateProtocolMode(); }, 100);
 
     // 8b. PROTOKOLL-MODUS
     // Liegt ein bestehendes Protokoll bei, gibt es hier nichts einzusammeln - die Noten
@@ -824,6 +846,28 @@ document.addEventListener('DOMContentLoaded', function() {
         return n;
     }
 
+    // Die beiden Häkchen gehören zur selbst eingetragenen Note. Wird ein Fach
+    // eingesammelt, bestätigt die Fachlehrkraft den WebUntis-Eintrag im eigenen
+    // Formular - dann darf hier nichts stehen, was sie gleich überschreibt.
+    function syncRowChecks() {
+        document.querySelectorAll('select[name="subj_grade[]"]').forEach(sel => {
+            const row = sel.closest('tr');
+            if (!row) return;
+            const isCollect = sel.value === COLLECT_MARKER;
+            row.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (isCollect) {
+                    cb.checked  = false;
+                    cb.disabled = true;
+                    cb.title    = 'Wird von der Fachlehrkraft beim Eintragen der Note bestätigt.';
+                } else {
+                    cb.disabled = false;
+                    cb.title    = '';
+                }
+                cb.parentElement.style.opacity = isCollect ? '0.35' : '1';
+            });
+        });
+    }
+
     function updateProtocolMode() {
         const existing = protModeExisting && protModeExisting.checked;
         const n        = existing ? 0 : countCollectRows();
@@ -833,6 +877,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (collectBtn)  collectBtn.style.display  = show ? '' : 'none';
         if (collectHint) collectHint.style.display = show ? '' : 'none';
         if (countLabel)  countLabel.textContent    = show ? '(' + n + (n === 1 ? ' Fach)' : ' Fächer)') : '';
+
+        // Muss NACH updateToggles() laufen: das schaltet beim Aufklappen des
+        // Protokollbereichs pauschal alle Felder wieder frei.
+        syncRowChecks();
     }
 
     if (protModeCreate)   protModeCreate.addEventListener('change', updateProtocolMode);
@@ -966,6 +1014,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Neu angehängte Zeilen müssen denselben Aktiv/Inaktiv-Zustand bekommen
         // wie der Rest des Protokollbereichs.
         if (typeof updateToggles === 'function') updateToggles();
+        if (typeof updateProtocolMode === 'function') updateProtocolMode();
         checkNBRequirement();
     }
 

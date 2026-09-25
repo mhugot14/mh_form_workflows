@@ -188,11 +188,14 @@ class Noten_Controller {
 			? 'klassenlehrer'
 			: 'fachlehrer';
 
+		// "Fach vorher abgeschlossen" steht in diesem Formular bewusst nicht zur Wahl -
+		// es gehört zur selbst eingetragenen Note und wird im Abmeldeformular gesetzt.
+		// Der bestehende Wert wird deshalb durchgereicht statt stillschweigend geleert.
 		$this->case_repo->set_item_grade( $case_id, $idx, [
 			'grade'     => $grade,
 			'remark'    => $remark,
 			'webuntis'  => isset( $_POST['webuntis'] ),
-			'completed' => isset( $_POST['completed'] ),
+			'completed' => '1' === ( $item['completed'] ?? '0' ),
 		], get_current_user_id(), $role );
 
 		$this->maybe_complete_case( $case_id );
