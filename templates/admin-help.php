@@ -383,6 +383,20 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td>Antrag auf Dienstbefreiung / Sonderurlaub. Wird <strong>nicht</strong> gespeichert – das PDF wird nach dem Absenden direkt zum Download ausgeliefert.</td>
                     </tr>
                     <tr>
+                        <td><strong>Dashboard</strong><br><small>Einstiegsseite</small></td>
+                        <td><code>[mh_dashboard]</code></td>
+                        <td><span class="mh-badge mh-badge-login">angemeldet</span></td>
+                        <td>
+                            Sammelt in vier Blöcken, was gerade offen ist: <em>Noten, die von dir erwartet werden</em>
+                            (als Fachlehrkraft), <em>laufende Absentismus-Fälle</em>, <em>selbst gestartete
+                            Noteneinsammlungen</em> mit Fortschritt und die <em>letzten eigenen Anträge</em>.
+                            Darüber Schnellzugriffe auf die Formulare, darunter Verweise auf die vollständigen Listen
+                            und Archive. Der Shortcode liest nur &ndash; er legt nichts an und ändert nichts.
+                            Administratoren können über einen Link auf die Gesamtsicht aller Vorgänge umschalten.
+                            Die Verweise erscheinen nur, wenn die jeweilige Seite in den Einstellungen hinterlegt ist.
+                        </td>
+                    </tr>
+                    <tr>
                         <td><strong>Benutzer-Dashboard</strong><br><small>„Meine Anträge“</small></td>
                         <td><code>[mh_my_submissions]</code></td>
                         <td><span class="mh-badge mh-badge-login">angemeldet</span></td>

@@ -7,6 +7,7 @@ namespace Mh\FormWorkflows\Setup;
 use Mh\FormWorkflows\Controller\Form_Controller;
 use Mh\FormWorkflows\Controller\Fall_Controller;
 use Mh\FormWorkflows\Controller\Noten_Controller;
+use Mh\FormWorkflows\Controller\Dashboard_Controller;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Class_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
@@ -42,6 +43,11 @@ class Plugin_Bootstrap {
 	 * @var Noten_Controller Controller der digitalen Noteneinsammlung.
 	 */
 	private Noten_Controller $noten_controller;
+
+	/**
+	 * @var Dashboard_Controller Einstiegsseite mit allem, was gerade offen ist.
+	 */
+	private Dashboard_Controller $dashboard_controller;
 
 	/**
 	 * @var Reminder_Service Wird auch vom Cron-Hook gebraucht.
@@ -108,6 +114,15 @@ class Plugin_Bootstrap {
 			$pdf_generator
 		);
 
+		// Liest nur - das Dashboard fasst zusammen, was die anderen Controller anlegen.
+		$this->dashboard_controller = new Dashboard_Controller(
+			$submission_repo,
+			$fall_repo,
+			$noten_repo,
+			$account_repo,
+			$this->reminder_service
+		);
+
 		// 3. Hooks registrieren
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		
@@ -145,6 +160,7 @@ class Plugin_Bootstrap {
 
 		add_shortcode( 'mh_form_workflow', [ $this->form_controller, 'render_form' ] );
 		add_shortcode( 'mh_my_submissions', [ $this->form_controller, 'render_dashboard' ] );
+		add_shortcode( 'mh_dashboard', [ $this->dashboard_controller, 'render' ] );
 
 		// Digitale Noteneinsammlung: nur für eingeloggte Nutzer, deshalb keine nopriv-Hooks.
 		add_action( 'admin_post_mh_noten_save_item', [ $this->noten_controller, 'handle_save_item' ] );
@@ -307,6 +323,17 @@ class Plugin_Bootstrap {
 								'selected' => $options['page_id_abmeldung_student_v1'] ?? 0,
 								'show_option_none' => '-- Seite wählen --'
 							]); ?>
+						</td>
+					</tr>
+					<tr>
+						<th>Seite für „Meine Anträge"</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_my_submissions]',
+								'selected' => $options['page_id_mh_my_submissions'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">Seite mit dem Shortcode <code>[mh_my_submissions]</code>. Wird vom Dashboard verlinkt.</p>
 						</td>
 					</tr>
 					<tr>
