@@ -87,6 +87,13 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		$protocol = ( 'create' === $protocol_mode ) ? '1' : '0';
 
 		$certificate  = $this->sanitize_text( $data['certificate'] ?? '' );
+		// Wird kein Zeugnis erteilt, muss das begruendet werden - die Begruendung steht
+		// hinterher auf der Abmeldung und ist der einzige Beleg dafuer, warum die
+		// Schuelerin oder der Schueler ohne Zeugnis geht.
+		$cert_none_reason = sanitize_textarea_field( $data['certificate_none_reason'] ?? '' );
+		if ( 'none' !== $certificate ) {
+			$cert_none_reason = '';
+		}
 		$missed_hours = (int) ( $data['missed_hours'] ?? 0 );
 		$missed_ue    = (int) ( $data['missed_ue'] ?? 0 );
 		$missed_hours_raw = trim( (string) ( $data['missed_hours'] ?? '' ) ); // Für Leere-Prüfung
@@ -142,6 +149,13 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( 'av_klasse' === $compulsory && empty( $av_date_start ) ) $this->add_error( 'av_date_start', 'AV-Klasse: Startdatum fehlt.' );
 		if ( 'bildungsgang' === $compulsory && empty( $education_track ) ) $this->add_error( 'new_education_track', 'Bitte Bildungsgang angeben.' );
 		
+
+		if ( ! in_array( $certificate, [ 'abgang', 'ueberweisung', 'none' ], true ) ) {
+			$this->add_error( 'certificate', 'Bitte auswählen, welches Zeugnis erteilt wird.' );
+		}
+		if ( 'none' === $certificate && '' === trim( $cert_none_reason ) ) {
+			$this->add_error( 'certificate_none_reason', 'Bitte begründen, warum kein Zeugnis erteilt wird.' );
+		}
 
 		if ( '' === $protocol_mode ) {
 			$this->add_error( 'protocol_mode', 'Bitte angeben, ob das Zeugniskonferenzprotokoll jetzt erstellt wird oder ob ein bestehendes beiliegt.' );
@@ -262,7 +276,8 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			'av_talk_with'        => $av_talk_with,
 			'av_talk_date'        => $av_talk_date,
 			'new_education_track' => $education_track,
-			'certificate'         => $certificate,
+			'certificate'             => $certificate,
+			'certificate_none_reason' => $cert_none_reason,
 			'missed_hours'        => $missed_hours,
 			'missed_ue'           => $missed_ue,
 			'protocol_mode'       => $protocol_mode,

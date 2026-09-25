@@ -426,6 +426,14 @@ details.mh-help-notice-box[open] summary::before {
             <h4>3. Zeugnis <span class="req">*</span></h4>
             <div class="radio-group"><input type="radio" name="certificate" value="abgang" id="z_ab" required <?= $chk('certificate', 'abgang') ?>> <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small>(Ohne Abschluss)</small></label></div>
             <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb der Schulstufe)</small></label></div>
+            <div class="radio-group"><input type="radio" name="certificate" value="none" id="z_kein" class="toggle-trigger" data-target="cert_none_wrap" required <?= $chk('certificate', 'none') ?>> <label for="z_kein">Kein Zeugnis <small>(Begründung erforderlich)</small></label></div>
+            <div id="cert_none_wrap" class="mh-sub-group toggle-target">
+                <div class="mh-input-group">
+                    <label>Begründung, warum kein Zeugnis erteilt wird <span class="req">*</span></label>
+                    <textarea name="certificate_none_reason" rows="3" style="width:100%;" class="<?= $err_cls('certificate_none_reason') ?>" placeholder="z. B. Schüler*in war nie anwesend, keine Leistungsbewertung möglich"><?= esc_textarea($form_data['certificate_none_reason'] ?? '') ?></textarea>
+                    <p style="margin:4px 0 0; font-size:0.85em; color:#6f6f6f;">Wird auf der Abmeldung mit abgedruckt.</p>
+                </div>
+            </div>
 
             <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px; <?= isset($form_errors['protocol_mode']) ? 'border:2px solid #d63638; padding:10px;' : '' ?>">
                 <div style="font-weight:bold; margin-bottom:10px;">Zeugniskonferenzprotokoll <span class="req">*</span></div>

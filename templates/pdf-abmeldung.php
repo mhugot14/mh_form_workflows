@@ -195,6 +195,19 @@ $date_fmt = function($field) use ($data) {
                 <span class="small-text" style="padding-left:15px;">(Der/die SchülerIn verlässt die Schule/den Bildungsgang <u>nach</u> Erfüllung der Schulpflicht <u>ohne</u> Abschluss.)</span>
             </td>
         </tr>
+        <tr>
+            <td style="padding: 5px;">
+                <?= $chk('certificate', 'none') ?> <b>Kein Zeugnis</b>
+                <?php if ( 'none' === ( $data['certificate'] ?? '' ) ) : ?>
+                    <div style="border:1px solid #000; padding:4px 6px; margin:4px 0 0 15px; font-size:8.5pt; line-height:1.3;">
+                        <span style="font-weight:bold;">Begründung:</span>
+                        <?= nl2br( htmlspecialchars( (string) ( $data['certificate_none_reason'] ?? '' ) ) ) ?>
+                    </div>
+                <?php else : ?>
+                    <br><span class="small-text" style="padding-left:15px;">(Es wird kein Zeugnis erteilt; die Begründung ist anzugeben.)</span>
+                <?php endif; ?>
+            </td>
+        </tr>
     </table>
 
     <!-- UNTERSCHRIFTEN -->

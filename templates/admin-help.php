@@ -428,6 +428,15 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                 </tbody>
             </table>
 
+            <h3>Zeugnisart</h3>
+            <p>
+                In Abschnitt 3 wird festgelegt, welches Zeugnis erteilt wird: <strong>Abgangszeugnis</strong> oder
+                <strong>Überweisungszeugnis</strong> (beide gem. § 49 SchulG) oder <strong>Kein Zeugnis</strong>.
+                Bei „Kein Zeugnis“ ist eine Begründung <em>verpflichtend</em>; sie wird auf der Abmeldung mit abgedruckt
+                und ist dort der einzige Beleg dafür, warum die Schüler*in ohne Zeugnis geht. Ohne Begründung lässt sich
+                das Formular nicht absenden.
+            </p>
+
             <h3>Zeugniskonferenzprotokoll</h3>
             <p>
                 Dem Formular liegt <strong>immer</strong> ein Zeugniskonferenzprotokoll bei. In Abschnitt 3 wird
