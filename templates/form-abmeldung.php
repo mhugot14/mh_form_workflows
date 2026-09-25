@@ -268,6 +268,7 @@ details.mh-help-notice-box[open] summary::before {
                             <option value="<?= $c['wu_id'] ?>" 
                                     data-fulltime="<?= $c['is_fulltime'] ?>" 
                                     data-name="<?= esc_attr($c['name']) ?>"
+                                    data-track="<?= esc_attr($c['track_key'] ?? '') ?>"
                                     <?= selected($val('class_wu_id'), $c['wu_id']) ?>>
                                 <?= esc_html($c['name']) ?>
                             </option>
@@ -636,7 +637,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 5. CHANGE LISTENERS
+
+    // Bildungsgang der gewählten Klasse. Die Stundentafel hängt am Bildungsgang und ist
+    // für alle Schüler einer Klasse dieselbe - deshalb kommt der Schlüssel von der Klasse
+    // und nicht vom einzelnen Schüler. Nur so bekommt auch ein manuell eingetragener
+    // Schüler seine Fächer. Individuell bleiben allein die Kursbelegungen (schild_id).
+    let currentClassTrack = '';
+
+    function readClassTrack() {
+        const opt = classSelect.options[classSelect.selectedIndex];
+        currentClassTrack = (opt && opt.dataset.track) ? opt.dataset.track : '';
+    }
+
     classSelect.addEventListener('change', function() {
+        readClassTrack();
         fetchStudents(this.value);
         updatePerspectiveUI();
     });
@@ -650,6 +664,9 @@ document.addEventListener('DOMContentLoaded', function() {
             f_last.readOnly = false; f_first.readOnly = false; f_dob.readOnly = false;
             f_last.style.backgroundColor = '#fff'; f_first.style.backgroundColor = '#fff'; f_dob.style.backgroundColor = '#fff';
             h_last.value = ''; h_first.value = '';
+            // Kein Schild-Datensatz, also keine Kursbelegungen - die Stundentafel der
+            // Klasse gibt es aber trotzdem.
+            fetchSubjectRows(currentClassTrack, '');
         } else if (this.value !== '') {
             f_last.value = opt.dataset.last || '';
             f_first.value = opt.dataset.first || '';
@@ -658,14 +675,17 @@ document.addEventListener('DOMContentLoaded', function() {
             f_last.style.backgroundColor = '#e9e9e9'; f_first.style.backgroundColor = '#e9e9e9'; f_dob.style.backgroundColor = '#e9e9e9';
             h_last.value = f_last.value; h_first.value = f_first.value;
             calcAge();
-            // Fächer aus Stundentafel des Bildungsgangs + Kursbelegungen vorbelegen
-            fetchSubjectRows(opt.dataset.track || '', opt.dataset.schild || '');
+            // Fächer aus Stundentafel des Bildungsgangs + Kursbelegungen vorbelegen.
+            // Die Klasse gewinnt; der Schülerwert greift nur, solange die Klasse noch
+            // keinen Bildungsgang zugeordnet hat.
+            fetchSubjectRows(currentClassTrack || opt.dataset.track || '', opt.dataset.schild || '');
         }
     });
 
     // 6. INITIALISIERUNG (Edit-Modus)
     const initialClassId = classSelect.value;
     const initialStudentId = "<?= $val('student_wu_id') ?>";
+    readClassTrack();
     if (initialClassId) {
         fetchStudents(initialClassId, initialStudentId);
         updatePerspectiveUI();

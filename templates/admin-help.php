@@ -309,7 +309,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
             <div class="mh-step-card">
                 <span class="dashicons dashicons-database-import"></span>
                 <h3>1. Stammdaten prüfen</h3>
-                <p>Klassen, Schüler*innen, Lehrkräfte und Fächer kommen aus dem Plugin <em>WebUntis Analyser</em>. Dort muss ein aktueller Import vorliegen.</p>
+                <p>Klassen, Schüler*innen, Lehrkräfte und Fächer kommen aus dem Plugin <em>WebUntis Analyser</em>. Dort muss ein aktueller Import vorliegen. Zusätzlich muss dort unter <em>Klassen</em> jeder Klasse ein Bildungsgang zugeordnet sein &ndash; nur dann werden im Abgangsformular die Fächer der Stundentafel vorbelegt.</p>
             </div>
             <div class="mh-step-card">
                 <span class="dashicons dashicons-admin-page"></span>
@@ -661,6 +661,8 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                     <div>
                         <strong>Stammdaten-Abhängigkeit:</strong><br>
                         Die Auswahl von Klassen, Schüler*innen, Lehrkräften und Fächern basiert auf den Tabellen des Plugins <em>WebUntis Analyser</em>. Stellen Sie sicher, dass dort regelmäßig ein Import durchgeführt wird. Fehlen die Tabellen, bleiben die Auswahlfelder leer – das Plugin bricht nicht ab.
+                        <br><br>
+                        Die Fächer-Vorbelegung im Abgangsformular speist sich aus zwei Quellen: der <strong>Stundentafel des Bildungsgangs</strong> (gilt für alle Schüler*innen einer Klasse, gepflegt unter <em>WebUntis Analyser → Bildungsgänge</em>, der Klasse zugeordnet unter <em>Klassen</em>) und den <strong>Kursbelegungen</strong> der einzelnen Person (nur dort steht eine Lehrkraft). Bei einem manuellen Schülereintrag gibt es keine Kursbelegungen; die Stundentafel der Klasse wird trotzdem vorbelegt. Hat eine Klasse keinen Bildungsgang, bleibt die Fächertabelle leer.
                     </div>
                 </li>
                 <li>

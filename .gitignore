@@ -13,3 +13,13 @@ Thumbs.db
 
 # WordPress Standards (falls vorhanden)
 wp-config.php
+
+# Schild- und WebUntis-Exporte sowie Testdaten.
+# Diese Dateien enthalten personenbezogene Daten (Schüler, Lehrkräfte, Noten) und
+# dürfen das Repository nie erreichen - auch nicht versehentlich über "git add -A".
+/testdaten/
+/import/
+/uploads/
+*.csv
+*.xlsx
+*.xls
