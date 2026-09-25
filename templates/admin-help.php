@@ -400,7 +400,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td><strong>Benutzer-Dashboard</strong><br><small>„Meine Anträge“</small></td>
                         <td><code>[mh_my_submissions]</code></td>
                         <td><span class="mh-badge mh-badge-login">angemeldet</span></td>
-                        <td>Liste der eigenen gespeicherten Abmeldungen, gruppiert nach Schuljahr. Pro Eintrag: PDF erneut herunterladen, im Formular bearbeiten, löschen. Der Bearbeiten-Link setzt voraus, dass die Abmeldungs-Seite in den Einstellungen verknüpft ist.</td>
+                        <td>Liste der eigenen Abmeldungen und Dienstbefreiungen, gruppiert nach Schuljahr. Pro Eintrag: PDF erneut herunterladen, im Formular bearbeiten, löschen. Der Bearbeiten-Link setzt voraus, dass die Abmeldungs-Seite in den Einstellungen verknüpft ist. Absentismus- und Noten-Fälle erscheinen hier bewusst nicht &ndash; sie sind keine Anträge und haben eigene Oberflächen.</td>
                     </tr>
                 </tbody>
             </table>

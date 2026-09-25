@@ -264,7 +264,13 @@ class Form_Controller {
 		if ( ! is_user_logged_in() ) return '<p>Bitte anmelden.</p>';
 
 		$user_id = get_current_user_id();
-		$submissions = $this->repository->get_submissions_by_user( $user_id );
+		// Nur echte Anträge: Absentismus- und Noten-Fälle liegen in derselben Tabelle,
+		// wurden hier aber als "Abmeldung" beschriftet und mit einem PDF-Link versehen,
+		// der für sie nicht funktioniert.
+		$submissions = $this->repository->get_submissions_by_user(
+			$user_id,
+			Submission_Repository::ANTRAG_FORM_TYPES
+		);
 		
 		$urls = [
 			'service_leave_v1'     => $this->get_url_for_form_type('service_leave_v1'),

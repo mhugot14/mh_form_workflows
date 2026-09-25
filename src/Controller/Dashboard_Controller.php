@@ -81,7 +81,10 @@ class Dashboard_Controller {
 	 * die vollständige Liste steckt hinter [mh_my_submissions].
 	 */
 	private function collect_submissions( int $user_id ): array {
-		$all = $this->submission_repo->get_submissions_by_user( $user_id );
+		$all = $this->submission_repo->get_submissions_by_user(
+			$user_id,
+			Submission_Repository::ANTRAG_FORM_TYPES
+		);
 
 		foreach ( $all as &$sub ) {
 			$sub['data'] = is_string( $sub['form_data'] )

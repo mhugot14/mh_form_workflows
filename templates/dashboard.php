@@ -263,12 +263,13 @@ $offen_gesamt = count( $absentismus ) + count( $noten_owned ) + count( $noten_to
 	<!-- 4. EIGENE EINSENDUNGEN -->
 	<div class="mh-db-card">
 		<h3>
-			Meine letzten Anträge
+			Zuletzt von dir eingereicht
+			<span style="font-weight:400;color:#6f6f6f;">Abmeldungen und Dienstbefreiungen</span>
 			<span class="mh-db-count"><?= (int) $submissions['total'] ?></span>
 		</h3>
 		<div class="mh-db-body">
 			<?php if ( empty( $submissions['items'] ) ) : ?>
-				<p class="mh-db-empty">Noch nichts eingereicht.</p>
+				<p class="mh-db-empty">Du hast noch keine Abmeldung und keinen Antrag auf Dienstbefreiung eingereicht.</p>
 			<?php else : ?>
 				<ul class="mh-db-list">
 					<?php foreach ( $submissions['items'] as $sub ) :

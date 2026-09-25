@@ -59,12 +59,33 @@ class Submission_Repository implements Submission_Repository_Interface {
     return $row;
 }
 	/**
-	 * Holt alle Einsendungen eines bestimmten Users, sortiert nach Datum (neu oben).
+	 * Formulartypen, die eine Person selbst einreicht und als PDF zurückbekommt.
+	 *
+	 * In derselben Tabelle liegen auch Absentismus- und Noten-Fälle. Die sind keine
+	 * Anträge, sondern laufende Vorgänge mit eigener Oberfläche — in einer Antragsliste
+	 * hätten sie nichts zu suchen und ihr PDF-Download ginge ins Leere.
 	 */
-	public function get_submissions_by_user( int $user_id ): array {
+	public const ANTRAG_FORM_TYPES = [ 'abmeldung_student_v1', 'service_leave_v1' ];
+
+	/**
+	 * Holt Einsendungen eines bestimmten Users, sortiert nach Datum (neu oben).
+	 *
+	 * @param string[] $form_types Auf diese Typen einschränken; leer = alle.
+	 */
+	public function get_submissions_by_user( int $user_id, array $form_types = [] ): array {
+		$where  = [ 'user_id = %d' ];
+		$params = [ $user_id ];
+
+		if ( ! empty( $form_types ) ) {
+			$where[]  = 'form_type IN (' . implode( ', ', array_fill( 0, count( $form_types ), '%s' ) ) . ')';
+			$params   = array_merge( $params, array_values( $form_types ) );
+		}
+
+		$where_clause = implode( ' AND ', $where );
+
 		return $this->db->get_results( $this->db->prepare(
-			"SELECT * FROM {$this->table_name} WHERE user_id = %d ORDER BY created_at DESC",
-			$user_id
+			"SELECT * FROM {$this->table_name} WHERE $where_clause ORDER BY created_at DESC",
+			...$params
 		), ARRAY_A );
 	}
 
