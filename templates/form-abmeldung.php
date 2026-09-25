@@ -977,9 +977,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function buildSubjectOptions(select, trackOptions, otherOptions, selectedValue) {
+    function buildSubjectOptions(select, trackOptions, otherOptions, selectedValue, courseOptions) {
+        courseOptions = courseOptions || [];
         select.innerHTML = '';
         select.add(new Option('-- Fach wählen --', ''));
+
+        // Kurse zuerst: für Schüler*innen mit Kursbelegung ist das die wahrscheinlichste
+        // Auswahl. Eine Einrückung unter das Fach ist nicht möglich, weil das Trägerfach
+        // in Schild nur ein Sammelbegriff ("Kurs_11_12") ist und kein echtes Fach.
+        if (courseOptions.length) {
+            const gc = document.createElement('optgroup');
+            gc.label = 'Kurse dieser Person';
+            courseOptions.forEach(o => gc.appendChild(new Option(o.label, o.value)));
+            select.add(gc);
+        }
 
         if (trackOptions.length) {
             const g = document.createElement('optgroup');
@@ -1007,9 +1018,10 @@ document.addEventListener('DOMContentLoaded', function() {
     function fillSubjectRows(payload) {
         if (!subjectTbody || subjectsLocked) return;
 
-        const rowsData     = payload.rows || [];
-        const trackOptions = payload.track_options || [];
-        const otherOptions = payload.other_options || [];
+        const rowsData      = payload.rows || [];
+        const trackOptions  = payload.track_options || [];
+        const otherOptions  = payload.other_options || [];
+        const courseOptions = payload.course_options || [];
 
         ensureRowCount(Math.max(rowsData.length, subjectRows().length));
 
@@ -1019,7 +1031,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const gradeSel = row.querySelector('select[name="subj_grade[]"]');
             const data     = rowsData[i];
 
-            if (nameSel) buildSubjectOptions(nameSel, trackOptions, otherOptions, data ? data.value : '');
+            if (nameSel) buildSubjectOptions(nameSel, trackOptions, otherOptions, data ? data.value : '', courseOptions);
             if (gradeSel) gradeSel.value = '';
             if (teachSel) {
                 // Lehrkraft nur bei Kursen: die Stundentafel kennt keine Fachlehrer.

@@ -86,7 +86,10 @@ class Form_Controller {
 		}
 
 		// 2. Klassenübergreifende Kurse. Angezeigt wird die Kursbezeichnung — das Trägerfach
-		//    (z.B. "Kurs_11_12") ist im Konferenzprotokoll nicht aussagekräftig.
+		//    (z.B. "Kurs_11_12") ist nur ein Sammelbegriff und im Konferenzprotokoll nicht
+		//    aussagekräftig. Deshalb lassen sich Kurse auch nicht unter ihr Fach einsortieren;
+		//    sie bekommen im Dropdown eine eigene Gruppe.
+		$course_options = [];
 		foreach ( $this->student_course_repo->get_courses_for_student( $schild_id ) as $c ) {
 			$course_name = (string) $c['course_name'];
 			if ( '' === $course_name || isset( $seen[ $course_name ] ) ) {
@@ -94,10 +97,21 @@ class Form_Controller {
 			}
 			$seen[ $course_name ] = true;
 
+			$teacher = (string) ( $c['teacher_short'] ?? '' );
+			$label   = '' !== $teacher ? $course_name . ' (' . $teacher . ')' : $course_name;
+
+			// Das Dropdown führt die Kurse eigenständig: Wer eine vorbelegte Kurszeile
+			// löscht oder umstellt, konnte den Kurs bisher nicht wieder auswählen.
+			$course_options[] = [
+				'value'   => $course_name,
+				'label'   => $label,
+				'teacher' => $teacher,
+			];
+
 			$rows[] = [
 				'value'     => $course_name,
 				'label'     => $course_name,
-				'teacher'   => (string) ( $c['teacher_short'] ?? '' ),
+				'teacher'   => $teacher,
 				'is_course' => true,
 			];
 		}
@@ -117,9 +131,10 @@ class Form_Controller {
 		}
 
 		wp_send_json_success( [
-			'rows'          => $rows,
-			'track_options' => $track_options,
-			'other_options' => $other_options,
+			'rows'           => $rows,
+			'course_options' => $course_options,
+			'track_options'  => $track_options,
+			'other_options'  => $other_options,
 		] );
 	}
 	
