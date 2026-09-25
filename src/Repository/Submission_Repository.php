@@ -59,13 +59,15 @@ class Submission_Repository implements Submission_Repository_Interface {
     return $row;
 }
 	/**
-	 * Formulartypen, die eine Person selbst einreicht und als PDF zurückbekommt.
+	 * Formulartypen, die als Antrag gespeichert werden und später wieder abrufbar sind.
 	 *
-	 * In derselben Tabelle liegen auch Absentismus- und Noten-Fälle. Die sind keine
-	 * Anträge, sondern laufende Vorgänge mit eigener Oberfläche — in einer Antragsliste
-	 * hätten sie nichts zu suchen und ihr PDF-Download ginge ins Leere.
+	 * Nur die Abmeldung: Die Dienstbefreiung wird bewusst nicht gespeichert, sondern
+	 * direkt als PDF ausgeliefert (siehe Form_Controller::handle_submission()). In
+	 * derselben Tabelle liegen ausserdem Absentismus- und Noten-Fälle — das sind keine
+	 * Anträge, sondern laufende Vorgänge mit eigener Oberfläche, und ihr PDF-Download
+	 * ginge hier ins Leere.
 	 */
-	public const ANTRAG_FORM_TYPES = [ 'abmeldung_student_v1', 'service_leave_v1' ];
+	public const ANTRAG_FORM_TYPES = [ 'abmeldung_student_v1' ];
 
 	/**
 	 * Holt Einsendungen eines bestimmten Users, sortiert nach Datum (neu oben).

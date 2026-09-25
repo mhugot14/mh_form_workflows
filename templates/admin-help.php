@@ -389,7 +389,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td>
                             Sammelt in vier Blöcken, was gerade offen ist: <em>Noten, die von dir erwartet werden</em>
                             (als Fachlehrkraft), <em>laufende Absentismus-Fälle</em>, <em>selbst gestartete
-                            Noteneinsammlungen</em> mit Fortschritt und die <em>letzten eigenen Anträge</em>.
+                            Noteneinsammlungen</em> mit Fortschritt und die <em>zuletzt eingereichten Abmeldungen</em>.
                             Darüber Schnellzugriffe auf die Formulare, darunter Verweise auf die vollständigen Listen
                             und Archive. Der Shortcode liest nur &ndash; er legt nichts an und ändert nichts.
                             Administratoren können über einen Link auf die Gesamtsicht aller Vorgänge umschalten.
@@ -400,7 +400,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td><strong>Benutzer-Dashboard</strong><br><small>„Meine Anträge“</small></td>
                         <td><code>[mh_my_submissions]</code></td>
                         <td><span class="mh-badge mh-badge-login">angemeldet</span></td>
-                        <td>Liste der eigenen Abmeldungen und Dienstbefreiungen, gruppiert nach Schuljahr. Pro Eintrag: PDF erneut herunterladen, im Formular bearbeiten, löschen. Der Bearbeiten-Link setzt voraus, dass die Abmeldungs-Seite in den Einstellungen verknüpft ist. Absentismus- und Noten-Fälle erscheinen hier bewusst nicht &ndash; sie sind keine Anträge und haben eigene Oberflächen.</td>
+                        <td>Liste der eigenen gespeicherten Abmeldungen, gruppiert nach Schuljahr. Pro Eintrag: PDF erneut herunterladen, im Formular bearbeiten, löschen. Der Bearbeiten-Link setzt voraus, dass die Abmeldungs-Seite in den Einstellungen verknüpft ist. Dienstbefreiungen erscheinen hier nicht, weil sie nicht gespeichert werden; Absentismus- und Noten-Fälle ebenfalls nicht &ndash; das sind laufende Vorgänge mit eigenen Oberflächen.</td>
                     </tr>
                 </tbody>
             </table>

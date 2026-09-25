@@ -333,7 +333,7 @@ class Plugin_Bootstrap {
 								'selected' => $options['page_id_mh_my_submissions'] ?? 0,
 								'show_option_none' => '-- Seite wählen --'
 							]); ?>
-							<p class="description">Seite mit dem Shortcode <code>[mh_my_submissions]</code>. Wird vom Dashboard verlinkt.</p>
+							<p class="description">Seite mit dem Shortcode <code>[mh_my_submissions]</code> &ndash; die vollständige Liste der eigenen Abmeldungen. Wird vom Dashboard verlinkt.</p>
 						</td>
 					</tr>
 					<tr>
