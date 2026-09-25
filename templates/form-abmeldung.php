@@ -430,8 +430,11 @@ details.mh-help-notice-box[open] summary::before {
             <div id="cert_none_wrap" class="mh-sub-group toggle-target">
                 <div class="mh-input-group">
                     <label>Begründung, warum kein Zeugnis erteilt wird <span class="req">*</span></label>
-                    <textarea name="certificate_none_reason" rows="3" style="width:100%;" class="<?= $err_cls('certificate_none_reason') ?>" placeholder="z. B. Schüler*in war nie anwesend, keine Leistungsbewertung möglich"><?= esc_textarea($form_data['certificate_none_reason'] ?? '') ?></textarea>
-                    <p style="margin:4px 0 0; font-size:0.85em; color:#6f6f6f;">Wird auf der Abmeldung mit abgedruckt.</p>
+                    <textarea name="certificate_none_reason" rows="3" style="width:100%;" class="<?= $err_cls('certificate_none_reason') ?>" placeholder="z. B. Schüler*in ist zu Beginn des Schuljahres nie erschienen · Gastschüler*in, hat bereits ein Zeugnis"><?= esc_textarea($form_data['certificate_none_reason'] ?? '') ?></textarea>
+                    <p style="margin:4px 0 0; font-size:0.85em; color:#6f6f6f;">
+                        Wird auf der Abmeldung mit abgedruckt. Beispiele: <em>Schüler*in ist zu Beginn des Schuljahres nie
+                        erschienen</em> · <em>Gastschüler*in, hat bereits ein Zeugnis</em>.
+                    </p>
                 </div>
             </div>
 
