@@ -122,24 +122,48 @@ class Config_Check {
 	 * sondern von Hand ins Menü gehängt. Deshalb Suche statt Nachschlagen.
 	 */
 	private function dashboard_page_item(): array {
-		$found = get_posts( [
+		// Die Volltextsuche ist nur die Vorauswahl: sie trifft auch Seiten, die den
+		// Shortcode bloss erwähnen oder ihn im Titel tragen. Entschieden wird deshalb
+		// über has_shortcode(), wie bei den verknüpften Seiten auch.
+		$candidates = get_posts( [
 			'post_type'      => 'page',
-			'post_status'    => 'publish',
-			'posts_per_page' => 1,
+			'post_status'    => [ 'publish', 'draft', 'private', 'pending' ],
+			'posts_per_page' => 20,
 			's'              => '[mh_dashboard]',
-			'fields'         => 'ids',
 		] );
 
-		if ( empty( $found ) ) {
+		$published = null;
+		$other     = null;
+		foreach ( $candidates as $page ) {
+			if ( ! has_shortcode( (string) $page->post_content, 'mh_dashboard' ) ) {
+				continue;
+			}
+			if ( 'publish' === $page->post_status ) {
+				$published = $page;
+				break;
+			}
+			$other ??= $page;
+		}
+
+		if ( null !== $published ) {
+			return $this->item( 'ok', 'Dashboard', 'Seite "' . $published->post_title . '".' );
+		}
+
+		if ( null !== $other ) {
 			return $this->item(
 				'warn',
 				'Dashboard',
-				'Keine veröffentlichte Seite mit [mh_dashboard] gefunden.',
-				'Eine Seite mit diesem Shortcode anlegen und ins Menü hängen: sie bündelt alles Offene.'
+				'Seite "' . $other->post_title . '" enthält den Shortcode, ist aber nicht veröffentlicht (Status: ' . $other->post_status . ').',
+				'Nur veröffentlichte Seiten sind für Kolleg*innen erreichbar.'
 			);
 		}
 
-		return $this->item( 'ok', 'Dashboard', 'Seite "' . get_the_title( $found[0] ) . '" gefunden.' );
+		return $this->item(
+			'warn',
+			'Dashboard',
+			'Keine Seite mit [mh_dashboard] gefunden.',
+			'Eine Seite mit diesem Shortcode anlegen und ins Menü hängen: sie bündelt alles Offene. Eine Einstellung braucht es dafür nicht.'
+		);
 	}
 
 	/** Stammdaten aus dem webuntisAnalyser. */
