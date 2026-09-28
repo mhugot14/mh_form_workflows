@@ -333,6 +333,21 @@ class Plugin_Bootstrap {
 						</td>
 					</tr>
 					<tr>
+						<th>Seite für das Dashboard</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_dashboard]',
+								'selected' => $options['page_id_mh_dashboard'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">
+								Seite mit dem Shortcode <code>[mh_dashboard]</code>. Die Seite funktioniert auch ohne
+								diese Zuordnung &ndash; sie wird nur gebraucht, damit die Mails der Noteneinsammlung
+								darauf verweisen können.
+							</p>
+						</td>
+					</tr>
+					<tr>
 						<th>Seite für „Meine Anträge"</th>
 						<td>
 							<?php wp_dropdown_pages([

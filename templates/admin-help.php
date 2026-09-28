@@ -493,6 +493,9 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                             und Archive. Der Shortcode liest nur &ndash; er legt nichts an und ändert nichts.
                             Administratoren können über einen Link auf die Gesamtsicht aller Vorgänge umschalten.
                             Die Verweise erscheinen nur, wenn die jeweilige Seite in den Einstellungen hinterlegt ist.
+                            Die Seite selbst funktioniert auch ohne Zuordnung; wird sie in den Einstellungen
+                            hinterlegt, verweisen zusätzlich die Einladungs- und Erinnerungsmails der
+                            Noteneinsammlung darauf.
                         </td>
                     </tr>
                     <tr>
@@ -672,7 +675,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
             <ol class="mh-process">
                 <li><strong>Start:</strong> Klassenleitung füllt die Abmeldung aus, trägt im Protokollbereich Fächer und Lehrkräfte ein, setzt die gewünschten Fächer auf „automatisch einsammeln“ und klickt „Noteneinsammlung starten“.</li>
                 <li><strong>Vorprüfung:</strong> Jedes <em>eingesammelte</em> Fach braucht eine Lehrkraft, und zu deren Kürzel muss sich eine E-Mail-Adresse auflösen lassen (WebUntis Analyser → „Lehrer-Zuordnung“, Hauptadresse; Rückfall: E-Mail des verknüpften WordPress-Kontos). Fehlt etwas, startet der Prozess nicht und das Formular zeigt an, welche Fächer betroffen sind. Fächer mit selbst eingetragener Note werden dabei nicht geprüft.</li>
-                <li><strong>Einladung:</strong> Jede betroffene Fachlehrkraft erhält eine Mail mit Name der Schüler*in, Klasse und Link auf die Seite mit <code class="mh-code-soft">[mh_noten_eingabe]</code>. In keiner Mail steht eine Note.</li>
+                <li><strong>Einladung:</strong> Jede betroffene Fachlehrkraft erhält eine Mail mit Name der Schüler*in, Klasse und Link auf die Seite mit <code class="mh-code-soft">[mh_noten_eingabe]</code>. In keiner Mail steht eine Note. Ist eine Dashboard-Seite hinterlegt, enthält die Mail zusätzlich einen Verweis auf die Übersicht aller offenen Noteneingaben.</li>
                 <li><strong>Eingabe:</strong> Die Fachlehrkraft meldet sich an, trägt ihre Note ein und bestätigt, dass die Teilnoten in WebUntis stehen – mehr wird nicht abgefragt. Ein Doppelstart für dieselbe Abmeldung wird verhindert; es wird auf den bestehenden Fall weitergeleitet.</li>
                 <li><strong>Erinnerung:</strong> Ein täglicher Cron-Lauf erinnert säumige Lehrkräfte im eingestellten Abstand („Erinnerung nach Tagen“). Nach der eingestellten Anzahl erfolgloser Erinnerungen wird zusätzlich einmalig die Klassenleitung informiert („Klassenlehrer informieren nach“).</li>
                 <li><strong>Nachtragen:</strong> Die Klassenleitung kann fehlende Noten in der Fall-Ansicht selbst nachtragen (z.&nbsp;B. nach Rücksprache).</li>

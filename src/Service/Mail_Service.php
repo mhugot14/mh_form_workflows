@@ -51,17 +51,15 @@ class Mail_Service {
 				 <p>Bitte trage sie über den folgenden Link ein:</p>
 				 <p><a href="%s" style="background:#0073aa;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;">Note jetzt eintragen</a></p>
 				 <p style="font-size:12px;color:#666;">Falls der Button nicht funktioniert: %s</p>
-				 <p style="font-size:12px;color:#666;border-top:1px solid #e0e0e0;padding-top:10px;margin-top:16px;">
-				 <strong>Hinweis:</strong> Die digitale Noteneingabe wird gerade erprobt (BETA). Wenn etwas nicht
-				 funktioniert, gib der Klassenleitung Bescheid &ndash; die Note kann auch auf dem üblichen Weg
-				 weitergegeben werden.</p>',
+				 %s',
 				esc_html( $teacher_name ),
 				esc_html( (string) ( $case['form_data']['lastname'] ?? '' ) ),
 				esc_html( (string) ( $case['form_data']['firstname'] ?? '' ) ),
 				esc_html( (string) ( $case['form_data']['class_name'] ?? '' ) ),
 				esc_html( (string) $item['subject'] ),
 				esc_url( $link ),
-				esc_html( $link )
+				esc_html( $link ),
+				$this->footer()
 			)
 		);
 
@@ -87,10 +85,7 @@ class Mail_Service {
 				 im Fach <strong>%s</strong>. Dies ist Erinnerung Nr. %d.</p>
 				 <p><a href="%s" style="background:#0073aa;color:#fff;padding:10px 18px;border-radius:4px;text-decoration:none;">Note jetzt eintragen</a></p>
 				 <p style="font-size:12px;color:#666;">Falls der Button nicht funktioniert: %s</p>
-				 <p style="font-size:12px;color:#666;border-top:1px solid #e0e0e0;padding-top:10px;margin-top:16px;">
-				 <strong>Hinweis:</strong> Die digitale Noteneingabe wird gerade erprobt (BETA). Wenn etwas nicht
-				 funktioniert, gib der Klassenleitung Bescheid &ndash; die Note kann auch auf dem üblichen Weg
-				 weitergegeben werden.</p>',
+				 %s',
 				esc_html( $teacher_name ),
 				esc_html( (string) ( $case['form_data']['lastname'] ?? '' ) ),
 				esc_html( (string) ( $case['form_data']['firstname'] ?? '' ) ),
@@ -98,7 +93,8 @@ class Mail_Service {
 				esc_html( (string) $item['subject'] ),
 				$reminder_no,
 				esc_url( $link ),
-				esc_html( $link )
+				esc_html( $link ),
+				$this->footer()
 			)
 		);
 
@@ -160,6 +156,40 @@ class Mail_Service {
 		);
 
 		return $this->send( $to, $subject, $body );
+	}
+
+	/**
+	 * Fussnote mit BETA-Hinweis und, falls eine Dashboard-Seite hinterlegt ist, einem
+	 * Verweis darauf.
+	 *
+	 * Wer eine Note einträgt, will meistens wissen, ob noch mehr auf ihn wartet. Ohne
+	 * den Verweis steht diese Information nur in weiteren Einzelmails.
+	 */
+	private function footer(): string {
+		$note = '<p style="font-size:12px;color:#666;border-top:1px solid #e0e0e0;padding-top:10px;margin-top:16px;">'
+			. '<strong>Hinweis:</strong> Die digitale Noteneingabe wird gerade erprobt (BETA). Wenn etwas nicht '
+			. 'funktioniert, gib der Klassenleitung Bescheid &ndash; die Note kann auch auf dem üblichen Weg '
+			. 'weitergegeben werden.';
+
+		$dashboard = $this->dashboard_link();
+		if ( '' !== $dashboard ) {
+			$note .= '<br><br>Eine Übersicht aller Noten, die auf dich warten: '
+				. '<a href="' . esc_url( $dashboard ) . '">' . esc_html( $dashboard ) . '</a>';
+		}
+
+		return $note . '</p>';
+	}
+
+	/** Leerer String, wenn keine Dashboard-Seite hinterlegt ist — dann entfällt der Verweis. */
+	private function dashboard_link(): string {
+		$options = get_option( 'mh_fw_settings', [] );
+		$page_id = (int) ( $options['page_id_mh_dashboard'] ?? 0 );
+
+		if ( $page_id <= 0 ) {
+			return '';
+		}
+
+		return (string) ( get_permalink( $page_id ) ?: '' );
 	}
 
 	private function send( string $to, string $subject, string $body ): bool {

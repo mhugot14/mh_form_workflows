@@ -122,9 +122,37 @@ class Config_Check {
 	 * sondern von Hand ins Menü gehängt. Deshalb Suche statt Nachschlagen.
 	 */
 	private function dashboard_page_item(): array {
-		// Die Volltextsuche ist nur die Vorauswahl: sie trifft auch Seiten, die den
-		// Shortcode bloss erwähnen oder ihn im Titel tragen. Entschieden wird deshalb
-		// über has_shortcode(), wie bei den verknüpften Seiten auch.
+		// Die Zuordnung ist optional: das Dashboard funktioniert auch ohne sie, weil
+		// niemand es aus dem Plugin heraus verlinkt. Gebraucht wird sie erst, damit die
+		// Mails der Noteneinsammlung darauf verweisen können.
+		$options = get_option( 'mh_fw_settings', [] );
+		$page_id = (int) ( $options['page_id_mh_dashboard'] ?? 0 );
+
+		if ( $page_id > 0 ) {
+			$post = get_post( $page_id );
+
+			if ( null === $post || 'trash' === $post->post_status ) {
+				return $this->item( 'error', 'Dashboard',
+					'Die zugeordnete Seite existiert nicht mehr (ID ' . $page_id . ').',
+					'Bitte in den Einstellungen neu zuordnen.' );
+			}
+			if ( ! has_shortcode( (string) $post->post_content, 'mh_dashboard' ) ) {
+				return $this->item( 'warn', 'Dashboard',
+					'Seite "' . $post->post_title . '" zugeordnet, enthält aber nicht [mh_dashboard].',
+					'Shortcode in die Seite einfügen, sonst bleibt sie leer.' );
+			}
+			if ( 'publish' !== $post->post_status ) {
+				return $this->item( 'warn', 'Dashboard',
+					'Seite "' . $post->post_title . '" (Status: ' . $post->post_status . ').',
+					'Nur veröffentlichte Seiten sind für Kolleg*innen erreichbar.' );
+			}
+
+			return $this->item( 'ok', 'Dashboard', 'Seite "' . $post->post_title . '", verknüpft.' );
+		}
+
+		// Ohne Zuordnung: nachsehen, ob es die Seite trotzdem gibt. Die Volltextsuche ist
+		// dabei nur die Vorauswahl, sie trifft auch Seiten, die den Shortcode bloss
+		// erwähnen. Entschieden wird über has_shortcode(), wie bei den anderen Seiten.
 		$candidates = get_posts( [
 			'post_type'      => 'page',
 			'post_status'    => [ 'publish', 'draft', 'private', 'pending' ],
@@ -146,7 +174,9 @@ class Config_Check {
 		}
 
 		if ( null !== $published ) {
-			return $this->item( 'ok', 'Dashboard', 'Seite "' . $published->post_title . '".' );
+			return $this->item( 'warn', 'Dashboard',
+				'Seite "' . $published->post_title . '" gefunden, aber in den Einstellungen nicht zugeordnet.',
+				'Ohne Zuordnung verweisen die Mails der Noteneinsammlung nicht auf das Dashboard.' );
 		}
 
 		if ( null !== $other ) {
@@ -162,7 +192,7 @@ class Config_Check {
 			'warn',
 			'Dashboard',
 			'Keine Seite mit [mh_dashboard] gefunden.',
-			'Eine Seite mit diesem Shortcode anlegen und ins Menü hängen: sie bündelt alles Offene. Eine Einstellung braucht es dafür nicht.'
+			'Eine Seite mit diesem Shortcode anlegen, ins Menü hängen und in den Einstellungen zuordnen.'
 		);
 	}
 
