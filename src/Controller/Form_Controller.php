@@ -63,13 +63,19 @@ class Form_Controller {
 		$rows = [];
 		$seen = [];
 
-		// Kurse stehen in der Vorbelegung VOR den Regelfächern. Ein Kurs kann ein Fach der
-		// Stundentafel ersetzen, nur lässt sich das nicht automatisch erkennen: das
-		// Trägerfach in Schild ist bloß ein Sammelbegriff ("Kurs_11_12"). Statt zu raten,
-		// stehen die Kurse oben, damit die Klassenleitung eine überflüssig gewordene
-		// Fachzeile sofort sieht und selbst entfernen kann.
-		$course_rows = [];
-		$track_rows  = [];
+		// Kurse stehen in der Vorbelegung VOR den Regelfächern, und sie ersetzen das Fach,
+		// zu dem sie gehören.
+		//
+		// Das Trägerfach aus Schild ("KURS1_11u12", "Reli/PRPH") ist ein echtes Fach der
+		// Stundentafel, kein Sammelbegriff: es steht dort als Platzhalter, auf den die
+		// konkreten Kurse gebucht werden. "Reli/PRPH" meint den Platz für Religion oder
+		// Praktische Philosophie, "KURS1_11u12" ein Fach, das über beide Jahrgangsstufen
+		// läuft, "KURS1_11" nur die Unterstufe. Steht für ein solches Fach ein Kurs, gehört
+		// die Kurszeile ins Protokoll und nicht der Platzhalter — sie nennt den tatsächlichen
+		// Kurs und bringt die Kurslehrkraft mit.
+		$course_rows   = [];
+		$track_rows    = [];
+		$covered_by_course = [];
 
 		// 1. Regelfächer aus der Stundentafel des Bildungsgangs.
 		$track_subjects = $this->track_subject_repo->get_subjects_for_track( $track_key );
@@ -89,10 +95,11 @@ class Form_Controller {
 			$track_labels[ $short ] = $label;
 		}
 
-		// 2. Klassenübergreifende Kurse. Angezeigt wird die Kursbezeichnung — das Trägerfach
-		//    (z.B. "Kurs_11_12") ist nur ein Sammelbegriff und im Konferenzprotokoll nicht
-		//    aussagekräftig. Deshalb lassen sich Kurse auch nicht unter ihr Fach einsortieren;
-		//    sie bekommen im Dropdown eine eigene Gruppe.
+		// 2. Klassenübergreifende Kurse. Angezeigt wird die Kursbezeichnung, weil das
+		//    Trägerfach im Protokoll nur den Platzhalter nennen würde ("Reli/PRPH") statt
+		//    des belegten Kurses. Im Dropdown bekommen die Kurse eine eigene Gruppe; eine
+		//    Einrückung unter das Fach entfällt, weil das Fach als eigene Zeile gerade
+		//    wegfällt, sobald ein Kurs dafür da ist.
 		$course_options = [];
 		foreach ( $this->student_course_repo->get_courses_for_student( $schild_id ) as $c ) {
 			$course_name = (string) $c['course_name'];
@@ -103,6 +110,12 @@ class Form_Controller {
 
 			$teacher = (string) ( $c['teacher_short'] ?? '' );
 			$label   = '' !== $teacher ? $course_name . ' (' . $teacher . ')' : $course_name;
+
+			// Das Fach, auf das dieser Kurs gebucht ist, entfällt als eigene Zeile.
+			$traegerfach = trim( (string) ( $c['subject_short'] ?? '' ) );
+			if ( '' !== $traegerfach ) {
+				$covered_by_course[ $traegerfach ] = true;
+			}
 
 			// Das Dropdown führt die Kurse eigenständig: Wer eine vorbelegte Kurszeile
 			// löscht oder umstellt, konnte den Kurs bisher nicht wieder auswählen.
@@ -120,11 +133,11 @@ class Form_Controller {
 			];
 		}
 
-		// Regelfächer hinter den Kursen einreihen. Ein Fach, das namensgleich mit einem
-		// Kurs ist, entfällt hier - die Kurszeile bringt die Lehrkraft mit und ist damit
-		// die brauchbarere der beiden.
+		// Regelfächer hinter den Kursen einreihen - ausser denen, für die bereits ein Kurs
+		// vorliegt. Die Kurszeile nennt den tatsächlich belegten Kurs und bringt die
+		// Kurslehrkraft mit; der Platzhalter daneben wäre eine Dublette ohne Mehrwert.
 		foreach ( $track_labels as $short => $label ) {
-			if ( isset( $seen[ $short ] ) ) {
+			if ( isset( $seen[ $short ] ) || isset( $covered_by_course[ $short ] ) ) {
 				continue;
 			}
 			$seen[ $short ] = true;

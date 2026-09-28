@@ -585,10 +585,10 @@ details.mh-help-notice-box[open] summary::before {
                 </tbody>
 				
             </table>
-			<div id="course_hint" style="display:none; margin-top:8px; padding:8px 11px; background:#fcf9e8; border-left:3px solid #e5a912; font-size:0.85em; line-height:1.45;">
+			<div id="course_hint" style="display:none; margin-top:8px; padding:8px 11px; background:#eef4f8; border-left:3px solid #0073aa; font-size:0.85em; line-height:1.45;">
 				<strong>Kursbelegungen ergänzt.</strong> Sie stehen oben in der Tabelle und bringen die Kurslehrkraft mit.
-				Ersetzt ein Kurs ein Fach der Stundentafel, setze die überflüssige Fachzeile unten auf
-				„-- Fach wählen --“. Automatisch erkennen lässt sich das nicht, weil Schild den Kurs keinem Fach zuordnet.
+				Das Fach, auf das ein Kurs gebucht ist (z.&nbsp;B. <em>Reli/PRPH</em>), entfällt dafür als eigene Zeile –
+				im Protokoll steht der belegte Kurs statt des Platzhalters.
 			</div>
 			<p style="margin-top:8px;font-size:9pt;">NB = nicht bewertbar | NE = nicht erteilt</p>
 			</div>

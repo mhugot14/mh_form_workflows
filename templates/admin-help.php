@@ -619,11 +619,12 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
             <p>
                 <strong>Kursbelegungen:</strong> Hat die Person klassenübergreifende Kurse, stehen diese in der Vorbelegung
                 ganz oben und bringen die Kurslehrkraft gleich mit; im Dropdown bilden sie die erste Gruppe
-                „Kurse dieser Person“. Ersetzt ein Kurs ein Fach der Stundentafel, muss die überflüssige Fachzeile von Hand
-                geleert werden &ndash; automatisch erkennen lässt sich das nicht, weil Schild den Kurs keinem Fach zuordnet
-                (das dortige „Trägerfach“ ist nur ein Sammelbegriff wie <code class="mh-code-soft">Kurs_11_12</code>).
-                Heißt ein Kurs zufällig genauso wie ein Fach der Stundentafel, gewinnt die Kurszeile, weil sie die
-                Lehrkraft mitbringt.
+                „Kurse dieser Person“. Das Fach, auf das ein Kurs gebucht ist, <strong>entfällt dafür als eigene Zeile</strong>:
+                In Schild ist das „Trägerfach“ ein echtes Fach der Stundentafel, das als Platzhalter dient &ndash;
+                <code class="mh-code-soft">Reli/PRPH</code> etwa steht für den Platz „Religion oder Praktische Philosophie“,
+                <code class="mh-code-soft">KURS1_11u12</code> für ein Fach über beide Jahrgangsstufen. Liegt dafür ein Kurs
+                vor, gehört der belegte Kurs ins Protokoll und nicht der Platzhalter. Kurse, deren Trägerfach nicht in der
+                Stundentafel steht, werden zusätzlich aufgeführt.
             </p>
             <p>
                 Die beiden Häkchen <em>„Teilnoten in WebUntis eingetragen“</em> und <em>„Fach vorher abgeschlossen“</em>
