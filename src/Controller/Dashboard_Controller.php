@@ -8,6 +8,7 @@ use Mh\FormWorkflows\Repository\Absentismus_Fall_Repository;
 use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
+use Mh\FormWorkflows\Service\Noten_Feature;
 use Mh\FormWorkflows\Service\Reminder_Service;
 
 /**
@@ -54,6 +55,9 @@ class Dashboard_Controller {
 			'submissions' => $this->collect_submissions( $user_id ),
 			'noten_owned' => $this->collect_noten_owned( $user_id, $show_all ),
 			'noten_todo'  => $this->collect_noten_todo( $user_id ),
+			// Ist das Verfahren abgeschaltet, sollen die beiden Noten-Blöcke nur so lange
+			// stehen bleiben, wie es noch etwas zu tun gibt. Danach verschwinden sie.
+			'noten_aktiv' => Noten_Feature::is_enabled(),
 			'links'       => $this->collect_links(),
 		];
 

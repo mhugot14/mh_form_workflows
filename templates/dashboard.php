@@ -33,6 +33,12 @@ $form_titel = [
 
 // Zählt, was insgesamt Aufmerksamkeit braucht - steuert den Leer-Zustand.
 $offen_gesamt = count( $absentismus ) + count( $noten_owned ) + count( $noten_todo );
+
+// Abgeschaltetes Verfahren ohne laufende Fälle: die Blöcke ganz weglassen, statt zwei
+// leere Kästen zu zeigen, zu denen es nichts mehr zu tun gibt.
+$noten_aktiv     = $data['noten_aktiv'];
+$zeige_noten_todo  = $noten_aktiv || ! empty( $noten_todo );
+$zeige_noten_owned = $noten_aktiv || ! empty( $noten_owned );
 ?>
 
 <style>
@@ -127,6 +133,7 @@ $offen_gesamt = count( $absentismus ) + count( $noten_owned ) + count( $noten_to
 	</div>
 
 	<!-- 1. NOTEN, DIE ICH SCHULDE -->
+	<?php if ( $zeige_noten_todo ) : ?>
 	<div class="mh-db-card">
 		<h3>
 			Noten, die von dir erwartet werden
@@ -167,6 +174,7 @@ $offen_gesamt = count( $absentismus ) + count( $noten_owned ) + count( $noten_to
 			<div class="mh-db-foot"><a href="<?= esc_url( $links['noten_liste'] ) ?>">Alle meine Noteneingaben →</a></div>
 		<?php endif; ?>
 	</div>
+	<?php endif; ?>
 
 	<!-- 2. OFFENE ABSENTISMUS-FÄLLE -->
 	<div class="mh-db-card">
@@ -221,6 +229,7 @@ $offen_gesamt = count( $absentismus ) + count( $noten_owned ) + count( $noten_to
 	</div>
 
 	<!-- 3. EIGENE NOTENEINSAMMLUNGEN -->
+	<?php if ( $zeige_noten_owned ) : ?>
 	<div class="mh-db-card">
 		<h3>
 			Noteneinsammlungen, die du gestartet hast
@@ -258,7 +267,14 @@ $offen_gesamt = count( $absentismus ) + count( $noten_owned ) + count( $noten_to
 				</ul>
 			<?php endif; ?>
 		</div>
+		<?php if ( ! $noten_aktiv ) : ?>
+			<div class="mh-db-foot" style="color:#8a6116;">
+				Das Verfahren ist derzeit abgeschaltet. Laufende Fälle werden noch zu Ende geführt,
+				neue lassen sich nicht starten.
+			</div>
+		<?php endif; ?>
 	</div>
+	<?php endif; ?>
 
 	<!-- 4. EIGENE EINSENDUNGEN -->
 	<div class="mh-db-card">

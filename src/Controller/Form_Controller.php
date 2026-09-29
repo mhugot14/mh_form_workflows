@@ -15,6 +15,7 @@ use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
 use Mh\FormWorkflows\Repository\Diagnostics_Repository;
 use Mh\FormWorkflows\Service\Config_Check;
+use Mh\FormWorkflows\Service\Noten_Feature;
 use Mh\FormWorkflows\Service\Mail_Service;
 use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
@@ -258,6 +259,9 @@ class Form_Controller {
 			}
 		}
 
+		// Steuert, ob das Formular die Option "automatisch einsammeln" überhaupt anbietet.
+		$noten_enabled = Noten_Feature::is_enabled();
+
 		// Stammdaten für Dropdowns laden
 		$classes_list = $this->class_repo->get_real_classes();
 		$teachers_list = $this->teacher_repo->get_all_teachers();
@@ -340,6 +344,12 @@ class Form_Controller {
 	 * @return array<string,string> Fehler für die Rückgabe ins Formular.
 	 */
 	private function check_collect_preconditions( array $valid_data ): array {
+		// Abgeschaltet heisst: keine NEUEN Einsammlungen. Laufende Fälle bleiben
+		// unberührt, die laufen über den Noten_Controller weiter.
+		if ( ! Noten_Feature::is_enabled() ) {
+			return [ 'collect_disabled' => 'Die digitale Noteneinsammlung ist derzeit abgeschaltet. Bitte die Noten im Formular eintragen oder auf Papier einsammeln.' ];
+		}
+
 		// Liegt ein bestehendes Konferenzprotokoll bei, stehen die Noten bereits darin.
 		// Ein Umlauf würde Lehrkräfte um etwas bitten, das längst entschieden ist.
 		if ( 'existing' === ( $valid_data['protocol_mode'] ?? '' ) ) {
@@ -488,6 +498,17 @@ class Form_Controller {
 		$raw_data   = $_POST; 
 		$valid_data = $form->get_data(); 
 		$errors     = $form->get_errors();
+
+		// Ist das Verfahren abgeschaltet, darf keine Zeile als "einzusammeln" gespeichert
+		// werden. Sonst stünde die Markierung später im Formular, ohne dass je jemand
+		// gefragt würde. Das Model kennt die Einstellung nicht — diese Entscheidung
+		// gehört in den Controller.
+		if ( ! Noten_Feature::is_enabled() && ! empty( $valid_data['subjects'] ) ) {
+			foreach ( $valid_data['subjects'] as &$mh_subject ) {
+				$mh_subject['collect'] = '0';
+			}
+			unset( $mh_subject );
+		}
 
 		if ( 'pdf' === $mode && ! empty( $valid_data['prot_was_corrected'] ) ) {
 			$mode = 'check';

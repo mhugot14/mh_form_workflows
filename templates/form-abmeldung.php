@@ -485,7 +485,7 @@ details.mh-help-notice-box[open] summary::before {
             <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer &amp; Noten (Vorausfüllung für Protokoll)</h5>
 
             <div style="background:#f6f7f7; border:1px solid #dcdcde; border-left:4px solid #0073aa; padding:14px 16px; margin-bottom:15px; font-size:0.9em; line-height:1.5;">
-                <p style="margin:0 0 12px;"><strong>Du hast drei Möglichkeiten, an die Noten zu kommen – und kannst pro Fach unterschiedlich entscheiden:</strong></p>
+                <p style="margin:0 0 12px;"><strong>Du hast <?= $noten_enabled ? 'drei' : 'zwei' ?> Möglichkeiten, an die Noten zu kommen – und kannst pro Fach unterschiedlich entscheiden:</strong></p>
 
                 <div style="margin-bottom:11px;">
                     <strong style="color:#1d2327;">1. Noten im digitalen Formular eintragen</strong><br>
@@ -493,6 +493,7 @@ details.mh-help-notice-box[open] summary::before {
                     genannt hat. Wähle sie in der Spalte <em>Note</em> aus; sie steht damit direkt im Protokoll-PDF.
                 </div>
 
+                <?php if ( $noten_enabled ) : ?>
                 <div style="margin-bottom:11px;">
                     <strong style="color:#1b5e20;">2. Noten automatisch einsammeln</strong>
                     <span style="display:inline-block; padding:1px 6px; border-radius:3px; background:#1b5e20; color:#fff; font-size:0.75em; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">BETA</span><br>
@@ -501,9 +502,10 @@ details.mh-help-notice-box[open] summary::before {
                     alle eingesammelten Noten da sind, wirst du benachrichtigt und lädst das fertige PDF im Dashboard
                     herunter. Bis dahin gibt es hier kein PDF.
                 </div>
+                <?php endif; ?>
 
                 <div style="margin-bottom:11px;">
-                    <strong style="color:#1d2327;">3. Noten im PDF per Hand eintragen</strong><br>
+                    <strong style="color:#1d2327;"><?= $noten_enabled ? '3.' : '2.' ?> Noten im PDF per Hand eintragen</strong><br>
                     Der Papierweg: Spalte <em>Note</em> leer lassen, PDF erzeugen und die Noten im Umlaufverfahren
                     handschriftlich ergänzen. Alternativ später über „Bearbeiten“ im Dashboard nachtragen und ein
                     neues PDF ziehen.
@@ -519,9 +521,15 @@ details.mh-help-notice-box[open] summary::before {
             <div class="mh-grades-overlay-wrap">
             <div id="grades_overlay" class="mh-grades-overlay <?= $has_existing_grades ? 'mh-hidden' : '' ?>">
                 <div class="mh-grades-overlay-box">
-                    <p><strong>Selbst eintragen, einsammeln lassen oder auf Papier?</strong></p>
-                    <p>Trage ein, was dir vorliegt, setze die übrigen Fächer auf „automatisch einsammeln“<br>
-                    – oder lass die Spalte leer und ergänze die Noten später auf dem PDF.</p>
+                    <?php if ( $noten_enabled ) : ?>
+                        <p><strong>Selbst eintragen, einsammeln lassen oder auf Papier?</strong></p>
+                        <p>Trage ein, was dir vorliegt, setze die übrigen Fächer auf „automatisch einsammeln“<br>
+                        – oder lass die Spalte leer und ergänze die Noten später auf dem PDF.</p>
+                    <?php else : ?>
+                        <p><strong>Noten eintragen oder auf Papier ergänzen?</strong></p>
+                        <p>Trage ein, was dir vorliegt<br>
+                        – oder lass die Spalte leer und ergänze die Noten später auf dem PDF.</p>
+                    <?php endif; ?>
                     <button type="button" id="btn_show_grades">Fächer &amp; Noten bearbeiten</button>
                 </div>
             </div>
@@ -571,7 +579,10 @@ details.mh-help-notice-box[open] summary::before {
 							<?php foreach(['1','2','3','4','5','6','NB','NE'] as $n): ?>
 								<option value="<?= $n ?>" <?= selected($s['grade'] ?? '', $n) ?>><?= $n ?></option>
 							<?php endforeach; ?>
-							<option value="<?= esc_attr($collect_marker) ?>" <?= selected(($s['collect'] ?? '0'), '1') ?>>automatisch einsammeln</option>
+							<?php if ( $noten_enabled ) : ?>
+								<option value="<?= esc_attr($collect_marker) ?>" <?= selected(($s['collect'] ?? '0'), '1') ?>>automatisch einsammeln</option>
+							<?php endif; ?>
+
 						</select>
 					</td>
                         <td>
@@ -608,11 +619,14 @@ details.mh-help-notice-box[open] summary::before {
         <div class="btn-group">
             <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
             <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
+            <?php if ( $noten_enabled ) : ?>
             <button type="submit" name="submit_mode" value="collect" id="btn_collect" class="button button-secondary button-large" style="background:#1b5e20 !important; color:#fff !important; border-color:#1b5e20 !important; display:none;">
                 Noteneinsammlung starten <span id="btn_collect_count"></span>
                 <span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:3px; background:#fff; color:#1b5e20; font-size:0.7em; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">BETA</span>
             </button>
+            <?php endif; ?>
         </div>
+        <?php if ( $noten_enabled ) : ?>
         <p id="collect_hint" style="font-size:0.9em; color:#555; margin-top:10px; display:none;">
             <strong>Noten automatisch einsammeln <span style="color:#1b5e20;">(BETA)</span>:</strong> Dieses Verfahren ist
             neu und wird noch erprobt. Die betroffenen Fachlehrer*innen erhalten eine E-Mail mit Link zur Noteneingabe und
@@ -621,6 +635,7 @@ details.mh-help-notice-box[open] summary::before {
             hier kein PDF. Für jedes eingesammelte Fach muss eine Lehrkraft ausgewählt sein, zu der sich eine
             E-Mail-Adresse auflösen lässt. Wenn etwas klemmt, sag Bescheid – und sammle im Zweifel auf Papier.
         </p>
+        <?php endif; ?>
     </form>
 </div>
 

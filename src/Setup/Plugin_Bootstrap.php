@@ -424,6 +424,29 @@ class Plugin_Bootstrap {
 						</td>
 					</tr>
 					<tr>
+						<th>Digitale Noteneinsammlung</th>
+						<td>
+							<?php
+							// Hidden-Feld VOR der Checkbox: eine abgewählte Checkbox sendet nichts,
+							// dann bliebe der alte Wert stehen und liesse sich nie abschalten.
+							$noten_an = \Mh\FormWorkflows\Service\Noten_Feature::is_enabled();
+							?>
+							<input type="hidden" name="mh_fw_settings[noten_enabled]" value="0">
+							<label>
+								<input type="checkbox" name="mh_fw_settings[noten_enabled]" value="1" <?php checked( $noten_an ); ?>>
+								Verfahren aktiv &ndash; neue Einsammlungen dürfen gestartet werden
+							</label>
+							<p class="description">
+								Das Verfahren ist noch in der Erprobung (BETA). Wird der Haken entfernt, verschwindet die
+								Option „automatisch einsammeln“ aus dem Abmeldeformular und es lässt sich keine neue
+								Einsammlung mehr starten.<br>
+								<strong>Bereits laufende Fälle bleiben vollständig bedienbar</strong> und werden weiter
+								erinnert, bis sie abgeschlossen sind &ndash; sonst gingen die schon eingetragenen Noten
+								verloren, weil sie erst beim Abschluss in die Abmeldung zurückgeschrieben werden.
+							</p>
+						</td>
+					</tr>
+					<tr>
 						<th>Erinnerung nach (Tagen)</th>
 						<td>
 							<input type="number" min="1" max="60" name="mh_fw_settings[noten_reminder_days]"

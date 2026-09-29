@@ -67,8 +67,17 @@ class Config_Check {
 		$options = get_option( 'mh_fw_settings', [] );
 		$items   = [];
 
+		// Ist die Noteneinsammlung abgeschaltet, ist eine fehlende Noten-Seite kein
+		// Fehler mehr, sondern nur noch ein Hinweis - sonst leuchtete dauerhaft Rot für
+		// etwas, das bewusst nicht benutzt wird.
+		$noten_aus = ! Noten_Feature::is_enabled();
+
 		foreach ( self::PAGES as $key => $spec ) {
 			[ $label, $shortcode, $missing_level ] = $spec;
+
+			if ( $noten_aus && str_starts_with( $key, 'page_id_mh_noten' ) ) {
+				$missing_level = 'warn';
+			}
 
 			$page_id = (int) ( $options[ $key ] ?? 0 );
 
@@ -281,7 +290,27 @@ class Config_Check {
 
 	/** Die digitale Noteneinsammlung hängt an Cron und an erreichbaren Adressen. */
 	private function check_noten(): array {
-		$items = [];
+		$items  = [];
+		$aktiv  = Noten_Feature::is_enabled();
+		$offen  = $this->diag->count( 'mh_form_submissions', "form_type = 'ausschulung_noten_v1' AND status = 'offen'" );
+		$offen  = max( 0, $offen );
+
+		if ( ! $aktiv ) {
+			// Weiche Abschaltung: solange Fälle laufen, bleibt der Rest dieses Abschnitts
+			// relevant - Cron und Adressen werden für sie weiter gebraucht.
+			$items[] = 0 === $offen
+				? $this->item( 'ok', 'Verfahren', 'Abgeschaltet, es läuft kein Fall mehr.',
+					'Einschalten unter Einstellungen, wenn wieder eingesammelt werden soll.' )
+				: $this->item( 'warn', 'Verfahren',
+					'Abgeschaltet, aber ' . $offen . ' Fall/Fälle laufen noch.',
+					'Neue Einsammlungen sind gesperrt; die laufenden werden zu Ende geführt und weiter erinnert.' );
+
+			if ( 0 === $offen ) {
+				return $items;
+			}
+		} else {
+			$items[] = $this->item( 'ok', 'Verfahren', 'Eingeschaltet (BETA).' );
+		}
 
 		$next    = wp_next_scheduled( Reminder_Service::CRON_HOOK );
 		$items[] = $next

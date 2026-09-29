@@ -597,6 +597,27 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                 über „Bearbeiten“ nachtragen.
             </div>
 
+            <h3>Abschalten</h3>
+            <p>
+                Unter <strong>Einstellungen → Digitale Noteneinsammlung</strong> lässt sich das Verfahren abschalten.
+                Die Abschaltung ist <strong>weich</strong>: Es lässt sich keine neue Einsammlung mehr starten &ndash;
+                die Option „automatisch einsammeln“ verschwindet aus dem Noten-Dropdown, der Knopf entfällt, und ein
+                dennoch gesendeter Startversuch wird serverseitig abgewiesen.
+            </p>
+            <p>
+                <strong>Bereits laufende Fälle bleiben vollständig bedienbar</strong>, und der Erinnerungs-Cron läuft
+                für sie weiter, bis sie abgeschlossen sind. Das ist kein Versehen, sondern nötig: Die eingesammelten
+                Noten wandern erst beim Abschluss eines Falls zurück in die Abmeldung. Würde man hart abschalten,
+                klickten Fachlehrkräfte mit einer Einladungsmail im Postfach ins Leere, und die bereits eingetragenen
+                Noten gingen verloren.
+            </p>
+            <p>
+                Der Konfigurationscheck auf der Übersichtsseite zeigt den Zustand an und nennt, wie viele Fälle noch
+                laufen. Sind es keine mehr, verschwinden auch die beiden Noten-Blöcke aus dem Dashboard. Ohne
+                gespeicherte Einstellung gilt das Verfahren als eingeschaltet &ndash; bestehende Installationen
+                verhalten sich nach einem Update also wie vorher.
+            </p>
+
             <h3>Drei Wege, pro Fach wählbar</h3>
             <p>
                 Es gibt keine Grundsatzentscheidung „alles selbst“ oder „alles digital“. In der Fächertabelle des
