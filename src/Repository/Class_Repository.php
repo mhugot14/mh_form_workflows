@@ -31,8 +31,10 @@ class Class_Repository {
 			return [];
 		}
 
-		// Wir holen wu_id (für Schüler-Match), name (Anzeige) und is_fulltime (Logik)
-		$query = "SELECT wu_id, name, is_fulltime 
+		// wu_id (für Schüler-Match), name (Anzeige), is_fulltime (Logik) und track_key:
+		// der Bildungsgang hängt an der Klasse, weil die Stundentafel für alle Schüler
+		// einer Klasse dieselbe ist. Individuell sind nur die Kursbelegungen.
+		$query = "SELECT wu_id, name, is_fulltime, track_key 
                   FROM {$this->table_name} 
                   WHERE is_active = 1 
                   AND teacher_1 != '' 

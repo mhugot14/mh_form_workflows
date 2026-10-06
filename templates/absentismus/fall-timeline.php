@@ -182,6 +182,9 @@ $nonce_url = fn( array $params, string $nonce_action ) => wp_nonce_url(
 					&nbsp;·&nbsp; Klassenleitung <?= esc_html( $case_meta['teacher'] ?? '' ) ?>
 					&nbsp;·&nbsp; <?= ! empty( $case_meta['is_minor'] ) ? 'minderjährig' : 'volljährig' ?>
 					&nbsp;·&nbsp; <?= ! empty( $case_meta['is_schulpflichtig'] ) ? 'schulpflichtig' : 'nicht schulpflichtig' ?>
+					<?php if ( ! empty( $case_meta['student_manual'] ) ) : ?>
+						&nbsp;·&nbsp; <em>manuell erfasst (nicht in der Klassenliste)</em>
+					<?php endif; ?>
 				</div>
 			</div>
 			<div class="mh-fall-header-contacts">
@@ -329,8 +332,19 @@ $nonce_url = fn( array $params, string $nonce_action ) => wp_nonce_url(
 
 	<?php if ( empty( $steps ) ) : ?>
 		<p>Dieser Fall hat noch keine dokumentierten Schritte.</p>
-	<?php else : foreach ( $steps as $step ) :
+	<?php else :
+		// Laufende Nummer der pädagogischen Gespräche — "Weiteres Gespräch" wird
+		// in der Kartenüberschrift als "3. Pädagogisches Gespräch" usw. angezeigt.
+		$gespraech_no = 0;
+		foreach ( $steps as $step ) :
 		$step_no    = (int) $step['step_no'];
+		$step_title = $step_labels[ $step['type'] ] ?? $step['type'];
+		if ( str_starts_with( (string) $step['type'], 'gespraech_' ) ) {
+			$gespraech_no++;
+			if ( 'gespraech_weiteres' === $step['type'] ) {
+				$step_title = $gespraech_no . '. Pädagogisches Gespräch';
+			}
+		}
 		$is_draft   = 'draft' === $step['status'];
 		$pdf_url    = $nonce_url( [ 'action' => 'mh_absentismus_download_pdf', 'case_id' => $case_id, 'step_no' => $step_no ], 'mh_absentismus_pdf_' . $case_id . '_' . $step_no );
 		$edit_url   = add_query_arg( [ 'mh_case_id' => $case_id, 'mh_edit_step' => $step_no ], $self_base );
@@ -339,13 +353,16 @@ $nonce_url = fn( array $params, string $nonce_action ) => wp_nonce_url(
 	?>
 		<div class="mh-step-card">
 			<h4>
-				Schritt <?= $step_no ?>: <?= esc_html( $step_labels[ $step['type'] ] ?? $step['type'] ) ?>
+				Schritt <?= $step_no ?>: <?= esc_html( $step_title ) ?>
 				<span class="mh-status-badge <?= $is_draft ? 'badge-draft' : 'badge-final' ?>"><?= $is_draft ? 'Entwurf' : 'Festgeschrieben' ?></span>
 			</h4>
 			<div class="mh-step-meta">
 				Angelegt am <?= esc_html( date( 'd.m.Y H:i', strtotime( $step['created_at'] ) ) ) ?>
 				<?php if ( ! $is_draft && ! empty( $step['finalized_at'] ) ) : ?>
 					&nbsp;·&nbsp; Festgeschrieben am <?= esc_html( date( 'd.m.Y H:i', strtotime( $step['finalized_at'] ) ) ) ?>
+				<?php endif; ?>
+				<?php if ( in_array( $step['data']['dokumentation'] ?? '', [ 'webuntis', 'handschriftlich' ], true ) ) : ?>
+					&nbsp;·&nbsp; <strong><?= esc_html( $field_meta['value_labels']['dokumentation'][ $step['data']['dokumentation'] ] ) ?> dokumentiert</strong>
 				<?php endif; ?>
 			</div>
 			<div class="mh-step-actions">

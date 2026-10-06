@@ -36,6 +36,31 @@ class School_Date_Calculator {
 	}
 
 	/**
+	 * Öffentliche Variante von is_school_day() für ISO-Datumsstrings (Y-m-d).
+	 * Ungültige Eingaben gelten als kein Schultag.
+	 */
+	public function is_school_day_ymd( string $date_str ): bool {
+		try {
+			return $this->is_school_day( new DateTime( $date_str, new DateTimeZone( 'Europe/Berlin' ) ) );
+		} catch ( \Exception $e ) {
+			return false;
+		}
+	}
+
+	/**
+	 * Liegt das Datum in den Ferien oder auf einem Feiertag? Unabhängig vom Wochentag -
+	 * gebraucht für Samstagstermine, die per Definition keine Schultage sind.
+	 */
+	public function is_ferien_oder_feiertag_ymd( string $date_str ): bool {
+		try {
+			$date = new DateTime( $date_str, new DateTimeZone( 'Europe/Berlin' ) );
+		} catch ( \Exception $e ) {
+			return true;
+		}
+		return $this->is_public_holiday( $date ) || $this->is_school_holiday_nrw( $date );
+	}
+
+	/**
 	 * Prüft logisch: Ist heute Schule?
 	 */
 	private function is_school_day( DateTime $date ): bool {
@@ -117,6 +142,13 @@ class School_Date_Calculator {
             ['2026-03-30', '2026-04-11'], // Ostern
             ['2026-05-26', '2026-05-26'], // Pfingsten
             ['2026-07-20', '2026-09-01'], // Sommer
+
+			// Schuljahr 26/27
+			['2026-10-17', '2026-10-31'], // Herbst
+			['2026-12-23', '2027-01-06'], // Weihnachten
+			['2027-03-22', '2027-04-03'], // Ostern
+			['2027-05-18', '2027-05-18'], // Pfingsten
+			['2027-07-19', '2027-08-31'], // Sommer
 		];
 
 		foreach ( $holidays as $period ) {

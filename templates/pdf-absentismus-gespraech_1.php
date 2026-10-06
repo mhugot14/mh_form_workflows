@@ -1,14 +1,27 @@
 <?php
 /**
  * View: PDF - 1. Pädagogisches Gespräch mit Schüler/-in.
+ * Wird auch von pdf-absentismus-gespraech_weiteres.php eingebunden, das dazu
+ * $pdf_title/$pdf_subtitle vorbelegt.
+ *
  * @var array $data Case-Metadaten + Schritt-Daten zusammengeführt.
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 include MH_FW_PLUGIN_DIR . 'templates/absentismus/pdf-header.php';
+
+$pdf_title    = $pdf_title ?? '1. Pädagogisches Gespräch mit Schüler/-in';
+$pdf_subtitle = $pdf_subtitle ?? 'Bedingung: Faustregel nach 10 versäumten unentschuldigten Unterrichtsstunden';
 ?>
 
-<div class="header">1. Pädagogisches Gespräch mit Schüler/-in</div>
-<div class="subheader">Bedingung: Faustregel nach 10 versäumten unentschuldigten Unterrichtsstunden</div>
+<div class="header"><?= esc_html( $pdf_title ) ?></div>
+<div class="subheader"><?= esc_html( $pdf_subtitle ) ?></div>
+
+<?php
+if ( in_array( $data['dokumentation'] ?? '', [ 'webuntis', 'handschriftlich' ], true ) ) {
+	include MH_FW_PLUGIN_DIR . 'templates/absentismus/pdf-extern-dokumentiert.php';
+	return;
+}
+?>
 
 <table style="margin-bottom: 10px;">
 	<tr>

@@ -18,6 +18,14 @@ class Absentismus_Step_Gespraech_2_Form extends Abstract_Absentismus_Step_Form {
 		$this->errors = [];
 		$this->data   = [];
 
+		// Gespräch bereits in WebUntis/handschriftlich dokumentiert → nur Datum
+		// (auch die Einladungs-Pflichtfelder bei Schulpflicht entfallen dann).
+		$extern = $this->validate_extern_dokumentation( $data );
+		if ( null !== $extern ) {
+			$this->data = $extern;
+			return empty( $this->errors );
+		}
+
 		$einladung_datum   = $this->sanitize_text( $data['einladung_datum'] ?? '' );
 		$einladung_uhrzeit = $this->sanitize_text( $data['einladung_uhrzeit'] ?? '' );
 		$versand_einladung = $this->sanitize_text( $data['versand_einladung'] ?? '' );
@@ -72,7 +80,8 @@ class Absentismus_Step_Gespraech_2_Form extends Abstract_Absentismus_Step_Form {
 		[ $fehlstunden_gesamt, $fehlstunden_ue ] = $this->validate_fehlstunden_pair( $data, 'fehlstunden_gesamt', 'fehlstunden_unentschuldigt' );
 
 		$this->data = [
-			'einladung_datum'            => $einladung_datum,
+			'dokumentation'              => 'formular',
+			'einladung_datum'           => $einladung_datum,
 			'einladung_uhrzeit'          => $einladung_uhrzeit,
 			'versand_einladung'          => $versand_einladung,
 			'datum'                      => $datum,

@@ -23,7 +23,8 @@ class Absentismus_Fall_Repository {
 	 * Absentismus-Prozess ist KEINE lineare Kette, sondern ein Graph mit drei
 	 * weitgehend unabhängigen Strängen:
 	 *
-	 * 1. Eskalationskette (kumulative Std.): gespraech_1 -> gespraech_2 -> mahnung,
+	 * 1. Eskalationskette (kumulative Std.): gespraech_1 -> gespraech_2 -> mahnung
+	 *    (nach gespraech_2 optional beliebig viele gespraech_weiteres),
 	 *    danach VERZWEIGT es in bussgeld UND teilkonferenz (beide unabhängig).
 	 * 2. Zusammenhängende Fehltage (parallel, an is_schulpflichtig gekoppelt,
 	 *    keine Abhängigkeit zur Eskalationskette): ordnungsamt (NUR schulpflichtig —
@@ -68,6 +69,15 @@ class Absentismus_Fall_Repository {
 			'repeatable' => false, 'applicable_when' => null,
 			'variants' => [
 				[ 'requires' => [ 'gespraech_1' ], 'condition' => 'weitere ca. 10 unentschuldigte Fehlstunden (kumulativ)' ],
+			],
+		],
+		// Optionale zusätzliche Gespräche (3., 4., …) — beliebig oft nach dem 2.
+		// Gespräch. Die Mahnung hängt bewusst weiterhin nur an gespraech_2, d. h.
+		// mind. zwei Gespräche sind Pflicht, weitere blockieren den Prozess nicht.
+		'gespraech_weiteres' => [
+			'repeatable' => true, 'applicable_when' => null,
+			'variants' => [
+				[ 'requires' => [ 'gespraech_2' ], 'condition' => 'bei Bedarf: weiteres pädagogisches Gespräch (optional)' ],
 			],
 		],
 		'mahnung'       => [
@@ -131,6 +141,38 @@ class Absentismus_Fall_Repository {
 		), ARRAY_A );
 
 		return $this->decode_row( $row );
+	}
+
+	/**
+	 * Sucht den offenen Fall eines MANUELL erfassten Schülers (nicht in der
+	 * WebUntis-Klassenliste, daher ohne student_wu_id). Abgleich über Klasse +
+	 * Name (Groß-/Kleinschreibung und Randleerzeichen egal) und — falls bei
+	 * beiden angegeben — Geburtsdatum. Der Namensabgleich erfolgt nach dem
+	 * JSON-Decode, da Name/Klasse nur im form_data-Blob liegen.
+	 */
+	public function find_open_manual_case( int $class_wu_id, string $lastname, string $firstname, string $dob = '' ): ?array {
+		$rows = $this->db->get_results( $this->db->prepare(
+			"SELECT * FROM {$this->table_name} WHERE form_type = %s AND status = 'offen' AND ( student_wu_id IS NULL OR student_wu_id = 0 )",
+			self::FORM_TYPE
+		), ARRAY_A );
+
+		$norm = static fn( $value ): string => mb_strtolower( trim( (string) $value ) );
+
+		foreach ( $rows as $row ) {
+			$case = $this->decode_row( $row );
+			$meta = $case['form_data'] ?? [];
+			if ( (int) ( $meta['class_wu_id'] ?? 0 ) !== $class_wu_id
+				|| $norm( $meta['lastname'] ?? '' ) !== $norm( $lastname )
+				|| $norm( $meta['firstname'] ?? '' ) !== $norm( $firstname ) ) {
+				continue;
+			}
+			if ( '' !== $dob && ! empty( $meta['dob'] ) && $meta['dob'] !== $dob ) {
+				continue;
+			}
+			return $case;
+		}
+
+		return null;
 	}
 
 	public function get_by_id( int $case_id ): ?array {

@@ -72,6 +72,14 @@ $f_type  = $_GET['form_type'] ?? '';
                     $klasse = $data['class_name'] ?? ($data['sub_rows'][0]['group'] ?? '-');
                     $info = ($sub['form_type'] === 'service_leave_v1') ? ($data['reason_key'] ?? 'Befreiung') : (($data['lastname'] ?? '') . ', ' . ($data['firstname'] ?? ''));
                     $url_down = wp_nonce_url( admin_url('admin.php?page=mh-form-admin-list&mh_admin_action=download&id='.$sub['id']), 'mh_admin_action_'.$sub['id'] );
+                    // Nachschreib-Anmeldungen: eigenes PDF, mehrere Schüler*innen pro Eintrag.
+                    $is_ns = ( \Mh\FormWorkflows\Service\Nachschreib_Termin_Katalog::FORM_TYPE === $sub['form_type'] );
+                    if ( $is_ns ) {
+                        $ns_rows  = is_array( $data['rows'] ?? null ) ? $data['rows'] : [];
+                        $klasse   = implode( ', ', array_unique( array_column( $ns_rows, 'class_name' ) ) ) ?: '-';
+                        $info     = 'Termin ' . ( ! empty( $data['termin_datum'] ) ? date( 'd.m.Y', strtotime( $data['termin_datum'] ) ) : '?' ) . ' · ' . count( $ns_rows ) . ' Schüler*in(nen)';
+                        $url_down = \Mh\FormWorkflows\Controller\Nachschreib_Controller::pdf_url( (int) $sub['id'] );
+                    }
                 ?>
                     <tr>
                         <th scope="row" class="check-column">
@@ -85,11 +93,11 @@ $f_type  = $_GET['form_type'] ?? '';
             <br><small style="color:#999;">Erstellt: <?= date('d.m.y', strtotime($sub['created_at'])) ?></small>
         <?php endif; ?>
     </td><td><?= esc_html( $sub['user_name'] ) ?></td>
-                        <td><?= ($sub['form_type'] === 'service_leave_v1') ? 'Befreiung' : 'Abmeldung' ?></td>
+                        <td><?= $is_ns ? 'Nachschreiben' : ( ($sub['form_type'] === 'service_leave_v1') ? 'Befreiung' : 'Abmeldung' ) ?></td>
                         <td><code><?= esc_html( $klasse ) ?></code></td>
                         <td><strong><?= esc_html( strtoupper( $info ) ) ?></strong></td>
                         <td>
-                            <a href="<?= $url_down ?>" class="button button-small" target="_blank">PDF</a>
+                            <a href="<?= esc_url( $url_down ) ?>" class="button button-small" target="_blank">PDF</a>
                         </td>
                     </tr>
                 <?php endforeach; endif; ?>

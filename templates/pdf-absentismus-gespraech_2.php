@@ -10,6 +10,13 @@ include MH_FW_PLUGIN_DIR . 'templates/absentismus/pdf-header.php';
 <div class="header">2. Pädagogisches Gespräch mit Schüler/-in</div>
 <div class="subheader">Bedingungen: Vereinbarungen aus dem 1. Pädagogischen Gespräch wurden nicht eingehalten bzw. weitere Fehlstunden sind hinzugekommen.</div>
 
+<?php
+if ( in_array( $data['dokumentation'] ?? '', [ 'webuntis', 'handschriftlich' ], true ) ) {
+	include MH_FW_PLUGIN_DIR . 'templates/absentismus/pdf-extern-dokumentiert.php';
+	return;
+}
+?>
+
 <p>
 	Datum des 2. Pädagogischen Gesprächs: <b><?= $date_fmt( 'einladung_datum' ) ?></b><br>
 	Uhrzeit: <b><?= $esc( 'einladung_uhrzeit' ) ?></b>

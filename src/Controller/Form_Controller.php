@@ -9,6 +9,15 @@ use Mh\FormWorkflows\Repository\Class_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
 use Mh\FormWorkflows\Repository\Student_Repository;
 use Mh\FormWorkflows\Repository\Subject_Repository;
+use Mh\FormWorkflows\Repository\Track_Subject_Repository;
+use Mh\FormWorkflows\Repository\Student_Course_Repository;
+use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
+use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
+use Mh\FormWorkflows\Repository\Diagnostics_Repository;
+use Mh\FormWorkflows\Service\Config_Check;
+use Mh\FormWorkflows\Service\Noten_Feature;
+use Mh\FormWorkflows\Service\Mail_Service;
+use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
 use Mh\FormWorkflows\Model\Form\Form_Interface;
 use Mh\FormWorkflows\Model\Form\Abmeldung_Student_Form;
@@ -17,7 +26,7 @@ use Mh\FormWorkflows\Model\Form\Service_Leave_Form;
 class Form_Controller {
 
 	/**
-	 * Konstruktor mit allen 5 Abhängigkeiten (muss zur Bootstrap passen!)
+	 * Konstruktor mit allen Abhängigkeiten (muss zur Bootstrap passen!)
 	 */
 	public function __construct(
 		private Submission_Repository $repository,
@@ -25,8 +34,146 @@ class Form_Controller {
 		private Teacher_Repository $teacher_repo,
 		private Student_Repository $student_repo,
                 private Subject_Repository $subject_repo,
+		private Track_Subject_Repository $track_subject_repo,
+		private Student_Course_Repository $student_course_repo,
+		private Noten_Fall_Repository $noten_repo,
+		private Teacher_Account_Repository $account_repo,
+		private Mail_Service $mail,
+		private Reminder_Service $reminder,
 		private Pdf_Generator $pdf_generator
 	) {}
+
+	/**
+	 * AJAX-Endpunkt: Liefert die Fächer-Vorbelegung für einen Schüler.
+	 *
+	 * Vereinigt zwei Schild-Quellen, die ab Schuljahresbeginn gepflegt sind:
+	 * - die Stundentafel des Bildungsgangs (Regelfächer, für alle Schüler gleich)
+	 * - die klassenübergreifenden Kursbelegungen des Schülers (nur dort steht eine Lehrkraft)
+	 *
+	 * Bewusst NICHT genutzt wird die schülerbezogene Fachbelegung aus Schild: die entsteht
+	 * erst kurz vor der Notensammlung und ist bei einer Abmeldung meist noch leer.
+	 */
+	public function ajax_get_subject_rows(): void {
+		if ( ! check_ajax_referer( 'mh_form_nonce', 'nonce', false ) ) {
+			wp_send_json_error( 'Sicherheits-Check fehlgeschlagen.' );
+		}
+
+		$track_key = isset( $_POST['track_key'] ) ? sanitize_text_field( wp_unslash( $_POST['track_key'] ) ) : '';
+		$schild_id = isset( $_POST['schild_id'] ) ? sanitize_text_field( wp_unslash( $_POST['schild_id'] ) ) : '';
+
+		$rows = [];
+		$seen = [];
+
+		// Kurse stehen in der Vorbelegung VOR den Regelfächern, und sie ersetzen das Fach,
+		// zu dem sie gehören.
+		//
+		// Das Trägerfach aus Schild ("KURS1_11u12", "Reli/PRPH") ist ein echtes Fach der
+		// Stundentafel, kein Sammelbegriff: es steht dort als Platzhalter, auf den die
+		// konkreten Kurse gebucht werden. "Reli/PRPH" meint den Platz für Religion oder
+		// Praktische Philosophie, "KURS1_11u12" ein Fach, das über beide Jahrgangsstufen
+		// läuft, "KURS1_11" nur die Unterstufe. Steht für ein solches Fach ein Kurs, gehört
+		// die Kurszeile ins Protokoll und nicht der Platzhalter — sie nennt den tatsächlichen
+		// Kurs und bringt die Kurslehrkraft mit.
+		$course_rows   = [];
+		$track_rows    = [];
+		$covered_by_course = [];
+
+		// 1. Regelfächer aus der Stundentafel des Bildungsgangs.
+		$track_subjects = $this->track_subject_repo->get_subjects_for_track( $track_key );
+		$track_options  = [];
+		$track_labels   = [];
+
+		foreach ( $track_subjects as $s ) {
+			$short   = (string) $s['short_name'];
+			$display = (string) ( $s['display_name'] ?? '' );
+			$label   = '' !== $display ? $short . ' - ' . $display : $short;
+
+			$track_options[] = [ 'value' => $short, 'label' => $label ];
+
+			if ( isset( $track_labels[ $short ] ) ) {
+				continue;
+			}
+			$track_labels[ $short ] = $label;
+		}
+
+		// 2. Klassenübergreifende Kurse. Angezeigt wird die Kursbezeichnung, weil das
+		//    Trägerfach im Protokoll nur den Platzhalter nennen würde ("Reli/PRPH") statt
+		//    des belegten Kurses. Im Dropdown bekommen die Kurse eine eigene Gruppe; eine
+		//    Einrückung unter das Fach entfällt, weil das Fach als eigene Zeile gerade
+		//    wegfällt, sobald ein Kurs dafür da ist.
+		$course_options = [];
+		foreach ( $this->student_course_repo->get_courses_for_student( $schild_id ) as $c ) {
+			$course_name = (string) $c['course_name'];
+			if ( '' === $course_name || isset( $seen[ $course_name ] ) ) {
+				continue;
+			}
+			$seen[ $course_name ] = true;
+
+			$teacher = (string) ( $c['teacher_short'] ?? '' );
+			$label   = '' !== $teacher ? $course_name . ' (' . $teacher . ')' : $course_name;
+
+			// Das Fach, auf das dieser Kurs gebucht ist, entfällt als eigene Zeile.
+			$traegerfach = trim( (string) ( $c['subject_short'] ?? '' ) );
+			if ( '' !== $traegerfach ) {
+				$covered_by_course[ $traegerfach ] = true;
+			}
+
+			// Das Dropdown führt die Kurse eigenständig: Wer eine vorbelegte Kurszeile
+			// löscht oder umstellt, konnte den Kurs bisher nicht wieder auswählen.
+			$course_options[] = [
+				'value'   => $course_name,
+				'label'   => $label,
+				'teacher' => $teacher,
+			];
+
+			$course_rows[] = [
+				'value'     => $course_name,
+				'label'     => $course_name,
+				'teacher'   => $teacher,
+				'is_course' => true,
+			];
+		}
+
+		// Regelfächer hinter den Kursen einreihen - ausser denen, für die bereits ein Kurs
+		// vorliegt. Die Kurszeile nennt den tatsächlich belegten Kurs und bringt die
+		// Kurslehrkraft mit; der Platzhalter daneben wäre eine Dublette ohne Mehrwert.
+		foreach ( $track_labels as $short => $label ) {
+			if ( isset( $seen[ $short ] ) || isset( $covered_by_course[ $short ] ) ) {
+				continue;
+			}
+			$seen[ $short ] = true;
+
+			$track_rows[] = [
+				'value'     => (string) $short,
+				'label'     => $label,
+				'teacher'   => '',
+				'is_course' => false,
+			];
+		}
+
+		$rows = array_merge( $course_rows, $track_rows );
+
+		// Der Rest der Schild-Fächerliste bleibt als Notausgang erreichbar (Fachwechsler,
+		// Wiederholer), steht im Dropdown aber unterhalb der Bildungsgang-Fächer.
+		$other_options = [];
+		foreach ( $this->subject_repo->get_all_subjects() as $sub ) {
+			$short = (string) $sub['short_name'];
+			if ( isset( $seen[ $short ] ) ) {
+				continue;
+			}
+			$other_options[] = [
+				'value' => $short,
+				'label' => $short . ' - ' . $sub['display_name'],
+			];
+		}
+
+		wp_send_json_success( [
+			'rows'           => $rows,
+			'course_options' => $course_options,
+			'track_options'  => $track_options,
+			'other_options'  => $other_options,
+		] );
+	}
 	
 	/**
 	 * AJAX-Endpunkt: Holt Schüler einer Klasse
@@ -112,6 +259,9 @@ class Form_Controller {
 			}
 		}
 
+		// Steuert, ob das Formular die Option "automatisch einsammeln" überhaupt anbietet.
+		$noten_enabled = Noten_Feature::is_enabled();
+
 		// Stammdaten für Dropdowns laden
 		$classes_list = $this->class_repo->get_real_classes();
 		$teachers_list = $this->teacher_repo->get_all_teachers();
@@ -133,7 +283,13 @@ class Form_Controller {
 		if ( ! is_user_logged_in() ) return '<p>Bitte anmelden.</p>';
 
 		$user_id = get_current_user_id();
-		$submissions = $this->repository->get_submissions_by_user( $user_id );
+		// Nur echte Anträge: Absentismus- und Noten-Fälle liegen in derselben Tabelle,
+		// wurden hier aber als "Abmeldung" beschriftet und mit einem PDF-Link versehen,
+		// der für sie nicht funktioniert.
+		$submissions = $this->repository->get_submissions_by_user(
+			$user_id,
+			Submission_Repository::ANTRAG_FORM_TYPES
+		);
 		
 		$urls = [
 			'service_leave_v1'     => $this->get_url_for_form_type('service_leave_v1'),
@@ -179,6 +335,165 @@ class Form_Controller {
 	}
 
 	/**
+	 * Prüft, ob eine digitale Noteneinsammlung überhaupt starten kann.
+	 *
+	 * Jede belegte Fächerzeile braucht eine Lehrkraft, und zu jedem Kürzel muss sich
+	 * eine Zustelladresse auflösen lassen. Fehlt eines von beidem, gibt es niemanden
+	 * zu benachrichtigen — der Prozess bliebe unbemerkt liegen.
+	 *
+	 * @return array<string,string> Fehler für die Rückgabe ins Formular.
+	 */
+	private function check_collect_preconditions( array $valid_data ): array {
+		// Abgeschaltet heisst: keine NEUEN Einsammlungen. Laufende Fälle bleiben
+		// unberührt, die laufen über den Noten_Controller weiter.
+		if ( ! Noten_Feature::is_enabled() ) {
+			return [ 'collect_disabled' => 'Die digitale Noteneinsammlung ist derzeit abgeschaltet. Bitte die Noten im Formular eintragen oder auf Papier einsammeln.' ];
+		}
+
+		// Liegt ein bestehendes Konferenzprotokoll bei, stehen die Noten bereits darin.
+		// Ein Umlauf würde Lehrkräfte um etwas bitten, das längst entschieden ist.
+		if ( 'existing' === ( $valid_data['protocol_mode'] ?? '' ) ) {
+			return [ 'protocol_mode' => 'Die digitale Noteneinsammlung ist nicht möglich, wenn ein bestehendes Zeugniskonferenzprotokoll beigefügt wird — die Noten ergeben sich aus diesem Protokoll.' ];
+		}
+
+		// Ohne Zeugnis keine Zeugniskonferenz - es gibt keine Noten, die man einsammeln könnte.
+		if ( 'none' === ( $valid_data['certificate'] ?? '' ) ) {
+			return [ 'certificate' => 'Die digitale Noteneinsammlung ist nicht möglich, wenn kein Zeugnis erteilt wird.' ];
+		}
+
+		$subjects = $valid_data['subjects'] ?? [];
+
+		if ( empty( $subjects ) ) {
+			return [ 'subjects' => 'Für die Noteneinsammlung muss mindestens ein Fach eingetragen sein.' ];
+		}
+
+		$missing_teacher = [];
+		$missing_address = [];
+		$collect_count   = 0;
+
+		// Geprüft wird nur, was auch angefragt werden soll. Fächer, deren Note die
+		// Klassenleitung selbst einträgt, brauchen keine erreichbare Lehrkraft - sonst
+		// müsste sie Adressen pflegen für Mails, die nie rausgehen.
+		foreach ( $subjects as $s ) {
+			$name    = trim( (string) ( $s['name'] ?? '' ) );
+			$kuerzel = trim( (string) ( $s['teacher'] ?? '' ) );
+			if ( '' === $name || '1' !== ( $s['collect'] ?? '0' ) ) {
+				continue;
+			}
+			$collect_count++;
+			if ( '' === $kuerzel ) {
+				$missing_teacher[] = $name;
+				continue;
+			}
+			if ( null === $this->account_repo->resolve_recipient( $kuerzel ) ) {
+				$missing_address[] = $name . ' (' . $kuerzel . ')';
+			}
+		}
+
+		$errors = [];
+		if ( 0 === $collect_count ) {
+			return [ 'subjects' => 'Es ist kein Fach zum Anfragen markiert. Setze die gewünschten Fächer in der Notenspalte auf „✉ per Mail anfragen“ — oder erstelle das PDF mit den selbst eingetragenen Noten.' ];
+		}
+		if ( ! empty( $missing_teacher ) ) {
+			$errors['subjects_teacher'] = 'Für die Noteneinsammlung fehlt die Lehrkraft in folgenden Fächern: '
+				. implode( ', ', $missing_teacher ) . '.';
+		}
+		if ( ! empty( $missing_address ) ) {
+			$errors['subjects_address'] = 'Für folgende Lehrkräfte ist keine E-Mail-Adresse hinterlegt: '
+				. implode( ', ', $missing_address ) . '. Bitte im WebUntis Analyser unter "Lehrer-Zuordnung" ergänzen.';
+		}
+
+		return $errors;
+	}
+
+	/**
+	 * Legt den Fall an, verschickt die Einladungen und leitet auf die Fall-Ansicht.
+	 */
+	private function start_grade_collection( int $submission_id, array $valid_data, int $user_id ): void {
+		// Doppelstart verhindern (z. B. durch erneutes Absenden desselben Formulars).
+		$existing = $this->noten_repo->find_open_case_by_submission( $submission_id );
+		if ( null !== $existing ) {
+			wp_redirect( $this->reminder->case_link( (int) $existing['id'] ) );
+			exit;
+		}
+
+		// Alle Fächer wandern in den Fall, nicht nur die angefragten: beim Abschluss
+		// ersetzt write_back_to_submission() die subjects der Einsendung vollständig
+		// durch die Positionen des Falls. Fehlten die selbst eingetragenen Noten hier,
+		// wären sie hinterher weg.
+		$items = [];
+		foreach ( $valid_data['subjects'] ?? [] as $s ) {
+			$name = trim( (string) ( $s['name'] ?? '' ) );
+			if ( '' === $name ) {
+				continue;
+			}
+
+			$kuerzel    = trim( (string) ( $s['teacher'] ?? '' ) );
+			$is_collect = ( '1' === ( $s['collect'] ?? '0' ) );
+
+			$recipient = null;
+			if ( $is_collect ) {
+				$recipient = $this->account_repo->resolve_recipient( $kuerzel );
+				if ( null === $recipient ) {
+					continue; // von check_collect_preconditions() bereits ausgeschlossen
+				}
+			}
+
+			$items[] = [
+				'subject'           => $name,
+				'teacher_kuerzel'   => $kuerzel,
+				'recipient_user_id' => $recipient['user_id'] ?? 0,
+				'recipient_email'   => $recipient['email'] ?? '',
+				'is_fallback'       => $recipient['is_fallback'] ?? false,
+				'collect'           => $is_collect,
+				'grade'             => (string) ( $s['grade'] ?? '' ),
+				'webuntis'          => (string) ( $s['webuntis'] ?? '0' ),
+				'completed'         => (string) ( $s['completed'] ?? '0' ),
+			];
+		}
+
+		$case_id = $this->noten_repo->create_case( [
+			'submission_id' => $submission_id,
+			'student_wu_id' => (int) ( $valid_data['student_wu_id'] ?? 0 ),
+			'lastname'      => (string) ( $valid_data['lastname'] ?? '' ),
+			'firstname'     => (string) ( $valid_data['firstname'] ?? '' ),
+			'class_wu_id'   => (int) ( $valid_data['class_wu_id'] ?? 0 ),
+			'class_name'    => (string) ( $valid_data['class_name'] ?? '' ),
+			'owner_user_id' => $user_id,
+		], $items, $user_id );
+
+		if ( 0 === $case_id ) {
+			wp_die( 'Die Noteneinsammlung konnte nicht angelegt werden (DB-Fehler).' );
+		}
+
+		// Eingeladen wird nur, wo auch wirklich eine Note fehlt.
+		$case = $this->noten_repo->get_by_id( $case_id );
+		foreach ( $case['form_data']['items'] as $item ) {
+			if ( '1' !== ( $item['collect'] ?? '0' ) ) {
+				continue;
+			}
+			$idx  = (int) $item['idx'];
+			$sent = $this->mail->send_invitation(
+				(string) $item['recipient_email'],
+				$this->account_repo->get_display_name( (string) $item['teacher_kuerzel'] ),
+				$case,
+				$item,
+				$this->reminder->entry_link( $case_id, $idx )
+			);
+			// Nur bei Erfolg als benachrichtigt markieren. Ein Fehlschlag wird am Fach
+			// vermerkt; der Erinnerungs-Cron versucht die Einladung dann erneut.
+			if ( $sent ) {
+				$this->noten_repo->mark_notified( $case_id, $idx, false );
+			} else {
+				$this->noten_repo->mark_mail_failed( $case_id, $idx, $this->mail->get_last_error() );
+			}
+		}
+
+		wp_redirect( $this->reminder->case_link( $case_id ) );
+		exit;
+	}
+
+	/**
 	 * POST-Verarbeitung
 	 */
 	public function handle_submission(): void {
@@ -195,10 +510,42 @@ class Form_Controller {
 		$valid_data = $form->get_data(); 
 		$errors     = $form->get_errors();
 
+		// Ist das Verfahren abgeschaltet, darf keine Zeile als "einzusammeln" gespeichert
+		// werden. Sonst stünde die Markierung später im Formular, ohne dass je jemand
+		// gefragt würde. Das Model kennt die Einstellung nicht — diese Entscheidung
+		// gehört in den Controller.
+		if ( ! Noten_Feature::is_enabled() && ! empty( $valid_data['subjects'] ) ) {
+			foreach ( $valid_data['subjects'] as &$mh_subject ) {
+				$mh_subject['collect'] = '0';
+			}
+			unset( $mh_subject );
+		}
+
 		if ( 'pdf' === $mode && ! empty( $valid_data['prot_was_corrected'] ) ) {
 			$mode = 'check';
 			$errors['date_autocorrect'] = 'Achtung: Datum korrigiert (WE/Ferien). Bitte prüfen.';
 			$is_valid = false;
+		}
+
+		// Start der digitalen Noteneinsammlung: Ohne zugeordnete Lehrkraft mit
+		// erreichbarer Adresse gäbe es keinen Empfänger — dann lieber gar nicht
+		// starten, statt einen Prozess anzulegen, der still auf niemanden wartet.
+		if ( 'collect' === $mode && $is_valid ) {
+			$collect_errors = $this->check_collect_preconditions( $valid_data );
+			if ( ! empty( $collect_errors ) ) {
+				$errors   = array_merge( $errors, $collect_errors );
+				$mode     = 'check';
+				$is_valid = false;
+			}
+		}
+
+		// Das Abmeldeformular erzeugt das PDF in einem eigenen Fenster. Scheitert dort die
+		// Prüfung, wäre ein zweites Formular im neuen Fenster nur verwirrend - stattdessen
+		// die Fehler auflisten; korrigiert wird im stehengebliebenen Formular-Fenster.
+		$in_window = 'pdf' === ( $_POST['submit_mode'] ?? '' ) && '1' === ( $_POST['pdf_in_window'] ?? '' );
+		if ( $in_window && ( 'check' === $mode || ! $is_valid ) ) {
+			$this->render_pdf_window_errors( $errors, $valid_data );
+			exit;
 		}
 
 		if ( 'check' === $mode || ! $is_valid ) {
@@ -216,6 +563,19 @@ class Form_Controller {
 
 		// LOGIK: Nur speichern, wenn es KEINE Dienstbefreiung ist
 		if ( 'service_leave_v1' !== $form_type_slug ) {
+
+			// Formularsitzung wiedererkennen: wiederholtes Erzeugen aus demselben, noch
+			// offenen Formular aktualisiert dieselbe Einsendung (siehe find_id_by_client_token()).
+			$client_token = sanitize_text_field( wp_unslash( $_POST['client_token'] ?? '' ) );
+			if ( ! preg_match( '/^[a-f0-9-]{36}$/', $client_token ) ) {
+				$client_token = '';
+			}
+			if ( '' !== $client_token ) {
+				$valid_data['client_token'] = $client_token;
+				if ( $submission_id <= 0 ) {
+					$submission_id = $this->repository->find_id_by_client_token( $current_user_id, $form->get_slug(), $client_token );
+				}
+			}
 
 			$db_data = [ 
 				'form_type' => $form->get_slug(), 
@@ -236,7 +596,13 @@ class Form_Controller {
 		} else {
 			// FALL: Dienstbefreiung (Wird nicht gespeichert)
 			// Wir nutzen eine temporäre "ID" für den Dateinamen (z.B. Uhrzeit)
-			$entry_id = (int)date('His'); 
+			$entry_id = (int)date('His');
+		}
+
+		// Digitale Noteneinsammlung starten statt PDF ausliefern.
+		if ( 'collect' === $mode ) {
+			$this->start_grade_collection( $entry_id, $valid_data, $current_user_id );
+			exit;
 		}
 
 		// PDF Generierung
@@ -259,6 +625,34 @@ class Form_Controller {
 	}
 
 	/**
+	 * Fehlerseite für das PDF-Fenster: listet, was die Prüfung bemängelt hat.
+	 * Das Formular im anderen Fenster behält alle Eingaben.
+	 */
+	private function render_pdf_window_errors( array $errors, array $valid_data ): void {
+		$items = [];
+		foreach ( $errors as $key => $message ) {
+			if ( 'date_autocorrect' === $key ) {
+				// Konferenz- und Zeugnisdatum werden auf einen Schultag gelegt. Im Formular
+				// sind sie schreibgeschützt - ändern lässt sich nur das Abmeldedatum.
+				$corrected = ! empty( $valid_data['prot_date'] ) ? date_i18n( 'd.m.Y', strtotime( (string) $valid_data['prot_date'] ) ) : '';
+				$message   = 'Das Abmeldedatum fällt nicht auf einen Schultag (Wochenende/Ferien).'
+					. ( '' !== $corrected ? ' Konferenz- und Zeugnisdatum würden auf den ' . $corrected . ' gelegt.' : '' )
+					. ' Bitte das Datum im Formular prüfen – oder dort „Formular nur prüfen“ nutzen, dann wird die Korrektur übernommen.';
+			}
+			$items[] = '<li>' . esc_html( (string) $message ) . '</li>';
+		}
+
+		$html = '<h1>PDF wurde nicht erzeugt</h1>'
+			. '<p>Das Formular hat die Prüfung nicht bestanden:</p>'
+			. '<ul>' . implode( '', $items ) . '</ul>'
+			. '<p>Bitte dieses Fenster schließen, die Angaben im Formular-Fenster korrigieren und das PDF erneut erzeugen. '
+			. 'Deine Eingaben dort sind unverändert.</p>'
+			. '<p><button type="button" class="button" onclick="window.close();">Fenster schließen</button></p>';
+
+		wp_die( $html, 'PDF wurde nicht erzeugt', [ 'response' => 200 ] );
+	}
+
+	/**
 	 * Admin Aktionen
 	 */
 	public function handle_admin_action(): void {
@@ -272,10 +666,34 @@ class Form_Controller {
 			exit;
 		}
 		if ( 'download' === $action ) {
-			$_GET['mh_action'] = 'download';
-			$this->handle_dashboard_action();
+			// Nonce und Berechtigung sind oben geprüft. Früher lief das über
+			// handle_dashboard_action() - das prüfte aber eine andere Nonce und nur den
+			// Ersteller, der Download aus dem Backend schlug deshalb immer fehl.
+			$entry = $this->repository->get_by_id( $id );
+			if ( ! $entry ) wp_die( 'Eintrag nicht gefunden.' );
+			$this->stream_submission_pdf( $entry );
 			exit;
 		}
+	}
+
+	/**
+	 * Erzeugt das PDF einer gespeicherten Einsendung und liefert es aus.
+	 * Die Berechtigungsprüfung liegt beim Aufrufer.
+	 */
+	private function stream_submission_pdf( array $entry ): void {
+		$id         = (int) $entry['id'];
+		$valid_data = $entry['form_data'];
+		$valid_data['entry_id'] = $id;
+		$data = $valid_data;
+		ob_start();
+		if ( 'service_leave_v1' === $entry['form_type'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-service-leave.php';
+		else {
+			include MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php';
+			if ( isset( $valid_data['protocol_attached'] ) && '1' === $valid_data['protocol_attached'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php';
+		}
+		$html = ob_get_clean() . '</body></html>';
+		$filename = sprintf('%s_%d_%s', date('y-m-d', strtotime($entry['created_at'])), $id, sanitize_file_name($valid_data['lastname'] ?? ''));
+		$this->pdf_generator->generate_and_stream( $id, $html, $filename );
 	}
 
 	/**
@@ -296,18 +714,7 @@ class Form_Controller {
 		if ( 'download' === $action ) {
 			$entry = $this->repository->get_by_id( $id );
 			if ( ! $entry || (int)$entry['user_id'] !== $current_user ) wp_die( 'Denied' );
-			$valid_data = $entry['form_data'];
-			$valid_data['entry_id'] = $id;
-			$data = $valid_data;
-			ob_start();
-			if ( 'service_leave_v1' === $entry['form_type'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-service-leave.php';
-			else {
-				include MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php';
-				if ( isset( $valid_data['protocol_attached'] ) && '1' === $valid_data['protocol_attached'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php';
-			}
-			$html = ob_get_clean() . '</body></html>';
-			$filename = sprintf('%s_%d_%s', date('y-m-d', strtotime($entry['created_at'])), $id, sanitize_file_name($valid_data['lastname']));
-			$this->pdf_generator->generate_and_stream( $id, $html, $filename );
+			$this->stream_submission_pdf( $entry );
 			exit;
 		}
 	}
@@ -331,6 +738,13 @@ class Form_Controller {
 	 */
 	public function render_admin_help(): void {
 		if ( ! current_user_can( 'manage_options' ) ) return;
+
+		// Der Konfigurationscheck läuft bei jedem Aufruf frisch: eine zwischengespeicherte
+		// Einrichtungsprüfung wäre genau dann falsch, wenn man sie am dringendsten braucht.
+		global $wpdb;
+		$check  = new Config_Check( new Diagnostics_Repository( $wpdb ) );
+		$report = $check->run();
+
 		include MH_FW_PLUGIN_DIR . 'templates/admin-help.php';
 	}
 }

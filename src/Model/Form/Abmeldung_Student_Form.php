@@ -8,6 +8,13 @@ use Mh\FormWorkflows\Service\School_Date_Calculator;
 
 class Abmeldung_Student_Form extends Abstract_Form {
 
+	/**
+	 * Wert im Noten-Dropdown, der statt einer Note bedeutet: diese Note wird bei der
+	 * Fachlehrkraft per Mail angefragt. Bewusst kein gueltiger Notenwert, damit er
+	 * sich nicht mit 1-6/NB/NE beissen kann.
+	 */
+	public const GRADE_COLLECT_MARKER = '__collect__';
+
 	public function get_slug(): string {
 		return 'abmeldung_student_v1';
 	}
@@ -65,9 +72,47 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		$education_track = $this->sanitize_text( $data['new_education_track'] ?? '' );
 		
 		$is_minor = ( isset( $data['is_minor'] ) && '1' === $data['is_minor'] );
-		$protocol = isset( $data['protocol_attached'] ) ? '1' : '0';
-
+		// Protokoll-Modus: Ein Konferenzprotokoll liegt dem Formular IMMER bei. Offen ist
+		// nur, ob es hier erzeugt wird ('create') oder ob die Klassenleitung ein
+		// bestehendes Protokoll der Gesamtkonferenz beilegt ('existing') - letzteres
+		// kommt vor allem zum Schuljahresbeginn vor, wenn Noten und Zeugnisdatum aus
+		// dem Klassenprotokoll uebernommen werden.
 		$certificate  = $this->sanitize_text( $data['certificate'] ?? '' );
+
+		$protocol_mode = $this->sanitize_text( $data['protocol_mode'] ?? '' );
+		if ( ! in_array( $protocol_mode, [ 'create', 'existing' ], true ) ) {
+			$protocol_mode = '';
+		}
+		// Ohne Zeugnis gibt es auch keine Zeugniskonferenz - und damit kein Protokoll.
+		// Das Formular sperrt die Auswahl in diesem Fall; ein trotzdem mitgeschickter
+		// Wert (z. B. aus einem alten Browser-Tab) wird verworfen.
+		if ( 'none' === $certificate ) {
+			$protocol_mode = '';
+		}
+		// protocol_attached bleibt als abgeleitetes Feld erhalten: daran haengt die
+		// Frage, ob dem PDF die Protokollseite angehaengt wird, und aeltere
+		// Datensaetze tragen ausschliesslich dieses Feld.
+		$protocol = ( 'create' === $protocol_mode ) ? '1' : '0';
+
+		// Wird kein Zeugnis erteilt, muss das begruendet werden - die Begruendung steht
+		// hinterher auf der Abmeldung und ist der einzige Beleg dafuer, warum die
+		// Schuelerin oder der Schueler ohne Zeugnis geht. Die Schulleitung laesst dafuer
+		// nur drei Faelle zu, jeder mit eigener Pflichtangabe:
+		//   gast           -> Datum des bereits erteilten Zeugnisses
+		//   andere_schule  -> Art des beigefuegten Nachweises
+		//   keine_aufnahme -> Freitext-Grund (certificate_none_reason)
+		// Felder, die zum gewaehlten Fall nicht passen, werden verworfen, damit keine
+		// Reste einer vorherigen Auswahl im PDF landen.
+		$cert_none_type = $this->sanitize_text( $data['certificate_none_type'] ?? '' );
+		if ( 'none' !== $certificate || ! in_array( $cert_none_type, [ 'gast', 'andere_schule', 'keine_aufnahme' ], true ) ) {
+			$cert_none_type = '';
+		}
+		$cert_issued_date = ( 'gast' === $cert_none_type ) ? $this->sanitize_text( $data['certificate_issued_date'] ?? '' ) : '';
+		$cert_proof       = ( 'andere_schule' === $cert_none_type ) ? $this->sanitize_text( $data['certificate_proof'] ?? '' ) : '';
+		if ( ! in_array( $cert_proof, [ 'ausbildungsvertrag', 'schulbescheinigung', 'sekretariat' ], true ) ) {
+			$cert_proof = '';
+		}
+		$cert_none_reason = ( 'keine_aufnahme' === $cert_none_type ) ? sanitize_textarea_field( $data['certificate_none_reason'] ?? '' ) : '';
 		$missed_hours = (int) ( $data['missed_hours'] ?? 0 );
 		$missed_ue    = (int) ( $data['missed_ue'] ?? 0 );
 		$missed_hours_raw = trim( (string) ( $data['missed_hours'] ?? '' ) ); // Für Leere-Prüfung
@@ -124,6 +169,25 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( 'bildungsgang' === $compulsory && empty( $education_track ) ) $this->add_error( 'new_education_track', 'Bitte Bildungsgang angeben.' );
 		
 
+		if ( ! in_array( $certificate, [ 'abgang', 'ueberweisung', 'none' ], true ) ) {
+			$this->add_error( 'certificate', 'Bitte auswählen, welches Zeugnis erteilt wird.' );
+		}
+		if ( 'none' === $certificate ) {
+			if ( '' === $cert_none_type ) {
+				$this->add_error( 'certificate_none_type', 'Bitte auswählen, warum kein Zeugnis erteilt wird.' );
+			} elseif ( 'gast' === $cert_none_type && '' === $cert_issued_date ) {
+				$this->add_error( 'certificate_issued_date', 'Bitte das Datum des bereits ausgestellten Abschluss- oder Abgangszeugnisses angeben.' );
+			} elseif ( 'andere_schule' === $cert_none_type && '' === $cert_proof ) {
+				$this->add_error( 'certificate_proof', 'Bitte angeben, welcher Nachweis über den Besuch der anderen Schule beiliegt.' );
+			} elseif ( 'keine_aufnahme' === $cert_none_type && '' === trim( $cert_none_reason ) ) {
+				$this->add_error( 'certificate_none_reason', 'Bitte kurz angeben, warum die Aufnahme nicht erfolgt ist.' );
+			}
+		}
+
+		if ( '' === $protocol_mode && 'none' !== $certificate ) {
+			$this->add_error( 'protocol_mode', 'Bitte angeben, ob das Zeugniskonferenzprotokoll jetzt erstellt wird oder ob ein bestehendes beiliegt.' );
+		}
+
 		if ( '1' === $protocol ) {
 			if ( empty( $prot_type ) ) $this->add_error( 'prot_type', 'Bitte Typ für Protokoll wählen.' );
 			// Wir prüfen hier prot_date (das korrigierte), nicht raw. Wenn leer -> Fehler.
@@ -178,10 +242,21 @@ class Abmeldung_Student_Form extends Abstract_Form {
 				$s_name = $this->sanitize_text( $data['subj_name'][$i] );
 				// Nur speichern, wenn ein Fachname eingegeben wurde
 				if ( ! empty( $s_name ) ) {
+					// Der Marker steht im selben Dropdown wie die Noten, damit es pro Zeile
+					// nur eine Quelle der Wahrheit gibt: entweder liegt eine Note vor, oder
+					// sie wird angefragt. Er darf aber nie als "Note" weiterwandern - im
+					// Protokoll-PDF stuende sonst Kauderwelsch in der Notenspalte.
+					$s_grade   = $this->sanitize_text( $data['subj_grade'][$i] ?? '' );
+					$s_collect = ( self::GRADE_COLLECT_MARKER === $s_grade ) ? '1' : '0';
+					if ( '1' === $s_collect ) {
+						$s_grade = '';
+					}
+
 					$subjects[] = [
 						'name'      => $s_name,
 						'teacher'   => $this->sanitize_text( $data['subj_teacher'][$i] ?? '' ),
-						'grade'     => $this->sanitize_text( $data['subj_grade'][$i] ?? '' ),
+						'grade'     => $s_grade,
+						'collect'   => $s_collect,
 						'webuntis'  => isset( $data['subj_webuntis'][$i] ) ? '1' : '0',
 						'completed' => isset( $data['subj_completed'][$i] ) ? '1' : '0',
 					];
@@ -228,9 +303,14 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			'av_talk_with'        => $av_talk_with,
 			'av_talk_date'        => $av_talk_date,
 			'new_education_track' => $education_track,
-			'certificate'         => $certificate,
+			'certificate'             => $certificate,
+			'certificate_none_type'   => $cert_none_type,
+			'certificate_issued_date' => $cert_issued_date,
+			'certificate_proof'       => $cert_proof,
+			'certificate_none_reason' => $cert_none_reason,
 			'missed_hours'        => $missed_hours,
 			'missed_ue'           => $missed_ue,
+			'protocol_mode'       => $protocol_mode,
 			'protocol_attached'   => $protocol,
 			'prot_type'           => $prot_type,
 			'prot_chair'          => $prot_chair,

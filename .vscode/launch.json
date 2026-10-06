@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Xdebug: Auf Browser warten",
+            "type": "php",
+            "request": "launch",
+            "port": 9003
+        },
+        {
+            "name": "Xdebug: verify_noteneinsammlung.php",
+            "type": "php",
+            "request": "launch",
+            "program": "${workspaceFolder}/tools/verify_noteneinsammlung.php",
+            "cwd": "${workspaceFolder}",
+            "port": 9003
+        }
+    ]
+}

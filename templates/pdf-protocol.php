@@ -93,7 +93,9 @@ if ($is_vollzeit) {
     </tr>
     <?php 
     $subjects = $data['subjects'] ?? [];
-    $max_rows = 11; // Wir wollen immer 11 Zeilen für das Layout
+    // Mindestens 11 Zeilen für das Layout - bei mehr Fächern (Kurse + Stundentafel)
+    // wird verlängert, statt die hinteren Fächer abzuschneiden.
+    $max_rows = max( 11, count( $subjects ) );
     
     for($i=0; $i < $max_rows; $i++): 
         $s = $subjects[$i] ?? null;

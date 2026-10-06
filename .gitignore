@@ -14,4 +14,20 @@ Thumbs.db
 # WordPress Standards (falls vorhanden)
 wp-config.php
 
+# Lokale Arbeitsliste, bewusst nicht versioniert (siehe TODO.md)
+/TODO.md
+
+# Schild- und WebUntis-Exporte sowie Testdaten.
+# Diese Dateien enthalten personenbezogene Daten (Schüler, Lehrkräfte, Noten) und
+# dürfen das Repository nie erreichen - auch nicht versehentlich über "git add -A".
+/testdaten/
+/import/
+/uploads/
+*.csv
+*.xlsx
+*.xls
+
+# Arbeitsvorlagen (Word/PDF-Originale der Formulare). Lokales Material, nicht
+# versioniert - eine Vorlage enthielt einen echten Schülerdatensatz. Die Regeln
+# daraus stehen im Code (z. B. Nachschreib_Termin_Katalog).
 /Vorlagen_entwicklung/

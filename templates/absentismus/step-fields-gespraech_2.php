@@ -1,13 +1,20 @@
 <?php
 /**
  * Feld-Partial: 2. Pädagogisches Gespräch (gespraech_2).
+ * Elemente mit .mh-doku-details werden bei externer Dokumentation ausgeblendet
+ * (siehe partial-dokumentation-switch.php).
  *
  * @var array $case_meta Fall-Stammdaten, u. a. is_schulpflichtig.
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 $is_schulpflichtig = ! empty( $case_meta['is_schulpflichtig'] );
+$doku_id_prefix    = 'g2';
 ?>
+<div class="mh-doku-scope">
+<?php include MH_FW_PLUGIN_DIR . 'templates/absentismus/partial-dokumentation-switch.php'; ?>
+
+<div class="mh-doku-details">
 <?php if ( $is_schulpflichtig ) : ?>
 	<p style="font-size:0.85em; color:#666;">Bei schulpflichtigen SuS lädt das Sekretariat die Erziehungsberechtigten formell ein (Formular + Einladung Pflicht).</p>
 <?php else : ?>
@@ -28,22 +35,24 @@ $is_schulpflichtig = ! empty( $case_meta['is_schulpflichtig'] );
 		<input type="date" name="versand_einladung" value="<?= $val('versand_einladung') ?>">
 	</div>
 </div>
+</div>
 
 <div class="mh-grid-row mh-grid-3">
 	<div class="mh-input-group">
 		<label>Datum <span class="req">*</span></label>
 		<input type="date" name="datum" class="<?= $err_cls('datum') ?>" value="<?= $val('datum') ?>">
 	</div>
-	<div class="mh-input-group">
+	<div class="mh-input-group mh-doku-details">
 		<label>Uhrzeit von <span class="req">*</span></label>
 		<input type="time" name="uhrzeit_von" class="<?= $err_cls('uhrzeit_von') ?>" value="<?= $val('uhrzeit_von') ?>">
 	</div>
-	<div class="mh-input-group">
+	<div class="mh-input-group mh-doku-details">
 		<label>Uhrzeit bis</label>
 		<input type="time" name="uhrzeit_bis" value="<?= $val('uhrzeit_bis') ?>">
 	</div>
 </div>
 
+<div class="mh-doku-details">
 <div class="mh-input-group" style="margin-bottom:15px;">
 	<label>Ort <span class="req">*</span></label>
 	<div class="radio-group"><input type="radio" name="ort" value="schule" id="ort_schule" <?= $chk('ort','schule') ?>> <label for="ort_schule">Schule</label></div>
@@ -100,4 +109,6 @@ $is_schulpflichtig = ! empty( $case_meta['is_schulpflichtig'] );
 <div class="mh-input-group" style="margin-top:15px;">
 	<label>Überprüfen der Vereinbarungen am <span class="req">*</span></label>
 	<input type="date" name="ueberpruefung_am" class="<?= $err_cls('ueberpruefung_am') ?>" value="<?= $val('ueberpruefung_am') ?>">
+</div>
+</div>
 </div>

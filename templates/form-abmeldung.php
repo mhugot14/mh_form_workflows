@@ -12,11 +12,27 @@ $chk = fn($key, $val) => (isset($form_data[$key]) && $form_data[$key] == $val) ?
 $current_user = wp_get_current_user();
 $teacher_default = trim($current_user->first_name . ' ' . $current_user->last_name) ?: $current_user->display_name;
 
-// Überblendung Notensammlung: nur ausblenden, wenn schon mind. eine Note vorliegt
-$has_existing_grades = false;
-if ( ! empty( $form_data['subjects'] ) ) {
-    foreach ( $form_data['subjects'] as $s ) {
-        if ( ! empty( $s['grade'] ) ) { $has_existing_grades = true; break; }
+// Fächer-Vorbelegung aus Schild (Stundentafel + Kurse): darf niemals über bereits
+// erfasste Zeilen laufen — weder im Bearbeiten-Modus noch nach einem Validierungs-Reload.
+$has_existing_subjects = ! empty( $form_data['subjects'] );
+
+// Grundgerüst bleibt bei 12 Zeilen; gespeicherte Formulare können mehr enthalten,
+// weitere Zeilen hängt die Vorbelegung bei Bedarf per JS an.
+$subject_row_count = max( 12, count( $form_data['subjects'] ?? [] ) );
+
+// Marker im Noten-Dropdown fuer "Note per Mail anfragen".
+$collect_marker = \Mh\FormWorkflows\Model\Form\Abmeldung_Student_Form::GRADE_COLLECT_MARKER;
+
+// Protokoll-Modus. Rueckwaertskompatibel: aeltere Datensaetze kennen nur das
+// Haekchen protocol_attached. Ein Altdatensatz OHNE Protokoll bekommt bewusst
+// keine Vorauswahl - die Entscheidung soll bewusst getroffen werden, statt ihm
+// stillschweigend eine Erklaerung unterzuschieben, die nie abgegeben wurde.
+$protocol_mode = $form_data['protocol_mode'] ?? '';
+if ( '' === $protocol_mode ) {
+    if ( empty( $form_data ) ) {
+        $protocol_mode = 'create'; // Neues Formular: bisheriger Normalfall
+    } elseif ( isset( $form_data['protocol_attached'] ) && '1' === $form_data['protocol_attached'] ) {
+        $protocol_mode = 'create';
     }
 }
 
@@ -99,6 +115,12 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         padding: 2px 8px !important;
         margin: 0 !important;
     }
+    .mh-subject-table .mh-subj-remove {
+        background: none !important; border: 1px solid transparent !important; color: #d63638 !important;
+        cursor: pointer; line-height: 0; padding: 4px 6px !important; border-radius: 3px;
+    }
+    .mh-subject-table .mh-subj-remove svg { display: block; }
+    .mh-subject-table .mh-subj-remove:hover { background: #fcf0f1 !important; border-color: #d63638 !important; }
     .mh-subject-table input[type="checkbox"] {
         width: 18px !important;
         height: 18px !important;
@@ -114,37 +136,6 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
         display: block;
 	}
 
-	/* Überblendung für Notensammlung (Umlaufverfahren) */
-	.mh-grades-overlay-wrap { position: relative !important; }
-	.mh-grades-overlay {
-		position: absolute !important;
-		top: 0; left: 0; right: 0; bottom: 0;
-		width: 100%; height: 100%;
-		background: rgba(255, 255, 255, 0.85);
-		z-index: 10;
-		display: flex !important;
-		align-items: center !important;
-		justify-content: center !important;
-		text-align: center;
-		padding: 20px;
-		border-radius: 4px;
-	}
-	.mh-grades-overlay-box { max-width: 520px; }
-	.mh-grades-overlay-box p { font-size: 17px; line-height: 1.6; margin: 0 0 8px 0 !important; color: #222; font-weight: 500; }
-	.mh-grades-overlay-box p strong { color: #0073aa; }
-	.mh-grades-overlay-box button {
-		margin-top: 12px !important;
-		background: #0073aa !important;
-		color: #fff !important;
-		border: none !important;
-		padding: 12px 26px !important;
-		height: auto !important;
-		border-radius: 4px !important;
-		font-size: 15px !important;
-		font-weight: bold !important;
-		cursor: pointer !important;
-	}
-	.mh-grades-overlay-box button:hover { background: #005a87 !important; }
    /* Gehärtetes CSS für die Hilfe-Box */
 details.mh-help-notice-box {
     background-color: #f0f6fb !important;
@@ -239,6 +230,9 @@ details.mh-help-notice-box[open] summary::before {
         <input type="hidden" name="action" value="mh_submit_form">
         <input type="hidden" name="form_type" value="abmeldung_student_v1">
         <input type="hidden" name="submission_id" value="<?= $val('id') ?>">
+        <?php // Erkennt die Formularsitzung wieder: erneutes PDF-Erzeugen aktualisiert dieselbe Einsendung. ?>
+        <input type="hidden" name="client_token" value="<?= esc_attr( (string) ( $form_data['client_token'] ?? wp_generate_uuid4() ) ) ?>">
+        <input type="hidden" name="pdf_in_window" value="1">
         
         <!-- NEU: Flag für Vollzeit-Logik -->
         <input type="hidden" name="is_fulltime_class" id="is_fulltime_class" value="<?= $val('is_fulltime_class') ?>">
@@ -257,6 +251,7 @@ details.mh-help-notice-box[open] summary::before {
                             <option value="<?= $c['wu_id'] ?>" 
                                     data-fulltime="<?= $c['is_fulltime'] ?>" 
                                     data-name="<?= esc_attr($c['name']) ?>"
+                                    data-track="<?= esc_attr($c['track_key'] ?? '') ?>"
                                     <?= selected($val('class_wu_id'), $c['wu_id']) ?>>
                                 <?= esc_html($c['name']) ?>
                             </option>
@@ -298,7 +293,7 @@ details.mh-help-notice-box[open] summary::before {
             <div class="mh-grid-row mh-grid-2">
                 <div class="mh-input-group"><label>Klasse (Anzeige)</label><input type="text" id="display_classname" readonly value="<?= $val('class_name') ?>"></div>
                 <div class="mh-input-group">
-                    <label>Klassenlehrer/in (angemeldet) <span class="req">*</span></label>
+                    <label>Klassenlehrer*in (angemeldet) <span class="req">*</span></label>
                     <input type="text" name="teacher" required readonly value="<?= $val('teacher') ?: $teacher_default ?>">
                 </div>  
             </div>
@@ -396,13 +391,73 @@ details.mh-help-notice-box[open] summary::before {
         <!-- SEKTION 4: Zeugnis (Ohne Fehlstunden) -->
         <div class="mh-form-section" style="<?= isset($form_errors['certificate']) ? 'border:2px solid #d63638;' : '' ?>">
             <h4>3. Zeugnis <span class="req">*</span></h4>
-            <div class="radio-group"><input type="radio" name="certificate" value="abgang" id="z_ab" required <?= $chk('certificate', 'abgang') ?>> <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small>(Ohne Abschluss)</small></label></div>
-            <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" required <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb der Schulstufe)</small></label></div>
+            <div class="radio-group"><input type="radio" name="certificate" value="abgang" id="z_ab" class="toggle-trigger" required <?= $chk('certificate', 'abgang') ?>> <label for="z_ab">Abgangszeugnis gem. § 49 SchulG <small>(Ohne Abschluss)</small></label></div>
+            <div class="radio-group"><input type="radio" name="certificate" value="ueberweisung" id="z_ue" class="toggle-trigger" required <?= $chk('certificate', 'ueberweisung') ?>> <label for="z_ue">Überweisungszeugnis gem. § 49 SchulG <small>(Wechsel innerhalb der Schulstufe)</small></label></div>
+            <div class="radio-group"><input type="radio" name="certificate" value="none" id="z_kein" class="toggle-trigger" data-target="cert_none_wrap" required <?= $chk('certificate', 'none') ?>> <label for="z_kein">Kein Zeugnis <small>(Begründung erforderlich)</small></label></div>
+            <!-- Die drei von der Schulleitung vorgegebenen Fälle. Alle Blöcke sind
+                 mh-collapsible-section, damit sie erst bei Auswahl erscheinen und beim
+                 Abwählen wieder komplett verschwinden (statt nur ausgegraut zu werden). -->
+            <div id="cert_none_wrap" class="mh-sub-group toggle-target mh-collapsible-section <?= $err_cls('certificate_none_type') ?>">
+                <div style="font-weight:bold; margin-bottom:8px;">Warum wird kein Zeugnis erteilt? <span class="req">*</span></div>
 
-            <div style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px;">
+                <div class="radio-group"><input type="radio" name="certificate_none_type" value="gast" id="zn_gast" class="toggle-trigger" data-target="cert_none_gast_wrap" <?= $chk('certificate_none_type', 'gast') ?>> <label for="zn_gast"><b>Gastschüler*in / Zeugnis bereits erteilt</b></label></div>
+                <div id="cert_none_gast_wrap" class="mh-sub-group toggle-target mh-collapsible-section">
+                    <p style="margin:0 0 8px; font-size:0.85em; color:#6f6f6f;">
+                        Schüler*in hat bereits ein Abschluss- oder Abgangszeugnis erhalten und wird aus organisatorischen
+                        Gründen weiterhin im System geführt, z. B. aufgrund einer noch ausstehenden oder nicht bestandenen IHK-Prüfung.
+                    </p>
+                    <div class="mh-input-group">
+                        <label for="certificate_issued_date">Datum des bereits ausgestellten Abschluss- oder Abgangszeugnisses <span class="req">*</span></label>
+                        <input type="date" name="certificate_issued_date" id="certificate_issued_date" class="<?= $err_cls('certificate_issued_date') ?>" value="<?= $val('certificate_issued_date') ?>">
+                    </div>
+                </div>
+
+                <div class="radio-group"><input type="radio" name="certificate_none_type" value="andere_schule" id="zn_schule" class="toggle-trigger" data-target="cert_none_schule_wrap" <?= $chk('certificate_none_type', 'andere_schule') ?>> <label for="zn_schule"><b>Besuch einer anderen Schule</b></label></div>
+                <div id="cert_none_schule_wrap" class="mh-sub-group toggle-target mh-collapsible-section <?= $err_cls('certificate_proof') ?>">
+                    <p style="margin:0 0 8px; font-size:0.85em; color:#6f6f6f;">
+                        Schüler*in besucht seit Beginn des Schuljahres eine andere Schule, ohne dass die Abmeldung bzw. der
+                        Schulwechsel dem LEBK ordnungsgemäß mitgeteilt wurde.
+                    </p>
+                    <div style="font-weight:bold; margin-bottom:5px;">Beigefügter Nachweis <span class="req">*</span></div>
+                    <div class="radio-group"><input type="radio" name="certificate_proof" value="ausbildungsvertrag" id="zp_av" <?= $chk('certificate_proof', 'ausbildungsvertrag') ?>> <label for="zp_av">Ausbildungsvertrag</label></div>
+                    <div class="radio-group"><input type="radio" name="certificate_proof" value="schulbescheinigung" id="zp_sb" <?= $chk('certificate_proof', 'schulbescheinigung') ?>> <label for="zp_sb">Schulbescheinigung</label></div>
+                    <div class="radio-group"><input type="radio" name="certificate_proof" value="sekretariat" id="zp_sek" <?= $chk('certificate_proof', 'sekretariat') ?>> <label for="zp_sek">Bestätigung des Schulbesuchs durch das Sekretariat der aufnehmenden Schule</label></div>
+                    <p style="margin:4px 0 0; font-size:0.85em; color:#6f6f6f;">Den Nachweis bitte der Abmeldung beifügen.</p>
+                </div>
+
+                <div class="radio-group"><input type="radio" name="certificate_none_type" value="keine_aufnahme" id="zn_aufnahme" class="toggle-trigger" data-target="cert_none_aufnahme_wrap" <?= $chk('certificate_none_type', 'keine_aufnahme') ?>> <label for="zn_aufnahme"><b>Fehlerhafte Aufnahme / Schulverhältnis nicht zustande gekommen</b></label></div>
+                <div id="cert_none_aufnahme_wrap" class="mh-sub-group toggle-target mh-collapsible-section">
+                    <p style="margin:0 0 8px; font-size:0.85em; color:#6f6f6f;">
+                        Eine Anmeldung liegt vor, die Aufnahmevoraussetzungen wurden jedoch nicht erfüllt und ein
+                        Schulverhältnis am LEBK ist nicht zustande gekommen.
+                    </p>
+                    <div class="mh-input-group">
+                        <label for="certificate_none_reason">Grund für die nicht erfolgte Aufnahme <span class="req">*</span></label>
+                        <textarea name="certificate_none_reason" id="certificate_none_reason" rows="3" style="width:100%;" class="<?= $err_cls('certificate_none_reason') ?>"><?= esc_textarea($form_data['certificate_none_reason'] ?? '') ?></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <div id="prot_mode_block" style="margin-top:20px; border-top:1px dashed #ccc; padding-top:15px; <?= isset($form_errors['protocol_mode']) ? 'border:2px solid #d63638; padding:10px;' : '' ?>">
+                <div style="font-weight:bold; margin-bottom:10px;">Zeugniskonferenzprotokoll <span class="req" id="prot_mode_req">*</span></div>
+
+                <div id="prot_none_hint" style="margin-bottom:10px; font-size:0.85em; color:#6f6f6f; display:none;">
+                    Entfällt: Ohne Zeugnis gibt es keine Zeugniskonferenz und damit auch kein Protokoll.
+                </div>
+
                 <div class="radio-group">
-                    <input type="checkbox" name="protocol_attached" value="1" id="chk_protocol" class="toggle-trigger" data-target="protocol_wrapper" <?php echo ( empty($form_data) || (isset($form_data['protocol_attached']) && $form_data['protocol_attached'] == '1') ) ? 'checked' : ''; ?>>
-                    <label for="chk_protocol" style="font-weight:bold;">Zeugniskonferenzprotokoll beifügen</label>
+                    <input type="radio" name="protocol_mode" value="create" id="prot_mode_create" class="toggle-trigger" data-target="protocol_wrapper" <?= 'create' === $protocol_mode ? 'checked' : '' ?>>
+                    <label for="prot_mode_create" style="font-weight:bold;">Zeugniskonferenzprotokoll jetzt erstellen</label>
+                </div>
+
+                <div class="radio-group" style="align-items:flex-start; margin-top:12px;">
+                    <input type="radio" name="protocol_mode" value="existing" id="prot_mode_existing" class="toggle-trigger" style="margin-top:3px;" <?= 'existing' === $protocol_mode ? 'checked' : '' ?>>
+                    <label for="prot_mode_existing" style="line-height:1.45;">Ich lege ein bestehendes Zeugniskonferenzprotokoll bei. Konferenzdatum und Zeugnisdatum werden daraus ersichtlich. Änderungen sind mit der Abteilungsleitung abgesprochen und von ihr abgezeichnet.</label>
+                </div>
+
+                <div id="prot_existing_hint" style="margin-top:10px; margin-left:28px; font-size:0.85em; color:#6f6f6f; display:none;">
+                    Abschnitt 4 entfällt, dem PDF wird kein Protokoll angehängt. Die digitale Noteneinsammlung
+                    ist in diesem Fall nicht möglich, weil die Noten aus dem beigefügten Protokoll stammen.
                 </div>
             </div>
         </div>
@@ -431,31 +486,53 @@ details.mh-help-notice-box[open] summary::before {
             </div>
 <!-- SEKTION: FÄCHER & NOTEN -->
         <div style="margin-top: 25px; margin-bottom: 20px;">
-            <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer & Noten (Vorausfüllung für Protokoll)</h5>
+            <h5 style="margin-bottom: 10px; border-bottom: 1px solid #ccc; padding-bottom: 5px;">Fächer &amp; Noten (Vorausfüllung für Protokoll)</h5>
 
-            <div class="mh-grades-overlay-wrap">
-            <div id="grades_overlay" class="mh-grades-overlay <?= $has_existing_grades ? 'mh-hidden' : '' ?>">
-                <div class="mh-grades-overlay-box">
-                    <p><strong>Liegen dir die Noten jetzt schon vor?</strong> Dann trage die Noten jetzt ein.</p>
-                    <p>Falls nicht, generiere das PDF trotzdem schon und sammle die Noten auf Papier im Umlaufverfahren.</p>
-                    <button type="button" id="btn_show_grades">Jetzt Noten eingeben</button>
+            <div style="background:#f6f7f7; border:1px solid #dcdcde; border-left:4px solid #0073aa; padding:14px 16px; margin-bottom:15px; font-size:0.9em; line-height:1.5;">
+                <p style="margin:0 0 10px; padding:8px 12px; background:#eaf3fb; border-radius:4px; font-size:1.05em;">
+                    <strong>Du entscheidest für jedes Fach einzeln</strong>, woher die Note kommt – über die Spalte
+                    <em>Note</em> in der jeweiligen Zeile. Die Wege lassen sich beliebig mischen.
+                </p>
+
+                <div style="margin-bottom:8px;">
+                    <strong>1. Selbst eintragen:</strong> Note liegt dir vor → in der Spalte <em>Note</em> auswählen.
                 </div>
+
+                <?php if ( $noten_enabled ) : ?>
+                <div style="margin-bottom:8px;">
+                    <strong style="color:#1b5e20;">2. Automatisch einsammeln:</strong>
+                    <span style="display:inline-block; padding:1px 6px; border-radius:3px; background:#1b5e20; color:#fff; font-size:0.75em; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">BETA</span>
+                    <em>„automatisch einsammeln“</em> wählen und die Fachlehrkraft angeben. Sie bekommt eine Mail mit Link;
+                    du wirst benachrichtigt, sobald alle Noten da sind, und lädst das PDF im Dashboard herunter.
+                </div>
+                <?php endif; ?>
+
+                <div style="margin-bottom:8px;">
+                    <strong><?= $noten_enabled ? '3.' : '2.' ?> Im ausgedruckten PDF handschriftlich ergänzen:</strong>
+                    Spalte <em>Note</em> leer lassen, PDF erzeugen und die Note auf dem Papier eintragen lassen.
+                </div>
+
+                <p style="margin:0; padding-top:8px; border-top:1px solid #dcdcde; color:#50575e; font-size:0.95em;">
+                    Die Häkchen <em>WebUntis</em> und <em>vorher abgeschlossen</em> werden erst bedienbar, wenn in der Zeile eine Note steht.
+                </p>
             </div>
 
             <table class="mh-subject-table">
                 <thead>
                     <tr>
-                        <th width="25%">Fach</th>
-                        <th width="25%">Lehrkraft</th>
+                        <th width="23%">Fach</th>
+                        <th width="23%">Lehrkraft</th>
                         <th width="10%">Note</th>
-                        <th width="20%" style="text-align:center;">Teilnoten in WebUntis eingetragen?</th>
-                        <th width="20%" style="text-align:center;">Fach vorher abgeschlossen?</th>
+                        <th width="19%" style="text-align:center;">Teilnoten in WebUntis eingetragen?</th>
+                        <th width="19%" style="text-align:center;">Fach vorher abgeschlossen?</th>
+                        <th width="6%" style="text-align:center;">Löschen</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php 
-                    // Wir zeigen 12 Zeilen an
-                    for($i=0; $i<12; $i++): 
+                    <?php
+                    // Grundgerüst: 12 Zeilen, bei gespeicherten Formularen ggf. mehr
+                    $known_subject_names = array_flip( array_column( $subjects_list ?? [], 'short_name' ) );
+                    for($i=0; $i<$subject_row_count; $i++):
                         $s = $form_data['subjects'][$i] ?? [];
                     ?>
                     <tr>
@@ -463,6 +540,14 @@ details.mh-help-notice-box[open] summary::before {
                             
                                 <select name="subj_name[]" style="width:100%;">
                                     <option value="">-- Fach wählen --</option>
+                                    <?php
+                                    // Kurse (z. B. "D-D12_KA_WEIE") stehen in keiner Fächerliste. Ohne eigene
+                                    // Option wäre nach einem Neuladen oder beim Bearbeiten nichts ausgewählt,
+                                    // und der Kurs fiele beim nächsten Absenden stillschweigend weg.
+                                    $saved_name = (string) ( $s['name'] ?? '' );
+                                    if ( '' !== $saved_name && ! isset( $known_subject_names[ $saved_name ] ) ) : ?>
+                                        <option value="<?= esc_attr($saved_name) ?>" selected><?= esc_html($saved_name) ?></option>
+                                    <?php endif; ?>
                                     <?php foreach($subjects_list as $sub): ?>
                                         <option value="<?= esc_attr($sub['short_name']) ?>" <?= selected($s['name'] ?? '', $sub['short_name']) ?>>
                                             <?= esc_html($sub['short_name']) ?> - <?= esc_html($sub['display_name']) ?>
@@ -473,7 +558,7 @@ details.mh-help-notice-box[open] summary::before {
                         </td>
                         <td>
                             <select name="subj_teacher[]">
-                                <option value="">-- Lehrer --</option>
+                                <option value="">-- Lehrkraft --</option>
                                 <?php if(!empty($teachers_list)): foreach($teachers_list as $t): ?>
                                     <option value="<?= esc_attr($t['name']) ?>" <?= selected($s['teacher'] ?? '', $t['name']) ?>>
                                         <?= esc_html($t['name']) ?> (<?= esc_html($t['long_name']) ?>)
@@ -487,6 +572,10 @@ details.mh-help-notice-box[open] summary::before {
 							<?php foreach(['1','2','3','4','5','6','NB','NE'] as $n): ?>
 								<option value="<?= $n ?>" <?= selected($s['grade'] ?? '', $n) ?>><?= $n ?></option>
 							<?php endforeach; ?>
+							<?php if ( $noten_enabled ) : ?>
+								<option value="<?= esc_attr($collect_marker) ?>" <?= selected(($s['collect'] ?? '0'), '1') ?>>automatisch einsammeln</option>
+							<?php endif; ?>
+
 						</select>
 					</td>
                         <td>
@@ -495,13 +584,27 @@ details.mh-help-notice-box[open] summary::before {
                         <td>
                             <input type="checkbox" name="subj_completed[<?= $i ?>]" value="1" <?= (isset($s['completed']) && $s['completed'] == '1') ? 'checked' : '' ?>>
                         </td>
+                        <td style="text-align:center;">
+                            <button type="button" class="mh-subj-remove" title="Zeile löschen" aria-label="Zeile löschen">
+                                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/>
+                                </svg>
+                            </button>
+                        </td>
                     </tr>
                     <?php endfor; ?>
                 </tbody>
-				
+
             </table>
-			<p style="margin-top:-10px;font-size:9pt;">NB = nicht bewertbar | NE = nicht erteilt</p>
+			<div style="margin-top:8px;">
+				<button type="button" id="btn_add_subject" class="button button-secondary">+ Weiteres Fach hinzufügen</button>
 			</div>
+			<div id="course_hint" style="display:none; margin-top:8px; padding:8px 11px; background:#eef4f8; border-left:3px solid #0073aa; font-size:0.85em; line-height:1.45;">
+				<strong>Kursbelegungen ergänzt.</strong> Sie stehen oben in der Tabelle und bringen die Kurslehrkraft mit.
+				Das Fach, auf das ein Kurs gebucht ist (z.&nbsp;B. <em>Reli/PRPH</em>), entfällt dafür als eigene Zeile –
+				im Protokoll steht der belegte Kurs statt des Platzhalters.
+			</div>
+			<p style="margin-top:8px;font-size:9pt;">NB = nicht bewertbar | NE = nicht erteilt</p>
         </div>
             <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
@@ -516,9 +619,25 @@ details.mh-help-notice-box[open] summary::before {
 		</div>
 		
         <div class="btn-group">
-            <button type="submit" name="submit_mode" value="pdf" class="button button-primary button-large">Prüfen & PDF erstellen</button>
+            <button type="submit" name="submit_mode" value="pdf" formtarget="_blank" class="button button-primary button-large" title="Das PDF öffnet sich in einem neuen Fenster. Das Formular bleibt offen und kann weiter geändert werden.">Prüfen &amp; PDF erstellen ↗</button>
             <button type="submit" name="submit_mode" value="check" class="button button-secondary button-large">Formular nur prüfen</button>
+            <?php if ( $noten_enabled ) : ?>
+            <button type="submit" name="submit_mode" value="collect" id="btn_collect" class="button button-secondary button-large" style="background:#1b5e20 !important; color:#fff !important; border-color:#1b5e20 !important; display:none;">
+                Noteneinsammlung starten <span id="btn_collect_count"></span>
+                <span style="display:inline-block; margin-left:6px; padding:1px 6px; border-radius:3px; background:#fff; color:#1b5e20; font-size:0.7em; font-weight:700; letter-spacing:0.5px; vertical-align:middle;">BETA</span>
+            </button>
+            <?php endif; ?>
         </div>
+        <?php if ( $noten_enabled ) : ?>
+        <p id="collect_hint" style="font-size:0.9em; color:#555; margin-top:10px; display:none;">
+            <strong>Noten automatisch einsammeln <span style="color:#1b5e20;">(BETA)</span>:</strong> Dieses Verfahren ist
+            neu und wird noch erprobt. Die betroffenen Fachlehrer*innen erhalten eine E-Mail mit Link zur Noteneingabe und
+            werden bei Bedarf automatisch erinnert; in keiner Mail steht eine Note. Sobald alle eingesammelten Noten
+            vorliegen, wirst du benachrichtigt und lädst das fertige Formular im Dashboard herunter. Bis dahin gibt es
+            hier kein PDF. Für jedes eingesammelte Fach muss eine Lehrkraft ausgewählt sein, zu der sich eine
+            E-Mail-Adresse auflösen lässt. Wenn etwas klemmt, sag Bescheid – und sammle im Zweifel auf Papier.
+        </p>
+        <?php endif; ?>
     </form>
 </div>
 
@@ -549,7 +668,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         studentSelect.disabled = false; 
         studentSelect.innerHTML = `
-            <option value="">-- Schüler wählen --</option>
+            <option value="">-- Schüler*in wählen --</option>
             <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in Liste) --</option>
         `;
 
@@ -568,13 +687,13 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => {
             studentSelect.innerHTML = `
-                <option value="">-- Schüler wählen --</option>
+                <option value="">-- Schüler*in wählen --</option>
                 <option value="manual" ${selectedStudentId === 'manual' ? 'selected' : ''}>-- Manueller Eintrag (Schüler*in nicht in Liste) --</option>
             `;
             if (data.success && data.data) {
                 data.data.forEach(s => {
                     const isSelected = (selectedStudentId && s.wu_id == selectedStudentId) ? 'selected' : '';
-                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
+                    studentSelect.innerHTML += `<option value="${s.wu_id}" data-last="${s.name}" data-first="${s.fore_name}" data-dob="${s.dob || ''}" data-schild="${s.schild_id || ''}" data-track="${s.track_key || ''}" ${isSelected}>${s.name}, ${s.fore_name}</option>`;
                 });
             }
         }).catch(err => console.error("Fehler:", err));
@@ -618,7 +737,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // 5. CHANGE LISTENERS
+
+    // Bildungsgang der gewählten Klasse. Die Stundentafel hängt am Bildungsgang und ist
+    // für alle Schüler einer Klasse dieselbe - deshalb kommt der Schlüssel von der Klasse
+    // und nicht vom einzelnen Schüler. Nur so bekommt auch ein manuell eingetragener
+    // Schüler seine Fächer. Individuell bleiben allein die Kursbelegungen (schild_id).
+    let currentClassTrack = '';
+
+    function readClassTrack() {
+        const opt = classSelect.options[classSelect.selectedIndex];
+        currentClassTrack = (opt && opt.dataset.track) ? opt.dataset.track : '';
+    }
+
     classSelect.addEventListener('change', function() {
+        readClassTrack();
         fetchStudents(this.value);
         updatePerspectiveUI();
     });
@@ -632,6 +764,9 @@ document.addEventListener('DOMContentLoaded', function() {
             f_last.readOnly = false; f_first.readOnly = false; f_dob.readOnly = false;
             f_last.style.backgroundColor = '#fff'; f_first.style.backgroundColor = '#fff'; f_dob.style.backgroundColor = '#fff';
             h_last.value = ''; h_first.value = '';
+            // Kein Schild-Datensatz, also keine Kursbelegungen - die Stundentafel der
+            // Klasse gibt es aber trotzdem.
+            fetchSubjectRows(currentClassTrack, '');
         } else if (this.value !== '') {
             f_last.value = opt.dataset.last || '';
             f_first.value = opt.dataset.first || '';
@@ -640,12 +775,17 @@ document.addEventListener('DOMContentLoaded', function() {
             f_last.style.backgroundColor = '#e9e9e9'; f_first.style.backgroundColor = '#e9e9e9'; f_dob.style.backgroundColor = '#e9e9e9';
             h_last.value = f_last.value; h_first.value = f_first.value;
             calcAge();
+            // Fächer aus Stundentafel des Bildungsgangs + Kursbelegungen vorbelegen.
+            // Die Klasse gewinnt; der Schülerwert greift nur, solange die Klasse noch
+            // keinen Bildungsgang zugeordnet hat.
+            fetchSubjectRows(currentClassTrack || opt.dataset.track || '', opt.dataset.schild || '');
         }
     });
 
     // 6. INITIALISIERUNG (Edit-Modus)
     const initialClassId = classSelect.value;
     const initialStudentId = "<?= $val('student_wu_id') ?>";
+    readClassTrack();
     if (initialClassId) {
         fetchStudents(initialClassId, initialStudentId);
         updatePerspectiveUI();
@@ -690,11 +830,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // 8. ALLGEMEINE TOGGLES
     const triggers = document.querySelectorAll('.toggle-trigger');
     const allTargets = document.querySelectorAll('.toggle-target');
+    // Ohne Zeugnis keine Zeugniskonferenz: die Protokoll-Auswahl wird gesperrt und ist
+    // kein Pflichtfeld mehr. Gesperrte Radios werden nicht mitgeschickt, die Auswahl
+    // bleibt aber erhalten, falls doch wieder ein Zeugnis gewählt wird.
+    const certNoneRadio = document.getElementById('z_kein');
+    const protModeBlock = document.getElementById('prot_mode_block');
+    function syncCertificateProtocol() {
+        if (!certNoneRadio || !protModeBlock) return;
+        const none = certNoneRadio.checked;
+        protModeBlock.querySelectorAll('input[name="protocol_mode"]').forEach(r => { r.disabled = none; });
+        protModeBlock.querySelectorAll('.radio-group').forEach(g => { g.style.opacity = none ? '0.4' : '1'; });
+        const req  = document.getElementById('prot_mode_req');
+        const hint = document.getElementById('prot_none_hint');
+        if (req)  req.style.display  = none ? 'none' : '';
+        if (hint) hint.style.display = none ? 'block' : 'none';
+    }
+
     function updateToggles() {
-        let activeTargetIds = new Set();
-        triggers.forEach(tr => { if(tr.checked && tr.dataset.target) activeTargetIds.add(tr.dataset.target); });
+        syncCertificateProtocol();
+        // Gesperrte Auslöser zählen nicht - sonst bliebe z. B. der Protokollbereich
+        // offen, obwohl "Kein Zeugnis" gewählt ist. Der Zustand wird pro Ziel erst hier
+        // abgefragt (Dokumentreihenfolge): ein Elternblock entsperrt so seine Auslöser,
+        // bevor die verschachtelten Unterblöcke geprüft werden.
         allTargets.forEach(t => {
-            const isActive = activeTargetIds.has(t.id);
+            const isActive = Array.from(triggers).some(tr => tr.checked && !tr.disabled && tr.dataset.target === t.id);
             const parentTarget = t.parentElement.closest('.toggle-target');
             const isParentInactive = parentTarget && (parentTarget.style.opacity === '0.4' || parentTarget.classList.contains('mh-hidden'));
             if (!isActive || isParentInactive) {
@@ -712,15 +871,96 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    triggers.forEach(r => r.addEventListener('change', updateToggles));
-    setTimeout(() => { updateToggles(); }, 100);
+    // updateProtocolMode() gleich mitlaufen lassen: die Zeugniswahl beeinflusst über die
+    // Protokoll-Auswahl auch den Hinweistext und den Einsammel-Knopf.
+    triggers.forEach(r => r.addEventListener('change', () => { updateToggles(); updateProtocolMode(); }));
+    setTimeout(() => { updateToggles(); updateProtocolMode(); }, 100);
+
+    // 8b. PROTOKOLL-MODUS
+    // Liegt ein bestehendes Protokoll bei, gibt es hier nichts einzusammeln - die Noten
+    // stehen im beigefügten Protokoll. Der Button würde sonst einen Umlauf starten,
+    // dessen Ergebnis niemand braucht.
+    const protModeCreate   = document.getElementById('prot_mode_create');
+    const protModeExisting = document.getElementById('prot_mode_existing');
+    const protExistingHint = document.getElementById('prot_existing_hint');
+    const collectBtn       = document.querySelector('button[name="submit_mode"][value="collect"]');
+    const collectHint      = document.getElementById('collect_hint');
+
+    // Der Knopf zur Noteneinsammlung erscheint nur, wenn es tatsächlich etwas
+    // einzusammeln gibt - also mindestens eine Fächerzeile auf "per Mail anfragen"
+    // steht. So kann es keinen Widerspruch zwischen Knopf und Tabelle geben, und der
+    // Knopf erklärt sich aus der Tabelle heraus.
+    const COLLECT_MARKER = <?= json_encode($collect_marker) ?>;
+    const countLabel     = document.getElementById('btn_collect_count');
+
+    function countCollectRows() {
+        let n = 0;
+        document.querySelectorAll('select[name="subj_grade[]"]').forEach(sel => {
+            if (sel.value === COLLECT_MARKER && !sel.disabled) n++;
+        });
+        return n;
+    }
+
+    // Die beiden Häkchen beziehen sich auf eine konkrete, selbst eingetragene Note.
+    // Sie sind deshalb standardmäßig gesperrt und werden erst frei, sobald in der
+    // Zeile wirklich eine Note steht. Solange das Fach leer ist, gäbe es nichts zu
+    // bestätigen; wird es eingesammelt, bestätigt die Fachlehrkraft den
+    // WebUntis-Eintrag im eigenen Formular und würde alles hier gleich überschreiben.
+    function syncRowChecks() {
+        document.querySelectorAll('select[name="subj_grade[]"]').forEach(sel => {
+            const row = sel.closest('tr');
+            if (!row) return;
+
+            const isCollect = sel.value === COLLECT_MARKER;
+            const hasGrade  = sel.value !== '' && !isCollect;
+
+            row.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                if (!hasGrade) {
+                    cb.checked  = false;
+                    cb.disabled = true;
+                    cb.title    = isCollect
+                        ? 'Wird von der Fachlehrkraft beim Eintragen der Note bestätigt.'
+                        : 'Erst auswählbar, sobald eine Note eingetragen ist.';
+                } else {
+                    cb.disabled = false;
+                    cb.title    = '';
+                }
+                cb.parentElement.style.opacity = hasGrade ? '1' : '0.35';
+            });
+        });
+    }
+
+    function updateProtocolMode() {
+        const existing = protModeExisting && protModeExisting.checked && !protModeExisting.disabled;
+        const n        = existing ? 0 : countCollectRows();
+        const show     = n > 0;
+
+        if (protExistingHint) protExistingHint.style.display = existing ? 'block' : 'none';
+        if (collectBtn)  collectBtn.style.display  = show ? '' : 'none';
+        if (collectHint) collectHint.style.display = show ? '' : 'none';
+        if (countLabel)  countLabel.textContent    = show ? '(' + n + (n === 1 ? ' Fach)' : ' Fächer)') : '';
+
+        // Muss NACH updateToggles() laufen: das schaltet beim Aufklappen des
+        // Protokollbereichs pauschal alle Felder wieder frei.
+        syncRowChecks();
+    }
+
+    if (protModeCreate)   protModeCreate.addEventListener('change', updateProtocolMode);
+    if (protModeExisting) protModeExisting.addEventListener('change', updateProtocolMode);
+
+    // Auch auf später per Vorbelegung angehängte Zeilen reagieren: ein Listener am
+    // Container statt einer pro Select.
+    const subjTable = document.querySelector('.mh-subject-table');
+    if (subjTable) subjTable.addEventListener('change', updateProtocolMode);
+
+    updateProtocolMode();
 	// Logik für NB -> Bemerkungspflicht
-    const gradeSelects = document.querySelectorAll('.mh-grade-select');
     const remarksField = document.querySelector('textarea[name="prot_remarks"]');
 
     function checkNBRequirement() {
         let nbFound = false;
-        gradeSelects.forEach(select => {
+        // Frisch abfragen: die Vorbelegung kann Zeilen nachträglich angehängt haben.
+        document.querySelectorAll('.mh-grade-select').forEach(select => {
             if (select.value === 'NB') nbFound = true;
         });
 
@@ -735,17 +975,181 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    gradeSelects.forEach(select => select.addEventListener('change', checkNBRequirement));
+    // Delegation statt Einzel-Listener: die Vorbelegung kann Zeilen nachträglich anhängen.
+    const subjectTableEl = document.querySelector('.mh-subject-table');
+    if (subjectTableEl) {
+        subjectTableEl.addEventListener('change', function(e) {
+            if (e.target && e.target.classList.contains('mh-grade-select')) checkNBRequirement();
+        });
+    }
     // Initialer Check beim Laden (für Edit-Modus)
     checkNBRequirement();
 
-    // Überblendung Notensammlung: erst nach Klick Noteneingabe freigeben
-    const gradesOverlay = document.getElementById('grades_overlay');
-    const btnShowGrades = document.getElementById('btn_show_grades');
-    if (btnShowGrades && gradesOverlay) {
-        btnShowGrades.addEventListener('click', function() {
-            gradesOverlay.classList.add('mh-hidden');
+    // ---------------------------------------------------------------
+    // FÄCHER-VORBELEGUNG (Stundentafel des Bildungsgangs + Kursbelegungen)
+    // ---------------------------------------------------------------
+    const subjectTbody = document.querySelector('.mh-subject-table tbody');
+    // Stehen schon Fächer im Formular (Bearbeiten-Modus / Reload nach Fehler),
+    // wird nicht vorbelegt — sonst gingen erfasste Noten verloren.
+    const subjectsLocked = <?= $has_existing_subjects ? 'true' : 'false' ?>;
+
+    function subjectRows() {
+        return subjectTbody ? Array.from(subjectTbody.rows) : [];
+    }
+
+    // subj_name/subj_teacher/subj_grade laufen über [], die Checkboxen über feste
+    // Indizes — das Model greift sie per Index ab. Beim Klonen müssen die Indizes
+    // deshalb lückenlos weiterlaufen.
+    function renumberRow(row, index) {
+        const wu = row.querySelector('input[name^="subj_webuntis"]');
+        const co = row.querySelector('input[name^="subj_completed"]');
+        if (wu) wu.name = 'subj_webuntis[' + index + ']';
+        if (co) co.name = 'subj_completed[' + index + ']';
+    }
+
+    function ensureRowCount(needed) {
+        const rows = subjectRows();
+        if (!subjectTbody || rows.length === 0 || rows.length >= needed) return;
+        const blueprint = rows[rows.length - 1];
+        for (let i = rows.length; i < needed; i++) {
+            const clone = blueprint.cloneNode(true);
+            clone.querySelectorAll('select').forEach(s => s.selectedIndex = 0);
+            clone.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            subjectTbody.appendChild(clone);
+            renumberRow(clone, i);
+        }
+    }
+
+    function buildSubjectOptions(select, trackOptions, otherOptions, selectedValue, courseOptions) {
+        courseOptions = courseOptions || [];
+        select.innerHTML = '';
+        select.add(new Option('-- Fach wählen --', ''));
+
+        // Kurse zuerst: für Schüler*innen mit Kursbelegung ist das die wahrscheinlichste
+        // Auswahl. Eine Einrückung unter das Fach ist nicht möglich, weil das Trägerfach
+        // in Schild nur ein Sammelbegriff ("Kurs_11_12") ist und kein echtes Fach.
+        if (courseOptions.length) {
+            const gc = document.createElement('optgroup');
+            gc.label = 'Kurse dieser Person';
+            courseOptions.forEach(o => gc.appendChild(new Option(o.label, o.value)));
+            select.add(gc);
+        }
+
+        if (trackOptions.length) {
+            const g = document.createElement('optgroup');
+            g.label = 'Fächer des Bildungsgangs';
+            trackOptions.forEach(o => g.appendChild(new Option(o.label, o.value)));
+            select.add(g);
+        }
+        if (otherOptions.length) {
+            const g2 = document.createElement('optgroup');
+            // Notausgang für Fachwechsler/Wiederholer: der Rest der Schild-Fächerliste
+            // bleibt erreichbar, steht aber unterhalb der Bildungsgang-Fächer.
+            g2.label = trackOptions.length ? 'Weitere Fächer' : 'Alle Fächer';
+            otherOptions.forEach(o => g2.appendChild(new Option(o.label, o.value)));
+            select.add(g2);
+        }
+        if (selectedValue) {
+            // Kursbezeichnungen stehen in keiner Fächerliste — Option ergänzen.
+            if (!Array.from(select.options).some(o => o.value === selectedValue)) {
+                select.add(new Option(selectedValue, selectedValue));
+            }
+            select.value = selectedValue;
+        }
+    }
+
+    function fillSubjectRows(payload) {
+        if (!subjectTbody || subjectsLocked) return;
+
+        const rowsData      = payload.rows || [];
+        const trackOptions  = payload.track_options || [];
+        const otherOptions  = payload.other_options || [];
+        const courseOptions = payload.course_options || [];
+
+        const courseHint = document.getElementById('course_hint');
+        if (courseHint) courseHint.style.display = courseOptions.length ? 'block' : 'none';
+
+        ensureRowCount(Math.max(rowsData.length, subjectRows().length));
+
+        subjectRows().forEach((row, i) => {
+            const nameSel  = row.querySelector('select[name="subj_name[]"]');
+            const teachSel = row.querySelector('select[name="subj_teacher[]"]');
+            const gradeSel = row.querySelector('select[name="subj_grade[]"]');
+            const data     = rowsData[i];
+
+            if (nameSel) buildSubjectOptions(nameSel, trackOptions, otherOptions, data ? data.value : '', courseOptions);
+            if (gradeSel) gradeSel.value = '';
+            if (teachSel) {
+                // Lehrkraft nur bei Kursen: die Stundentafel kennt keine Fachlehrer.
+                const wanted = (data && data.teacher) ? data.teacher : '';
+                teachSel.value = Array.from(teachSel.options).some(o => o.value === wanted) ? wanted : '';
+            }
+            row.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            renumberRow(row, i);
         });
+
+        // Neu angehängte Zeilen müssen denselben Aktiv/Inaktiv-Zustand bekommen
+        // wie der Rest des Protokollbereichs.
+        if (typeof updateToggles === 'function') updateToggles();
+        if (typeof updateProtocolMode === 'function') updateProtocolMode();
+        checkNBRequirement();
+    }
+
+    // Weitere Fachzeile anhängen. Die Vorbelegung füllt oft alle Zeilen, und ohne
+    // diesen Knopf ließe sich dann kein zusätzliches Fach mehr eintragen.
+    const btnAddSubject = document.getElementById('btn_add_subject');
+    if (btnAddSubject) {
+        btnAddSubject.addEventListener('click', function() {
+            const rows = subjectRows();
+            if (!rows.length) return;
+            const clone = rows[rows.length - 1].cloneNode(true);
+            clone.querySelectorAll('select').forEach(s => { s.value = ''; s.disabled = false; });
+            clone.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            subjectTbody.appendChild(clone);
+            renumberRow(clone, rows.length);
+            // Häkchen-Sperre, Einsammel-Knopf und NB-Pflicht an die neue Zeile anpassen.
+            updateProtocolMode();
+            checkNBRequirement();
+            const first = clone.querySelector('select[name="subj_name[]"]');
+            if (first) first.focus();
+        });
+    }
+
+    // Zeile entfernen. Die Checkboxen tragen feste Indizes (siehe renumberRow), deshalb
+    // danach alle Zeilen neu durchnummerieren - sonst rutschen die Häkchen auf das
+    // falsche Fach. Die letzte Zeile wird nur geleert, damit die Tabelle als Vorlage
+    // für "Weiteres Fach hinzufügen" erhalten bleibt.
+    if (subjectTbody) {
+        subjectTbody.addEventListener('click', function(e) {
+            const btn = e.target.closest('.mh-subj-remove');
+            if (!btn) return;
+            const row = btn.closest('tr');
+            if (subjectRows().length > 1) {
+                row.remove();
+            } else {
+                row.querySelectorAll('select').forEach(s => { s.value = ''; });
+                row.querySelectorAll('input[type="checkbox"]').forEach(c => c.checked = false);
+            }
+            subjectRows().forEach((r, i) => renumberRow(r, i));
+            updateProtocolMode();
+            checkNBRequirement();
+        });
+    }
+
+    function fetchSubjectRows(trackKey, schildId) {
+        if (!subjectTbody || subjectsLocked) return;
+        if (!trackKey && !schildId) return;
+
+        const fd = new FormData();
+        fd.append('action', 'mh_get_subject_rows');
+        fd.append('track_key', trackKey || '');
+        fd.append('schild_id', schildId || '');
+        fd.append('nonce', '<?php echo wp_create_nonce("mh_form_nonce"); ?>');
+
+        fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => { if (data.success && data.data) fillSubjectRows(data.data); })
+        .catch(err => console.error("Fehler bei der Fächer-Vorbelegung:", err));
     }
 
 });
