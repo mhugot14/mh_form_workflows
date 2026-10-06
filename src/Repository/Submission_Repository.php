@@ -251,6 +251,95 @@ class Submission_Repository implements Submission_Repository_Interface {
 	}
 	
 	/**
+	 * Findet die Einsendung, die aus derselben Formularsitzung stammt.
+	 *
+	 * Das PDF öffnet sich in einem neuen Fenster, das Formular bleibt stehen und kennt
+	 * die frisch vergebene ID nicht. Ohne diesen Abgleich legte jedes erneute Erzeugen
+	 * eine weitere Einsendung an. Der Token steht im form_data-JSON; die Suche ist auf
+	 * Benutzer und Formulartyp eingegrenzt und damit klein.
+	 */
+	public function find_id_by_client_token( int $user_id, string $form_type, string $token ): int {
+		if ( $user_id <= 0 || '' === $token ) {
+			return 0;
+		}
+
+		$like = '%' . $this->db->esc_like( '"client_token":"' . $token . '"' ) . '%';
+
+		return (int) $this->db->get_var( $this->db->prepare(
+			"SELECT id FROM {$this->table_name} WHERE user_id = %d AND form_type = %s AND form_data LIKE %s ORDER BY id DESC LIMIT 1",
+			$user_id,
+			$form_type,
+			$like
+		) );
+	}
+
+	/**
+	 * Belegung der Nachschreibtermine einer Art: je Datum die Zahl der Anmeldungen und der
+	 * angemeldeten Schüler*innen. Gibt bewusst nur Zahlen zurück, keine Namen.
+	 *
+	 * Termin-Art und -Datum stehen nur im form_data-JSON. Das Model schreibt termin_typ
+	 * und termin_datum direkt hintereinander, darauf grenzt das LIKE vor; ausgezählt wird
+	 * nach dem Dekodieren, damit ein zufälliger Treffer im Freitext nicht mitzählt.
+	 *
+	 * @param int $exclude_id Diese Anmeldung nicht mitzählen (beim Bearbeiten die eigene).
+	 * @return array<string,array{anmeldungen:int,schueler:int}> Schlüssel = Datum (Y-m-d)
+	 */
+	public function get_nachschreib_belegung( string $typ, int $exclude_id = 0 ): array {
+		$like = '%' . $this->db->esc_like( '"termin_typ":' . wp_json_encode( $typ ) ) . '%';
+		$rows = $this->db->get_results( $this->db->prepare(
+			"SELECT id, form_data FROM {$this->table_name} WHERE form_type = %s AND id <> %d AND form_data LIKE %s",
+			'nachschreib_anmeldung_v1',
+			$exclude_id,
+			$like
+		), ARRAY_A ) ?: [];
+
+		$out = [];
+		foreach ( $rows as $row ) {
+			$data = json_decode( (string) $row['form_data'], true );
+			if ( ! is_array( $data ) || ( $data['termin_typ'] ?? '' ) !== $typ || empty( $data['termin_datum'] ) ) {
+				continue;
+			}
+			$datum = (string) $data['termin_datum'];
+			$out[ $datum ]['anmeldungen'] = ( $out[ $datum ]['anmeldungen'] ?? 0 ) + 1;
+			$out[ $datum ]['schueler']    = ( $out[ $datum ]['schueler'] ?? 0 ) + count( (array) ( $data['rows'] ?? [] ) );
+		}
+		return $out;
+	}
+
+	/**
+	 * Alle Anmeldungen zu einem Nachschreibtermin (für die Buchungsübersicht der
+	 * Terminverwaltung), älteste zuerst - die Reihenfolge der Eingänge zählt laut Vorlage.
+	 *
+	 * @return array<int,array{id:int,user_id:int,created_at:string,updated_at:string,form_data:array}>
+	 */
+	public function get_nachschreib_anmeldungen( string $typ, string $datum ): array {
+		$like = '%' . $this->db->esc_like( '"termin_datum":' . wp_json_encode( $datum ) ) . '%';
+		$rows = $this->db->get_results( $this->db->prepare(
+			"SELECT id, user_id, created_at, updated_at, form_data FROM {$this->table_name}
+			 WHERE form_type = %s AND form_data LIKE %s ORDER BY created_at ASC, id ASC",
+			'nachschreib_anmeldung_v1',
+			$like
+		), ARRAY_A ) ?: [];
+
+		$out = [];
+		foreach ( $rows as $row ) {
+			$data = json_decode( (string) $row['form_data'], true );
+			// Exakt prüfen: das LIKE grenzt nur vor (gleiches Datum kann zu anderer Art gehören).
+			if ( ! is_array( $data ) || ( $data['termin_typ'] ?? '' ) !== $typ || ( $data['termin_datum'] ?? '' ) !== $datum ) {
+				continue;
+			}
+			$out[] = [
+				'id'         => (int) $row['id'],
+				'user_id'    => (int) $row['user_id'],
+				'created_at' => (string) $row['created_at'],
+				'updated_at' => (string) $row['updated_at'],
+				'form_data'  => $data,
+			];
+		}
+		return $out;
+	}
+
+	/**
 	 * Aktualisiert einen bestehenden Datensatz.
 	 */
 	public function update( int $id, array $data, int $user_id ): bool {

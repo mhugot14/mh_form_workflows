@@ -8,6 +8,7 @@ use Mh\FormWorkflows\Controller\Form_Controller;
 use Mh\FormWorkflows\Controller\Fall_Controller;
 use Mh\FormWorkflows\Controller\Noten_Controller;
 use Mh\FormWorkflows\Controller\Dashboard_Controller;
+use Mh\FormWorkflows\Controller\Nachschreib_Controller;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Class_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
@@ -18,9 +19,13 @@ use Mh\FormWorkflows\Repository\Student_Course_Repository;
 use Mh\FormWorkflows\Repository\Absentismus_Fall_Repository;
 use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
+use Mh\FormWorkflows\Repository\Nachschreib_Termin_Repository;
 use Mh\FormWorkflows\Service\Mail_Service;
 use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
+use Mh\FormWorkflows\Service\School_Date_Calculator;
+use Mh\FormWorkflows\Service\Nachschreib_Termin_Katalog;
+use Mh\FormWorkflows\Service\Nachschreib_Slot_Provider;
 
 /**
  * Class Plugin_Bootstrap
@@ -48,6 +53,11 @@ class Plugin_Bootstrap {
 	 * @var Dashboard_Controller Einstiegsseite mit allem, was gerade offen ist.
 	 */
 	private Dashboard_Controller $dashboard_controller;
+
+	/**
+	 * @var Nachschreib_Controller Anmeldung zu Nachschreibterminen.
+	 */
+	private Nachschreib_Controller $nachschreib_controller;
 
 	/**
 	 * @var Submission_Repository Wird für den Wartungsbereich der Einstellungsseite gebraucht.
@@ -129,6 +139,24 @@ class Plugin_Bootstrap {
 			$this->reminder_service
 		);
 
+		// Nachschreibtermine. Der Slot-Provider ist die Naht für eine spätere Platzbuchung:
+		// Eine Implementierung mit Kapazitäten wird nur hier ausgetauscht.
+		$ns_katalog  = new Nachschreib_Termin_Katalog();
+		$ns_calendar = new School_Date_Calculator();
+		$ns_termine  = new Nachschreib_Termin_Repository( $wpdb );
+		$this->nachschreib_controller = new Nachschreib_Controller(
+			$submission_repo,
+			$class_repo,
+			$teacher_repo,
+			$subject_repo,
+			$account_repo,
+			$ns_katalog,
+			new Nachschreib_Slot_Provider( $ns_katalog, $ns_calendar, $ns_termine, $submission_repo ),
+			$ns_termine,
+			$ns_calendar,
+			$pdf_generator
+		);
+
 		// 3. Hooks registrieren
 		add_action( 'init', [ $this, 'register_blocks' ] );
 		
@@ -201,6 +229,14 @@ class Plugin_Bootstrap {
 		add_action( 'admin_post_mh_absentismus_delete_note', [ $this->fall_controller, 'handle_delete_note' ] );
 		add_action( 'admin_post_mh_absentismus_update_contacts', [ $this->fall_controller, 'handle_update_contacts' ] );
 		add_action( 'admin_post_mh_absentismus_standalone_submit', [ $this->fall_controller, 'handle_standalone_step_submission' ] );
+
+		// Nachschreibtermine: nur eingeloggte Nutzer (Schülernamen), keine nopriv-Hooks.
+		add_action( 'admin_post_mh_nachschreib_submit', [ $this->nachschreib_controller, 'handle_submit' ] );
+		add_action( 'admin_post_mh_nachschreib_pdf', [ $this->nachschreib_controller, 'handle_download' ] );
+		add_action( 'admin_post_mh_nachschreib_delete', [ $this->nachschreib_controller, 'handle_delete' ] );
+		add_action( 'admin_post_mh_nachschreib_termine_save', [ $this->nachschreib_controller, 'handle_termine_save' ] );
+		add_action( 'admin_post_mh_nachschreib_liste', [ $this->nachschreib_controller, 'handle_liste_druck' ] );
+		add_shortcode( Nachschreib_Controller::SHORTCODE, [ $this->nachschreib_controller, 'render_form' ] );
 
 		add_shortcode( 'mh_absentismus_fall', [ $this->fall_controller, 'render_fall_view' ] );
 		add_shortcode( 'mh_absentismus_liste', [ $this->fall_controller, 'render_fall_liste' ] );
@@ -369,6 +405,18 @@ class Plugin_Bootstrap {
 						</td>
 					</tr>
 					<tr>
+						<th>Seite für Nachschreibtermine</th>
+						<td>
+							<?php wp_dropdown_pages([
+								'name' => 'mh_fw_settings[page_id_mh_nachschreib]',
+								'selected' => $options['page_id_mh_nachschreib'] ?? 0,
+								'show_option_none' => '-- Seite wählen --'
+							]); ?>
+							<p class="description">Seite mit dem Shortcode <code>[mh_nachschreib_anmeldung]</code>.</p>
+						</td>
+					</tr>
+					<?php $this->render_nachschreib_settings( $options ); ?>
+					<tr>
 						<th>Seite für Absentismus-Fall (Formular)</th>
 						<td>
 							<?php wp_dropdown_pages([
@@ -468,6 +516,75 @@ class Plugin_Bootstrap {
 
 			<?php $this->render_maintenance_section(); ?>
 		</div>
+		<?php
+	}
+
+	/**
+	 * Einstellung: Wer darf die Nachschreibtermine im Frontend verwalten? Administratoren
+	 * dürfen es immer und stehen deshalb nicht in der Liste.
+	 */
+	private function render_nachschreib_settings( array $options ): void {
+		$selected = array_map( 'intval', (array) ( $options['ns_manager_ids'] ?? [] ) );
+		$users    = get_users( [
+			'role__not_in' => [ 'administrator' ],
+			'orderby'      => 'display_name',
+			'fields'       => [ 'ID', 'display_name' ],
+		] );
+		?>
+		<tr>
+			<th>Terminverwaltung Nachschreiben</th>
+			<td>
+				<input type="search" id="mh-ns-mgr-filter" placeholder="Namen filtern …" class="regular-text" style="margin-bottom:6px;">
+				<div id="mh-ns-mgr-list" style="max-height:220px; overflow:auto; border:1px solid #c3c4c7; background:#fff; padding:6px 10px; max-width:420px;">
+					<?php if ( empty( $users ) ) : ?>
+						<em>Keine Benutzer außer Administrator*innen vorhanden.</em>
+					<?php endif; ?>
+					<?php foreach ( $users as $u ) : ?>
+						<label style="display:block; margin:3px 0;">
+							<input type="checkbox" name="mh_fw_settings[ns_manager_ids][]" value="<?= (int) $u->ID ?>" <?php checked( in_array( (int) $u->ID, $selected, true ) ); ?>>
+							<?= esc_html( $u->display_name ) ?>
+						</label>
+					<?php endforeach; ?>
+				</div>
+				<p class="description">
+					Ausgewählte Lehrkräfte sehen auf der Nachschreib-Seite den Reiter <strong>„Termine verwalten“</strong>:
+					regelmäßige Termine deaktivieren, Samstage freischalten, lange Termine anlegen sowie Uhrzeit, Raum und
+					Kontingent je Termin ändern. Administrator*innen dürfen das immer.
+					Ausgewählt: <strong><?= count( $selected ) ?></strong>.
+				</p>
+				<script>
+					document.getElementById('mh-ns-mgr-filter').addEventListener('input', function () {
+						var q = this.value.toLowerCase();
+						document.querySelectorAll('#mh-ns-mgr-list label').forEach(function (l) {
+							l.style.display = l.textContent.toLowerCase().indexOf(q) === -1 ? 'none' : 'block';
+						});
+					});
+				</script>
+			</td>
+		</tr>
+		<tr>
+			<th>Vorgabe-Kontingent Nachschreiben</th>
+			<td>
+				<?php foreach ( ( new Nachschreib_Termin_Katalog() )->all() as $typ => $def ) :
+					$key = Nachschreib_Termin_Katalog::kontingent_option_key( $typ ); ?>
+					<label style="display:inline-block; margin:0 18px 6px 0;">
+						<?= esc_html( $def['label'] ) ?><br>
+						<input type="number" min="0" max="999" class="small-text" name="mh_fw_settings[<?= esc_attr( $key ) ?>]"
+						       value="<?= (int) $def['kontingent'] ?>"> Plätze
+					</label>
+				<?php endforeach; ?>
+				<p class="description">
+					Plätze je Termin, wenn in der Terminverwaltung nichts Abweichendes eingetragen ist.
+					Ab <?= (int) Nachschreib_Termin_Katalog::WENIGE_PLAETZE ?> Restplätzen wird ein Termin im Formular gelb,
+					bei 0 als ausgebucht angezeigt. Leer = Werkseinstellung
+					(<?= esc_html( implode( ', ', array_map(
+						static fn( string $t, array $d ): string => $d['label'] . ' ' . Nachschreib_Termin_Katalog::kontingent_werk( $t ),
+						array_keys( ( new Nachschreib_Termin_Katalog() )->all() ),
+						( new Nachschreib_Termin_Katalog() )->all()
+					) ) ) ?>).
+				</p>
+			</td>
+		</tr>
 		<?php
 	}
 

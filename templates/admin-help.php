@@ -482,6 +482,22 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td>Antrag auf Dienstbefreiung / Sonderurlaub. Wird <strong>nicht</strong> gespeichert – das PDF wird nach dem Absenden direkt zum Download ausgeliefert.</td>
                     </tr>
                     <tr>
+                        <td><strong>Nachschreibtermine</strong></td>
+                        <td><code>[mh_nachschreib_anmeldung]</code></td>
+                        <td><span class="mh-badge mh-badge-login">angemeldet</span></td>
+                        <td>
+                            Anmeldung von Schüler*innen zum regelmäßigen (Mi/Do), langen oder Samstags-Nachschreibtermin in einem Formular.
+                            Jeder Termin hat ein Kontingent (Vorgabe je Terminart unter Einstellungen → „Vorgabe-Kontingent Nachschreiben“, je Termin in der Terminverwaltung änderbar); die Auswahl zeigt die freien Plätze, ab 5 Restplätzen gelb, ausgebucht rot
+                            (nicht mehr wählbar, der Server prüft beim Speichern erneut). Abgabefrist: 2 Tage vorher, 11 Uhr.
+                            Berechtigte Lehrkräfte (Einstellungen → „Terminverwaltung Nachschreiben“, Admins immer) sehen den Reiter
+                            <em>Termine verwalten</em>: regelmäßige Termine deaktivieren, Samstage freischalten (standardmäßig aus),
+                            lange Termine anlegen, Uhrzeit, Raum, Hinweis und Plätze je Termin ändern. Ein Klick auf „Belegt“ öffnet die Buchungsübersicht des Termins (alphabetisch, mit berechnetem Ende und Bemerkungen) samt druckfertiger Teilnehmerliste mit Stand-Angabe und Spalten für die Aufsicht. Gespeichert werden nur Abweichungen
+                            (Tabelle <code class="mh-code-soft">mh_nachschreib_termine</code>); Vorgaben stehen in
+                            <code class="mh-code-soft">Service\Nachschreib_Termin_Katalog</code>. Das PDF enthält die Meldung und je Schüler*in
+                            ein Deckblatt. Unter dem Formular stehen die eigenen Anmeldungen (PDF, Bearbeiten, Löschen).
+                        </td>
+                    </tr>
+                    <tr>
                         <td><strong>Dashboard</strong><br><small>Einstiegsseite</small></td>
                         <td><code>[mh_dashboard]</code></td>
                         <td><span class="mh-badge mh-badge-login">angemeldet</span></td>
@@ -829,6 +845,11 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td>Seite für Dienstbefreiung</td>
                         <td><code>[mh_form_workflow type="service_leave_v1"]</code></td>
                         <td>Basis-URL für das Benutzer-Dashboard. Da Dienstbefreiungen nicht gespeichert werden, hat die Einstellung derzeit keine sichtbare Auswirkung – sie ist für künftige Verlinkungen reserviert.</td>
+                    </tr>
+                    <tr>
+                        <td>Seite für Nachschreibtermine</td>
+                        <td><code>[mh_nachschreib_anmeldung]</code></td>
+                        <td>Konfigurationscheck. Das Formular funktioniert auch ohne Zuordnung.</td>
                     </tr>
                     <tr>
                         <td>Seite für Absentismus-Fall (Formular)</td>

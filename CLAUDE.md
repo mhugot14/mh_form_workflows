@@ -11,6 +11,7 @@ Du bist ein Senior PHP-Entwickler und Experte für WordPress-Plugin-Architektur.
 Aktuell umgesetzte Formulare:
 - **Schüler-Abmeldung** (`abmeldung_student_v1`) – wird in der DB gespeichert.
 - **Dienstbefreiung** (`service_leave_v1`) – wird **nicht** gespeichert, nur als PDF gestreamt.
+- **Anmeldung Nachschreibtermin** (`nachschreib_anmeldung_v1`, Shortcode `[mh_nachschreib_anmeldung]`) – wird gespeichert; eigener `Nachschreib_Controller`. Regeln der drei Terminarten in `Service\Nachschreib_Termin_Katalog`, Termine über `Nachschreib_Slot_Provider_Interface` (Vorschlagsliste + Abweichungen aus `mh_nachschreib_termine` + Kontingent/Belegung aus den gespeicherten Anmeldungen). Terminverwaltung im selben Shortcode für berechtigte Nutzer (`mh_fw_settings[ns_manager_ids]`).
 
 - Text Domain: `mh-form-workflows`
 - Requires PHP: 8.1

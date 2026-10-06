@@ -33,7 +33,7 @@ use Mh\FormWorkflows\Setup\Plugin_Bootstrap;
 define( 'MH_FW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'MH_FW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'MH_FW_VERSION', '1.5.0' );
-define( 'MH_FW_DB_VERSION', '4' );
+define( 'MH_FW_DB_VERSION', '5' );
 
 /**
  * Aktivierungs-Hook: Tabellen erstellen.

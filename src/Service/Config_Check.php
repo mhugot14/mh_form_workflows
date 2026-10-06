@@ -29,6 +29,7 @@ class Config_Check {
 		'page_id_mh_noten_fall'        => [ 'Noten-Fall (Klassenleitung)', 'mh_noten_fall', 'warn' ],
 		'page_id_mh_noten_liste'       => [ 'Meine Noteneingaben', 'mh_noten_liste', 'warn' ],
 		'page_id_service_leave_v1'     => [ 'Dienstbefreiung', 'mh_form_workflow', 'warn' ],
+		'page_id_mh_nachschreib'       => [ 'Nachschreibtermine', 'mh_nachschreib_anmeldung', 'warn' ],
 	];
 
 	public function __construct( private Diagnostics_Repository $diag ) {}
