@@ -22,7 +22,7 @@ class Config_Check {
 	/** Shortcode je Einstellungsschlüssel — zugleich die Liste der zu prüfenden Seiten. */
 	private const PAGES = [
 		'page_id_abmeldung_student_v1' => [ 'Schüler*innen-Abmeldung', 'mh_form_workflow', 'error' ],
-		'page_id_mh_my_submissions'    => [ 'Meine Abmeldungen', 'mh_my_submissions', 'warn' ],
+		'page_id_mh_my_submissions'    => [ 'Meine Formulare', 'mh_my_submissions', 'warn' ],
 		'page_id_mh_absentismus_fall'  => [ 'Absentismus-Fall', 'mh_absentismus_fall', 'error' ],
 		'page_id_mh_absentismus_liste' => [ 'Absentismus-Übersicht', 'mh_absentismus_liste', 'warn' ],
 		'page_id_mh_noten_eingabe'     => [ 'Noteneingabe (Fachlehrkraft)', 'mh_noten_eingabe', 'error' ],

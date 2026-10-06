@@ -74,6 +74,36 @@ class Teacher_Account_Repository {
 	}
 
 	/**
+	 * Zustelladresse für einen WordPress-Benutzer (z. B. die Klassenleitung eines Falls).
+	 *
+	 * Gleiche Regel wie resolve_recipient(): Eine gepflegte Hauptadresse (notify_email)
+	 * an einem seiner Kürzel hat Vorrang, erst dann gilt die Konto-Adresse. Vorher gingen
+	 * alle Mails an die Klassenleitung fest an die Konto-Adresse - die Hauptadresse
+	 * wurde nur für Fachlehrkräfte beachtet.
+	 */
+	public function resolve_email_for_user( int $user_id ): string {
+		if ( $user_id <= 0 ) {
+			return '';
+		}
+
+		if ( $this->table_exists() ) {
+			$notify = (string) $this->db->get_var( $this->db->prepare(
+				"SELECT notify_email FROM {$this->table_name}
+				 WHERE wp_user_id = %d AND notify_email IS NOT NULL AND notify_email <> ''
+				 ORDER BY kuerzel ASC LIMIT 1",
+				$user_id
+			) );
+			if ( '' !== trim( $notify ) ) {
+				return trim( $notify );
+			}
+		}
+
+		$user = get_userdata( $user_id );
+
+		return $user ? (string) $user->user_email : '';
+	}
+
+	/**
 	 * Alle Kürzel, die zu einem WordPress-Benutzer gehören. Eine Lehrkraft kann in
 	 * WebUntis theoretisch mehrere Kürzel führen, deshalb eine Liste.
 	 *

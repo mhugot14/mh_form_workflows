@@ -242,7 +242,34 @@ class Noten_Fall_Repository {
 			} else {
 				$item['notified_at'] = $now;
 			}
+			// Ein erfolgreicher Versand hebt einen früheren Fehler auf.
+			$item['mail_error']    = '';
+			$item['mail_error_at'] = null;
 			break;
+		}
+		unset( $item );
+
+		return $this->persist( $case_id, $form_data );
+	}
+
+	/**
+	 * Hält fest, dass eine Mail NICHT zugestellt werden konnte. Bewusst getrennt von
+	 * mark_notified(): sonst sähe ein gescheiterter Versand aus wie ein erfolgreicher,
+	 * und der Fall bliebe unbemerkt liegen.
+	 */
+	public function mark_mail_failed( int $case_id, int $idx, string $error ): bool {
+		$case = $this->get_by_id( $case_id );
+		if ( null === $case ) {
+			return false;
+		}
+
+		$form_data = $case['form_data'];
+		foreach ( $form_data['items'] as &$item ) {
+			if ( (int) $item['idx'] === $idx ) {
+				$item['mail_error']    = '' !== $error ? $error : 'Unbekannter Mailfehler';
+				$item['mail_error_at'] = current_time( 'mysql' );
+				break;
+			}
 		}
 		unset( $item );
 
@@ -292,11 +319,56 @@ class Noten_Fall_Repository {
 	}
 
 	/**
+	 * Die Klassenleitung beendet die Einsammlung vorzeitig: offene Noten werden nicht
+	 * mehr angefragt (kein Cron, keine Eingabe durch Fachlehrkräfte), sondern im PDF
+	 * von Hand ergänzt oder von der Klassenleitung selbst nachgetragen.
+	 */
+	public function end_case( int $case_id, int $user_id ): bool {
+		$case = $this->get_by_id( $case_id );
+		if ( null === $case ) {
+			return false;
+		}
+
+		$form_data                 = $case['form_data'];
+		$form_data['case_status']  = 'abgeschlossen';
+		$form_data['completed_at'] = current_time( 'mysql' );
+		$form_data['ended_by']     = $user_id;
+		$form_data['ended_early']  = true;
+
+		return $this->persist( $case_id, $form_data, [ 'status' => 'abgeschlossen' ] );
+	}
+
+	/**
+	 * Die Klassenleitung hat das PDF gedruckt und weitergegeben - der Fall verschwindet
+	 * aus ihrem Dashboard. Bleibt in Listen und im Backend weiterhin sichtbar.
+	 */
+	public function mark_owner_done( int $case_id ): bool {
+		return $this->set_meta( $case_id, [ 'owner_done_at' => current_time( 'mysql' ) ] );
+	}
+
+	/**
+	 * Setzt einzelne Felder im form_data des Falls (z. B. Ergebnis der Abschlussmail).
+	 */
+	public function set_meta( int $case_id, array $fields ): bool {
+		$case = $this->get_by_id( $case_id );
+		if ( null === $case ) {
+			return false;
+		}
+
+		return $this->persist( $case_id, array_merge( $case['form_data'], $fields ) );
+	}
+
+	/**
 	 * Baut aus den Items die subjects-Struktur des Abgangsformulars. Damit lassen sich
 	 * die eingesammelten Noten in die Einsendung zurückschreiben — pdf-abmeldung.php
 	 * und pdf-protocol.php rendern direkt daraus, es braucht keinen eigenen PDF-Pfad.
 	 */
 	public function build_subjects_from_case( array $case ): array {
+		// Nach dem Ende der Einsammlung wird nichts mehr angefragt. Offene Positionen
+		// dürfen dann nicht als "einsammeln" im Formular stehen, sonst sähe es aus, als
+		// liefe noch ein Umlauf.
+		$is_running = 'offen' === ( $case['status'] ?? 'offen' );
+
 		$subjects = [];
 		foreach ( $case['form_data']['items'] ?? [] as $item ) {
 			$subjects[] = [
@@ -305,7 +377,7 @@ class Noten_Fall_Repository {
 				'grade'     => (string) ( $item['grade'] ?? '' ),
 				// Noch offene Positionen bleiben im Formular als "angefragt" markiert,
 				// damit ein zwischenzeitlicher Blick ins Formular den Stand zeigt.
-				'collect'   => ( 'erledigt' === ( $item['status'] ?? 'offen' ) ) ? '0' : '1',
+				'collect'   => ( $is_running && 'erledigt' !== ( $item['status'] ?? 'offen' ) ) ? '1' : '0',
 				'webuntis'  => (string) ( $item['webuntis'] ?? '0' ),
 				'completed' => (string) ( $item['completed'] ?? '0' ),
 			];

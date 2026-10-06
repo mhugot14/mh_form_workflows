@@ -200,6 +200,16 @@ class Plugin_Bootstrap {
 		// Digitale Noteneinsammlung: nur für eingeloggte Nutzer, deshalb keine nopriv-Hooks.
 		add_action( 'admin_post_mh_noten_save_item', [ $this->noten_controller, 'handle_save_item' ] );
 		add_action( 'admin_post_mh_noten_remind_now', [ $this->noten_controller, 'handle_remind_now' ] );
+		add_action( 'admin_post_mh_noten_admin_complete', [ $this->noten_controller, 'handle_admin_complete' ] );
+
+		// Absendername für ALLE Mails der Website (Einstellung „Absendername für E-Mails“).
+		// Leer = WordPress-Standard ("WordPress").
+		add_filter( 'wp_mail_from_name', static function ( $name ) {
+			$custom = Mail_Service::from_name();
+			return '' !== $custom ? $custom : $name;
+		}, 20 );
+		add_action( 'admin_post_mh_noten_end_case', [ $this->noten_controller, 'handle_end_case' ] );
+		add_action( 'admin_post_mh_noten_owner_done', [ $this->noten_controller, 'handle_owner_done' ] );
 
 		add_shortcode( 'mh_noten_eingabe', [ $this->noten_controller, 'render_eingabe' ] );
 		add_shortcode( 'mh_noten_liste', [ $this->noten_controller, 'render_liste' ] );
@@ -282,6 +292,16 @@ class Plugin_Bootstrap {
 			'manage_options',
 			'mh-form-admin-list',
 			[ $this->form_controller, 'render_admin_dashboard' ]
+		);
+
+		// Unterpunkt 2b: Noteneinsammlung - Fortschritt und Fehlerdiagnose aller Fälle
+		add_submenu_page(
+			'mh-form-admin-help',
+			'Noteneinsammlung',
+			'Noteneinsammlung',
+			'manage_options',
+			Noten_Controller::ADMIN_SLUG,
+			[ $this->noten_controller, 'render_admin_overview' ]
 		);
 
 		// Unterpunkt 3: Einstellungen
@@ -384,7 +404,7 @@ class Plugin_Bootstrap {
 						</td>
 					</tr>
 					<tr>
-						<th>Seite für „Meine Anträge"</th>
+						<th>Seite für „Meine Formulare"</th>
 						<td>
 							<?php wp_dropdown_pages([
 								'name' => 'mh_fw_settings[page_id_mh_my_submissions]',
@@ -469,6 +489,20 @@ class Plugin_Bootstrap {
 								'show_option_none' => '-- Seite wählen --'
 							]); ?>
 							<p class="description">Seite mit dem Shortcode <code>[mh_noten_fall]</code>.</p>
+						</td>
+					</tr>
+					<tr>
+						<th>Absendername für E-Mails</th>
+						<td>
+							<input type="text" name="mh_fw_settings[mail_from_name]" class="regular-text"
+							       value="<?= esc_attr( Mail_Service::from_name() ) ?>" placeholder="WordPress">
+							<p class="description">
+								Gilt für <strong>alle</strong> Mails dieser Website &ndash; die der Noteneinsammlung ebenso wie
+								Passwort-Mails und Mails anderer Plugins. WordPress selbst bietet dafür keine Einstellung und
+								schreibt sonst „WordPress“. Leer lassen, um den WordPress-Standard zu behalten.<br>
+								Hinweis: Verschickt ein Mail-Plugin (z.&nbsp;B. WPO365) über Microsoft 365, kann dort der
+								Anzeigename des Postfachs Vorrang haben.
+							</p>
 						</td>
 					</tr>
 					<tr>

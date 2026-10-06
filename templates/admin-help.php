@@ -408,7 +408,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
             <div class="mh-step-card">
                 <span class="dashicons dashicons-admin-page"></span>
                 <h3>3. Seiten anlegen</h3>
-                <p>Je eine WordPress-Seite pro Funktion: Dashboard, Abmeldung, Meine Abmeldungen, Noteneingabe, Meine Noteneingaben, Noten-Fall, Absentismus-Fall, Absentismus-Übersicht, Dienstbefreiung.</p>
+                <p>Je eine WordPress-Seite pro Funktion: Dashboard, Abmeldung, Meine Formulare, Noteneingabe, Meine Noteneingaben, Noten-Fall, Absentismus-Fall, Absentismus-Übersicht, Dienstbefreiung.</p>
             </div>
             <div class="mh-step-card">
                 <span class="dashicons dashicons-shortcode"></span>
@@ -503,8 +503,8 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td><span class="mh-badge mh-badge-login">angemeldet</span></td>
                         <td>
                             Sammelt in vier Blöcken, was gerade offen ist: <em>Noten, die von dir erwartet werden</em>
-                            (als Fachlehrkraft), <em>laufende Absentismus-Fälle</em>, <em>selbst gestartete
-                            Noteneinsammlungen</em> mit Fortschritt und die <em>zuletzt eingereichten Abmeldungen</em>.
+                            (als Fachlehrkraft), <em>selbst gestartete
+                            Noteneinsammlungen</em> mit Fortschritt, <em>laufende Absentismus-Fälle</em> und die <em>zuletzt eingereichten Formulare</em>.
                             Darüber Schnellzugriffe auf die Formulare, darunter Verweise auf die vollständigen Listen
                             und Archive. Der Shortcode liest nur &ndash; er legt nichts an und ändert nichts.
                             Administratoren können über einen Link auf die Gesamtsicht aller Vorgänge umschalten.
@@ -551,7 +551,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                     </tr>
                     <tr>
                         <td><strong>Prüfen &amp; PDF erstellen</strong></td>
-                        <td>Validiert, speichert die Abmeldung in der Datenbank (bzw. aktualisiert sie beim Bearbeiten) und liefert das PDF zum Download. Wurde „Zeugniskonferenzprotokoll jetzt erstellen“ gewählt, wird es als weitere Seite angehängt. Dateiname: <code class="mh-code-soft">JJ-MM-TT_ID_Abmeldung_Nachname.pdf</code>.</td>
+                        <td>Validiert, speichert die Abmeldung in der Datenbank (bzw. aktualisiert sie beim Bearbeiten) und öffnet das PDF in einem <strong>neuen Fenster</strong>. Das Formular bleibt offen: Änderungen und erneutes Erzeugen aktualisieren dieselbe Einsendung (ein verstecktes Formular-Kennzeichen verhindert Duplikate). Scheitert die Prüfung, listet das neue Fenster die Fehler auf; korrigiert wird im Formular-Fenster. Wurde „Zeugniskonferenzprotokoll jetzt erstellen“ gewählt, wird es als weitere Seite angehängt. Dateiname: <code class="mh-code-soft">JJ-MM-TT_ID_Abmeldung_Nachname.pdf</code>.</td>
                     </tr>
                     <tr>
                         <td><strong>Noteneinsammlung digital starten</strong></td>
@@ -564,10 +564,14 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
             <p>
                 In Abschnitt 3 wird festgelegt, welches Zeugnis erteilt wird: <strong>Abgangszeugnis</strong> oder
                 <strong>Überweisungszeugnis</strong> (beide gem. § 49 SchulG) oder <strong>Kein Zeugnis</strong>.
-                Bei „Kein Zeugnis“ ist eine Begründung <em>verpflichtend</em>; sie wird auf der Abmeldung mit abgedruckt
-                und ist dort der einzige Beleg dafür, warum die Schüler*in ohne Zeugnis geht. Ohne Begründung lässt sich
-                das Formular nicht absenden.
+                Bei „Kein Zeugnis“ muss einer von drei Fällen gewählt werden. Die zugehörige Angabe ist
+                <em>verpflichtend</em> und wird auf der Abmeldung mit abgedruckt:
             </p>
+            <ul>
+                <li><strong>Gastschüler*in / Zeugnis bereits erteilt</strong>: Datum des bereits ausgestellten Abschluss- oder Abgangszeugnisses.</li>
+                <li><strong>Besuch einer anderen Schule</strong>: Art des Nachweises (Ausbildungsvertrag, Schulbescheinigung oder Bestätigung des Sekretariats der aufnehmenden Schule). Der Nachweis ist beizufügen.</li>
+                <li><strong>Fehlerhafte Aufnahme / Schulverhältnis nicht zustande gekommen</strong>: kurzer Grund für die nicht erfolgte Aufnahme.</li>
+            </ul>
 
             <h3>Zeugniskonferenzprotokoll</h3>
             <p>
@@ -612,6 +616,37 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                 gekennzeichnet. Der Papierweg bleibt unverändert möglich: PDF erzeugen, Noten im Umlauf sammeln und später
                 über „Bearbeiten“ nachtragen.
             </div>
+
+            <h3>Ablauf für die Klassenleitung</h3>
+            <ul style="list-style: disc; padding-left: 20px; line-height:1.6;">
+                <li><strong>Zwischenstand:</strong> Trägt eine Fachlehrkraft ihre Note ein, bekommt die Klassenleitung
+                    eine kurze Mail (ohne die Note selbst). Die letzte Note löst stattdessen die Abschlussmail
+                    „PDF bereit“ aus.</li>
+                <li><strong>Selbst nachtragen:</strong> Hat die Klassenleitung eine Note schon auf anderem Weg
+                    (z.&nbsp;B. im Lehrerzimmer), trägt sie sie im Fall über „Nachtragen“ ein.</li>
+                <li><strong>Einsammlung beenden:</strong> Wer das PDF sofort braucht, beendet die Einsammlung im Fall.
+                    Offene Fächer werden dann nicht mehr angefragt, Fachlehrkräfte können nicht mehr eintragen, und der
+                    bisherige Stand wandert in die Abmeldung. Fehlende Noten trägt die Klassenleitung nach oder ergänzt
+                    sie im PDF von Hand. Nachträge nach dem Ende werden sofort in die Abmeldung übernommen.</li>
+                <li><strong>PDF und „Erledigt“:</strong> Fertige oder beendete Einsammlungen bleiben im Dashboard mit
+                    dem Hinweis „PDF bereit“ stehen, bis die Klassenleitung sie als erledigt markiert. Unter
+                    „Meine Noteneinsammlungen“ bleiben sie danach abrufbar.</li>
+            </ul>
+
+            <h3>Überwachung im Backend</h3>
+            <p>
+                <strong>MH Formulare → Noteneinsammlung</strong> zeigt alle Fälle mit Fortschritt und erkennt, was einen
+                Fall unbemerkt liegen lassen könnte: gescheiterte oder nie versandte Mails, Lehrkräfte ohne Mailadresse,
+                Rückfall auf die Konto-Adresse, Eskalationen, lange offene Noten, Fälle, deren Noten vollständig sind,
+                die aber nicht abgeschlossen wurden (<em>Abschluss nachholen</em>), und Fälle, deren Abmeldung gelöscht
+                wurde. Oben prüft die Seite außerdem die Seitenzuordnung für die Mail-Links und den Erinnerungs-Cron
+                samt Ergebnis des letzten Laufs.
+            </p>
+            <p>
+                Eine gescheiterte Mail wird am Fach vermerkt, statt es als „benachrichtigt“ zu markieren. Der
+                Erinnerungs-Cron holt gescheiterte Einladungen beim nächsten Lauf nach; über <em>Einladung senden</em>
+                bzw. <em>Jetzt erinnern</em> geht es auch sofort.
+            </p>
 
             <h3>Abschalten</h3>
             <p>
@@ -875,6 +910,11 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                         <td>Seite für Noteneinsammlung (Klassenlehrer)</td>
                         <td><code>[mh_noten_fall]</code></td>
                         <td>Weiterleitung nach „Noteneinsammlung digital starten“, Link in der Eskalationsmail an die Klassenleitung.</td>
+                    </tr>
+                    <tr>
+                        <td>Absendername für E-Mails</td>
+                        <td><code class="mh-code-soft">Text, Standard „LEBK Schild“</code></td>
+                        <td>Gilt für <strong>alle</strong> Mails der Website, nicht nur für die der Noteneinsammlung. Leer = WordPress-Standard („WordPress“). Ein Mail-Plugin, das über Microsoft 365 versendet, kann stattdessen den Anzeigenamen des Postfachs verwenden.</td>
                     </tr>
                     <tr>
                         <td>Erinnerung nach (Tagen)</td>

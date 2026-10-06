@@ -20,6 +20,8 @@ class Reminder_Service {
 
 	public const CRON_HOOK = 'mh_fw_noten_reminders';
 
+	public const LAST_RUN_OPTION = 'mh_fw_noten_last_run';
+
 	public function __construct(
 		private Noten_Fall_Repository $case_repo,
 		private Teacher_Account_Repository $account_repo,
@@ -51,7 +53,7 @@ class Reminder_Service {
 		$now       = current_time( 'timestamp' );
 		$threshold = $interval * DAY_IN_SECONDS;
 
-		$stats = [ 'reminded' => 0, 'escalated' => 0, 'skipped' => 0 ];
+		$stats = [ 'reminded' => 0, 'escalated' => 0, 'skipped' => 0, 'invited' => 0, 'failed' => 0 ];
 
 		foreach ( $this->case_repo->get_all_cases( [ 'status' => 'offen' ] ) as $case ) {
 			$case_id = (int) $case['id'];
@@ -61,12 +63,21 @@ class Reminder_Service {
 					continue;
 				}
 
+				$idx = (int) $item['idx'];
+
 				// Maßgeblich ist die letzte Kontaktaufnahme, nicht der Fallbeginn:
 				// so wird nach einer Erinnerung wieder das volle Intervall gewartet.
 				$last = $item['last_reminder_at'] ?? $item['notified_at'] ?? null;
 				if ( null === $last ) {
-					$stats['skipped']++;
-					continue; // noch nie benachrichtigt — das erledigt der Start des Falls
+					// Noch nie erfolgreich benachrichtigt. Ist beim Start die Einladung
+					// gescheitert, wird sie hier nachgeholt - sonst bliebe das Fach für
+					// immer liegen, weil es ohne Erstkontakt nie eine Erinnerung gäbe.
+					if ( '' !== (string) ( $item['mail_error'] ?? '' ) ) {
+						$this->retry_invitation( $case, $item ) ? $stats['invited']++ : $stats['failed']++;
+					} else {
+						$stats['skipped']++;
+					}
+					continue;
 				}
 
 				$last_ts = strtotime( (string) $last );
@@ -74,14 +85,13 @@ class Reminder_Service {
 					continue;
 				}
 
-				$idx       = (int) $item['idx'];
 				$recipient = $this->account_repo->resolve_recipient( (string) $item['teacher_kuerzel'] );
 
 				if ( null === $recipient ) {
 					$stats['skipped']++;
 				} else {
 					$link = $this->entry_link( $case_id, $idx );
-					$this->mail->send_reminder(
+					$sent = $this->mail->send_reminder(
 						$recipient['email'],
 						$recipient['name'],
 						$case,
@@ -89,8 +99,16 @@ class Reminder_Service {
 						$link,
 						(int) ( $item['reminder_count'] ?? 0 ) + 1
 					);
-					$this->case_repo->mark_notified( $case_id, $idx, true );
-					$stats['reminded']++;
+					if ( $sent ) {
+						$this->case_repo->mark_notified( $case_id, $idx, true );
+						$stats['reminded']++;
+					} else {
+						// Kein mark_notified: die letzte Kontaktaufnahme bleibt alt, der
+						// nächste Lauf versucht es also erneut.
+						$this->case_repo->mark_mail_failed( $case_id, $idx, $this->mail->get_last_error() );
+						$stats['failed']++;
+						continue;
+					}
 				}
 
 				// Eskalation genau einmal: escalated_at verhindert die Wiederholung.
@@ -104,18 +122,69 @@ class Reminder_Service {
 			}
 		}
 
+		// Für die Admin-Übersicht: läuft der Cron überhaupt, und mit welchem Ergebnis?
+		update_option( self::LAST_RUN_OPTION, [ 'at' => current_time( 'mysql' ), 'stats' => $stats ], false );
+
 		return $stats;
+	}
+
+	/**
+	 * Holt eine beim Start gescheiterte Einladung nach.
+	 */
+	private function retry_invitation( array $case, array $item ): bool {
+		$case_id   = (int) $case['id'];
+		$idx       = (int) $item['idx'];
+		$recipient = $this->account_repo->resolve_recipient( (string) $item['teacher_kuerzel'] );
+		if ( null === $recipient ) {
+			$this->case_repo->mark_mail_failed( $case_id, $idx, 'Keine Mailadresse für ' . $item['teacher_kuerzel'] . ' hinterlegt.' );
+			return false;
+		}
+
+		$sent = $this->mail->send_invitation(
+			$recipient['email'],
+			$recipient['name'],
+			$case,
+			$item,
+			$this->entry_link( $case_id, $idx )
+		);
+		if ( $sent ) {
+			$this->case_repo->mark_notified( $case_id, $idx, false );
+		} else {
+			$this->case_repo->mark_mail_failed( $case_id, $idx, $this->mail->get_last_error() );
+		}
+
+		return $sent;
+	}
+
+	/**
+	 * Letzter Cron-Lauf, oder null, wenn er noch nie lief.
+	 *
+	 * @return array{at:string, stats:array}|null
+	 */
+	public function get_last_run(): ?array {
+		$run = get_option( self::LAST_RUN_OPTION, null );
+
+		return is_array( $run ) ? $run : null;
+	}
+
+	public function get_interval_days(): int {
+		return $this->interval_days();
+	}
+
+	public function get_escalate_after(): int {
+		return $this->escalate_after();
 	}
 
 	private function escalate( array $case, array $item ): bool {
 		$owner_id = (int) ( $case['form_data']['owner_user_id'] ?? $case['user_id'] ?? 0 );
-		$owner    = $owner_id > 0 ? get_userdata( $owner_id ) : false;
-		if ( ! $owner || '' === (string) $owner->user_email ) {
+		// Hauptadresse aus der Lehrer-Zuordnung vor der Konto-Adresse, wie bei den Fachlehrkräften.
+		$to       = $this->account_repo->resolve_email_for_user( $owner_id );
+		if ( '' === $to ) {
 			return false;
 		}
 
 		return $this->mail->send_escalation(
-			(string) $owner->user_email,
+			$to,
 			$case,
 			$item,
 			$this->account_repo->get_display_name( (string) $item['teacher_kuerzel'] ),

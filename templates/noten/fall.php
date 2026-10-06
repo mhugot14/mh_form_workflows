@@ -8,6 +8,7 @@
  * @var int    $open_count
  * @var \Mh\FormWorkflows\Repository\Teacher_Account_Repository $account
  * @var \Mh\FormWorkflows\Service\Reminder_Service $reminder
+ * @var string $pdf_url   Download-Link des PDFs, leer wenn nicht verfügbar
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -18,9 +19,6 @@ $total     = count( $items );
 $done      = $total - $open_count;
 $percent   = $total > 0 ? (int) round( $done / $total * 100 ) : 0;
 $is_closed = 'abgeschlossen' === ( $case['status'] ?? '' );
-
-$dash_options = get_option( 'mh_fw_settings', [] );
-$abm_page_id  = (int) ( $dash_options['page_id_abmeldung_student_v1'] ?? 0 );
 ?>
 
 <style>
@@ -38,6 +36,13 @@ $abm_page_id  = (int) ( $dash_options['page_id_abmeldung_student_v1'] ?? 0 );
 	.mh-notice { background: #e8f5e9; color: #1b5e20; padding: 12px 16px; border-radius: 4px; margin-bottom: 18px; }
 	.mh-done-box { background: #e8f5e9; border-left: 4px solid #1b5e20; padding: 14px 18px; margin-bottom: 18px; }
 	.mh-fall a.mh-act { font-size: 0.85em; }
+	.mh-run-box { background: #eaf3fb; border-left: 4px solid #0073aa; padding: 14px 18px; margin-bottom: 18px; line-height: 1.5; }
+	.mh-actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+	.mh-actions form { margin: 0; }
+	.mh-btn { display: inline-block; padding: 8px 16px; border-radius: 4px; background: #0073aa; color: #fff !important;
+		border: 1px solid #0073aa; text-decoration: none; font-size: 0.9em; cursor: pointer; line-height: 1.3; }
+	.mh-btn-quiet { background: #fff; color: #1d2327 !important; border-color: #c3c4c7; }
+	.mh-btn-quiet:hover { border-color: #0073aa; }
 </style>
 
 <div class="mh-fall">
@@ -56,14 +61,48 @@ $abm_page_id  = (int) ( $dash_options['page_id_abmeldung_student_v1'] ?? 0 );
 
 	<?php if ( $is_closed ) : ?>
 		<div class="mh-done-box">
-			<strong>✅ Alle Noten liegen vor.</strong> Die Noten wurden in das Abgangsformular übernommen.
-			<?php if ( $abm_page_id > 0 ) : ?>
-				Das fertige PDF lässt sich über
-				<a href="<?= esc_url( get_permalink( $abm_page_id ) ?: '' ) ?>">das Abgangsformular</a>
-				bzw. die Übersicht der eigenen Einsendungen herunterladen.
+			<?php if ( $open_count > 0 ) : ?>
+				<strong>Noteneinsammlung beendet.</strong> <?= (int) $open_count ?> Note(n) fehlen noch. Trage sie
+				unten über „Nachtragen“ ein, wenn du sie inzwischen hast, oder ergänze sie im PDF von Hand.
 			<?php else : ?>
-				Das fertige PDF lässt sich über die Übersicht der eigenen Einsendungen herunterladen.
+				<strong>✅ Alle Noten liegen vor.</strong> Sie wurden in die Abmeldung übernommen.
 			<?php endif; ?>
+
+			<div class="mh-actions">
+				<?php if ( '' !== $pdf_url ) : ?>
+					<a class="mh-btn" href="<?= esc_url( $pdf_url ) ?>" target="_blank">PDF herunterladen ↗</a>
+				<?php else : ?>
+					<span style="color:#555;">Das PDF lädt die Person herunter, die die Abmeldung angelegt hat.</span>
+				<?php endif; ?>
+
+				<?php if ( empty( $fd['owner_done_at'] ) ) : ?>
+					<form method="post" action="<?= esc_url( admin_url( 'admin-post.php' ) ) ?>">
+						<input type="hidden" name="action" value="mh_noten_owner_done">
+						<input type="hidden" name="case_id" value="<?= (int) $case['id'] ?>">
+						<?php wp_nonce_field( 'mh_noten_owner_done_' . (int) $case['id'] ); ?>
+						<button type="submit" class="mh-btn mh-btn-quiet" title="Entfernt den Fall aus deinem Dashboard. Er bleibt unter „Meine Noteneinsammlungen“ abrufbar.">Erledigt – PDF ist weitergegeben</button>
+					</form>
+				<?php else : ?>
+					<span style="color:#1b5e20;">Als erledigt markiert am <?= esc_html( date_i18n( 'd.m.Y', strtotime( (string) $fd['owner_done_at'] ) ) ) ?></span>
+				<?php endif; ?>
+			</div>
+		</div>
+	<?php else : ?>
+		<div class="mh-run-box">
+			<strong>Die Einsammlung läuft.</strong> Die Fachlehrkräfte werden automatisch erinnert. Du bekommst eine
+			Mail, sobald jemand eine Note einträgt, und eine weitere, wenn alle vorliegen.
+			<br>Hast du eine Note schon auf anderem Weg – etwa im Lehrerzimmer –, trage sie unten über „Nachtragen“ selbst ein.
+			Brauchst du das PDF sofort, kannst du die Einsammlung beenden: Es wird dann niemand mehr angefragt, und
+			fehlende Noten ergänzt du im PDF von Hand.
+			<div class="mh-actions">
+				<form method="post" action="<?= esc_url( admin_url( 'admin-post.php' ) ) ?>"
+					onsubmit="return confirm('Einsammlung jetzt beenden? Offene Fächer werden nicht mehr angefragt.');">
+					<input type="hidden" name="action" value="mh_noten_end_case">
+					<input type="hidden" name="case_id" value="<?= (int) $case['id'] ?>">
+					<?php wp_nonce_field( 'mh_noten_end_case_' . (int) $case['id'] ); ?>
+					<button type="submit" class="mh-btn mh-btn-quiet">Einsammlung beenden</button>
+				</form>
+			</div>
 		</div>
 	<?php endif; ?>
 

@@ -31,6 +31,11 @@ $form_titel = [
 	'service_leave_v1'     => 'Dienstbefreiung',
 ];
 
+// Formularseite je Typ - dort öffnet ?mh_edit_id=… die Einsendung zum Bearbeiten.
+$form_seite = [
+	'abmeldung_student_v1' => $links['abmeldung'],
+];
+
 // Zählt, was insgesamt Aufmerksamkeit braucht - steuert den Leer-Zustand.
 $offen_gesamt = count( $absentismus ) + count( $noten_owned ) + count( $noten_todo );
 
@@ -66,11 +71,16 @@ $zeige_noten_owned = $noten_aktiv || ! empty( $noten_owned );
 	.mh-db-action a { text-decoration: none; padding: 6px 13px; border-radius: 4px;
 		background: #0073aa; color: #fff !important; font-size: 0.85em; display: inline-block; }
 	.mh-db-action a.is-quiet { background: #f0f0f1; color: #2c3338 !important; }
+	.mh-db-action a + a { margin-left: 6px; }
 
 	.mh-db-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.72em;
 		font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
 	.mh-db-badge.warn { background: #fcf0d8; color: #8a6116; }
 	.mh-db-badge.beta { background: #1b5e20; color: #fff; }
+	.mh-db-badge.ready { background: #e7f5ea; color: #1e6b30; margin-right: 4px; }
+	.mh-db-action .mh-db-done { padding: 6px 13px; border-radius: 4px; border: 1px solid #c3c4c7; background: #fff;
+		color: #2c3338; font-size: 0.85em; cursor: pointer; margin-left: 6px; line-height: 1.3; }
+	.mh-db-action .mh-db-done:hover { border-color: #0073aa; }
 
 	.mh-db-progress { flex: 0 0 150px; }
 	.mh-db-bar { height: 7px; border-radius: 4px; background: #eceef0; overflow: hidden; }
@@ -80,9 +90,10 @@ $zeige_noten_owned = $noten_aktiv || ! empty( $noten_owned );
 	.mh-db-foot a { text-decoration: none; }
 
 	.mh-db-quick { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 25px; }
-	.mh-db-quick a { flex: 1 1 200px; padding: 15px 18px; background: #fff; border: 1px solid #e2e4e7;
-		border-radius: 6px; text-decoration: none; color: #1d2327; }
-	.mh-db-quick a:hover { border-color: #0073aa; }
+	/* Aktionen dezent pastellblau hinterlegt, damit sie sich von den Listen darunter abheben. */
+	.mh-db-quick a { flex: 1 1 200px; padding: 15px 18px; background: #eaf3fb; border: 1px solid #c8def1;
+		border-radius: 6px; text-decoration: none; color: #1d2327; transition: background-color .15s, border-color .15s; }
+	.mh-db-quick a:hover { background: #dcebf8; border-color: #0073aa; }
 	.mh-db-quick strong { display: block; margin-bottom: 3px; }
 	.mh-db-quick span { font-size: 0.85em; color: #6f6f6f; }
 
@@ -176,7 +187,76 @@ $zeige_noten_owned = $noten_aktiv || ! empty( $noten_owned );
 	</div>
 	<?php endif; ?>
 
-	<!-- 2. OFFENE ABSENTISMUS-FÄLLE -->
+	<!-- 2. EIGENE NOTENEINSAMMLUNGEN -->
+	<?php if ( $zeige_noten_owned ) : ?>
+	<div class="mh-db-card">
+		<h3>
+			Noteneinsammlungen, die du gestartet hast
+			<span class="mh-db-count <?= count( $noten_owned ) ? 'is-open' : '' ?>"><?= count( $noten_owned ) ?></span>
+			<span class="mh-db-badge beta">Beta</span>
+		</h3>
+		<div class="mh-db-body">
+			<?php if ( empty( $noten_owned ) ) : ?>
+				<p class="mh-db-empty">Keine laufende Noteneinsammlung.</p>
+			<?php else : ?>
+				<ul class="mh-db-list">
+					<?php foreach ( $noten_owned as $n ) :
+						$fd      = $n['case']['form_data'] ?? [];
+						$percent = $n['total'] > 0 ? (int) round( $n['done'] / $n['total'] * 100 ) : 0; ?>
+						<li>
+							<div class="mh-db-main">
+								<div class="mh-db-title">
+									<?= esc_html( (string) ( $fd['lastname'] ?? '' ) ) ?>,
+									<?= esc_html( (string) ( $fd['firstname'] ?? '' ) ) ?>
+									<span style="font-weight:400;color:#6f6f6f;">· <?= esc_html( (string) ( $fd['class_name'] ?? '' ) ) ?></span>
+								</div>
+								<div class="mh-db-meta">
+									<?php if ( ! $n['running'] ) : ?>
+										<span class="mh-db-badge ready">PDF bereit</span>
+										<?php if ( $n['open'] > 0 ) : ?>
+											Einsammlung beendet · <?= (int) $n['open'] ?> Note(n) im PDF von Hand ergänzen
+										<?php else : ?>
+											Alle <?= (int) $n['total'] ?> Noten liegen vor
+										<?php endif; ?>
+									<?php else : ?>
+										<?= (int) $n['done'] ?> von <?= (int) $n['total'] ?> Noten liegen vor
+										<?php if ( ! empty( $n['missing'] ) ) : ?>
+											· es fehlen noch: <?= esc_html( implode( ', ', $n['missing'] ) ) ?>
+										<?php endif; ?>
+									<?php endif; ?>
+								</div>
+							</div>
+							<?php if ( $n['running'] ) : ?>
+								<div class="mh-db-progress">
+									<div class="mh-db-bar"><span style="width: <?= (int) $percent ?>%;"></span></div>
+								</div>
+								<div class="mh-db-action"><a href="<?= esc_url( $n['link'] ) ?>">Fall ansehen</a></div>
+							<?php else : ?>
+								<div class="mh-db-action">
+									<a href="<?= esc_url( $n['link'] ) ?>">Zum PDF</a>
+									<form method="post" action="<?= esc_url( admin_url( 'admin-post.php' ) ) ?>" style="display:inline;">
+										<input type="hidden" name="action" value="mh_noten_owner_done">
+										<input type="hidden" name="case_id" value="<?= (int) $n['case']['id'] ?>">
+										<?php wp_nonce_field( 'mh_noten_owner_done_' . (int) $n['case']['id'] ); ?>
+										<button type="submit" class="mh-db-done" title="Aus dem Dashboard entfernen – der Fall bleibt unter „Meine Noteneinsammlungen“ abrufbar.">Erledigt</button>
+									</form>
+								</div>
+							<?php endif; ?>
+						</li>
+					<?php endforeach; ?>
+				</ul>
+			<?php endif; ?>
+		</div>
+		<?php if ( ! $noten_aktiv ) : ?>
+			<div class="mh-db-foot" style="color:#8a6116;">
+				Das Verfahren ist derzeit abgeschaltet. Laufende Fälle werden noch zu Ende geführt,
+				neue lassen sich nicht starten.
+			</div>
+		<?php endif; ?>
+	</div>
+	<?php endif; ?>
+
+	<!-- 3. OFFENE ABSENTISMUS-FÄLLE -->
 	<div class="mh-db-card">
 		<h3>
 			Laufende Absentismus-Fälle
@@ -228,64 +308,16 @@ $zeige_noten_owned = $noten_aktiv || ! empty( $noten_owned );
 		<?php endif; ?>
 	</div>
 
-	<!-- 3. EIGENE NOTENEINSAMMLUNGEN -->
-	<?php if ( $zeige_noten_owned ) : ?>
+	<!-- 4. EIGENE FORMULARE -->
 	<div class="mh-db-card">
 		<h3>
-			Noteneinsammlungen, die du gestartet hast
-			<span class="mh-db-count <?= count( $noten_owned ) ? 'is-open' : '' ?>"><?= count( $noten_owned ) ?></span>
-			<span class="mh-db-badge beta">Beta</span>
-		</h3>
-		<div class="mh-db-body">
-			<?php if ( empty( $noten_owned ) ) : ?>
-				<p class="mh-db-empty">Keine laufende Noteneinsammlung.</p>
-			<?php else : ?>
-				<ul class="mh-db-list">
-					<?php foreach ( $noten_owned as $n ) :
-						$fd      = $n['case']['form_data'] ?? [];
-						$percent = $n['total'] > 0 ? (int) round( $n['done'] / $n['total'] * 100 ) : 0; ?>
-						<li>
-							<div class="mh-db-main">
-								<div class="mh-db-title">
-									<?= esc_html( (string) ( $fd['lastname'] ?? '' ) ) ?>,
-									<?= esc_html( (string) ( $fd['firstname'] ?? '' ) ) ?>
-									<span style="font-weight:400;color:#6f6f6f;">· <?= esc_html( (string) ( $fd['class_name'] ?? '' ) ) ?></span>
-								</div>
-								<div class="mh-db-meta">
-									<?= (int) $n['done'] ?> von <?= (int) $n['total'] ?> Noten liegen vor
-									<?php if ( ! empty( $n['missing'] ) ) : ?>
-										· es fehlen noch: <?= esc_html( implode( ', ', $n['missing'] ) ) ?>
-									<?php endif; ?>
-								</div>
-							</div>
-							<div class="mh-db-progress">
-								<div class="mh-db-bar"><span style="width: <?= (int) $percent ?>%;"></span></div>
-							</div>
-							<div class="mh-db-action"><a href="<?= esc_url( $n['link'] ) ?>">Fall ansehen</a></div>
-						</li>
-					<?php endforeach; ?>
-				</ul>
-			<?php endif; ?>
-		</div>
-		<?php if ( ! $noten_aktiv ) : ?>
-			<div class="mh-db-foot" style="color:#8a6116;">
-				Das Verfahren ist derzeit abgeschaltet. Laufende Fälle werden noch zu Ende geführt,
-				neue lassen sich nicht starten.
-			</div>
-		<?php endif; ?>
-	</div>
-	<?php endif; ?>
-
-	<!-- 4. EIGENE EINSENDUNGEN -->
-	<div class="mh-db-card">
-		<h3>
-			Meine Abmeldungen
+			Meine Formulare
 			<span style="font-weight:400;color:#6f6f6f;">zuletzt eingereicht</span>
 			<span class="mh-db-count"><?= (int) $submissions['total'] ?></span>
 		</h3>
 		<div class="mh-db-body">
 			<?php if ( empty( $submissions['items'] ) ) : ?>
-				<p class="mh-db-empty">Du hast noch keine Abmeldung eingereicht.</p>
+				<p class="mh-db-empty">Du hast noch kein Formular eingereicht.</p>
 			<?php else : ?>
 				<ul class="mh-db-list">
 					<?php foreach ( $submissions['items'] as $sub ) :
@@ -307,6 +339,23 @@ $zeige_noten_owned = $noten_aktiv || ! empty( $noten_owned );
 									<?php endif; ?>
 								</div>
 							</div>
+							<?php
+							// Öffnen = im Formular bearbeiten (wie in "Meine Formulare"); das PDF
+							// läuft über den Download-Handler, der auf jeder Seite greift.
+							$sub_id   = (int) $sub['id'];
+							$form_url = $form_seite[ $typ ] ?? '';
+							$pdf_url  = add_query_arg( [
+								'mh_action' => 'download',
+								'id'        => $sub_id,
+								'_wpnonce'  => wp_create_nonce( 'mh_dashboard_action_' . $sub_id ),
+							] );
+							?>
+							<div class="mh-db-action">
+								<?php if ( '' !== $form_url ) : ?>
+									<a href="<?= esc_url( add_query_arg( 'mh_edit_id', $sub_id, $form_url ) ) ?>">Öffnen</a>
+								<?php endif; ?>
+								<a class="is-quiet" href="<?= esc_url( $pdf_url ) ?>" target="_blank">PDF</a>
+							</div>
 						</li>
 					<?php endforeach; ?>
 				</ul>
@@ -314,7 +363,7 @@ $zeige_noten_owned = $noten_aktiv || ! empty( $noten_owned );
 		</div>
 		<?php if ( '' !== $links['meine_antraege'] ) : ?>
 			<div class="mh-db-foot">
-				<a href="<?= esc_url( $links['meine_antraege'] ) ?>">Alle Anträge mit PDF-Download und Bearbeiten →</a>
+				<a href="<?= esc_url( $links['meine_antraege'] ) ?>">Alle Formulare mit PDF-Download und Bearbeiten →</a>
 			</div>
 		<?php else : ?>
 			<div class="mh-db-foot" style="color:#6f6f6f;">

@@ -77,8 +77,16 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		// bestehendes Protokoll der Gesamtkonferenz beilegt ('existing') - letzteres
 		// kommt vor allem zum Schuljahresbeginn vor, wenn Noten und Zeugnisdatum aus
 		// dem Klassenprotokoll uebernommen werden.
+		$certificate  = $this->sanitize_text( $data['certificate'] ?? '' );
+
 		$protocol_mode = $this->sanitize_text( $data['protocol_mode'] ?? '' );
 		if ( ! in_array( $protocol_mode, [ 'create', 'existing' ], true ) ) {
+			$protocol_mode = '';
+		}
+		// Ohne Zeugnis gibt es auch keine Zeugniskonferenz - und damit kein Protokoll.
+		// Das Formular sperrt die Auswahl in diesem Fall; ein trotzdem mitgeschickter
+		// Wert (z. B. aus einem alten Browser-Tab) wird verworfen.
+		if ( 'none' === $certificate ) {
 			$protocol_mode = '';
 		}
 		// protocol_attached bleibt als abgeleitetes Feld erhalten: daran haengt die
@@ -86,14 +94,25 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		// Datensaetze tragen ausschliesslich dieses Feld.
 		$protocol = ( 'create' === $protocol_mode ) ? '1' : '0';
 
-		$certificate  = $this->sanitize_text( $data['certificate'] ?? '' );
 		// Wird kein Zeugnis erteilt, muss das begruendet werden - die Begruendung steht
 		// hinterher auf der Abmeldung und ist der einzige Beleg dafuer, warum die
-		// Schuelerin oder der Schueler ohne Zeugnis geht.
-		$cert_none_reason = sanitize_textarea_field( $data['certificate_none_reason'] ?? '' );
-		if ( 'none' !== $certificate ) {
-			$cert_none_reason = '';
+		// Schuelerin oder der Schueler ohne Zeugnis geht. Die Schulleitung laesst dafuer
+		// nur drei Faelle zu, jeder mit eigener Pflichtangabe:
+		//   gast           -> Datum des bereits erteilten Zeugnisses
+		//   andere_schule  -> Art des beigefuegten Nachweises
+		//   keine_aufnahme -> Freitext-Grund (certificate_none_reason)
+		// Felder, die zum gewaehlten Fall nicht passen, werden verworfen, damit keine
+		// Reste einer vorherigen Auswahl im PDF landen.
+		$cert_none_type = $this->sanitize_text( $data['certificate_none_type'] ?? '' );
+		if ( 'none' !== $certificate || ! in_array( $cert_none_type, [ 'gast', 'andere_schule', 'keine_aufnahme' ], true ) ) {
+			$cert_none_type = '';
 		}
+		$cert_issued_date = ( 'gast' === $cert_none_type ) ? $this->sanitize_text( $data['certificate_issued_date'] ?? '' ) : '';
+		$cert_proof       = ( 'andere_schule' === $cert_none_type ) ? $this->sanitize_text( $data['certificate_proof'] ?? '' ) : '';
+		if ( ! in_array( $cert_proof, [ 'ausbildungsvertrag', 'schulbescheinigung', 'sekretariat' ], true ) ) {
+			$cert_proof = '';
+		}
+		$cert_none_reason = ( 'keine_aufnahme' === $cert_none_type ) ? sanitize_textarea_field( $data['certificate_none_reason'] ?? '' ) : '';
 		$missed_hours = (int) ( $data['missed_hours'] ?? 0 );
 		$missed_ue    = (int) ( $data['missed_ue'] ?? 0 );
 		$missed_hours_raw = trim( (string) ( $data['missed_hours'] ?? '' ) ); // Für Leere-Prüfung
@@ -153,11 +172,19 @@ class Abmeldung_Student_Form extends Abstract_Form {
 		if ( ! in_array( $certificate, [ 'abgang', 'ueberweisung', 'none' ], true ) ) {
 			$this->add_error( 'certificate', 'Bitte auswählen, welches Zeugnis erteilt wird.' );
 		}
-		if ( 'none' === $certificate && '' === trim( $cert_none_reason ) ) {
-			$this->add_error( 'certificate_none_reason', 'Bitte begründen, warum kein Zeugnis erteilt wird.' );
+		if ( 'none' === $certificate ) {
+			if ( '' === $cert_none_type ) {
+				$this->add_error( 'certificate_none_type', 'Bitte auswählen, warum kein Zeugnis erteilt wird.' );
+			} elseif ( 'gast' === $cert_none_type && '' === $cert_issued_date ) {
+				$this->add_error( 'certificate_issued_date', 'Bitte das Datum des bereits ausgestellten Abschluss- oder Abgangszeugnisses angeben.' );
+			} elseif ( 'andere_schule' === $cert_none_type && '' === $cert_proof ) {
+				$this->add_error( 'certificate_proof', 'Bitte angeben, welcher Nachweis über den Besuch der anderen Schule beiliegt.' );
+			} elseif ( 'keine_aufnahme' === $cert_none_type && '' === trim( $cert_none_reason ) ) {
+				$this->add_error( 'certificate_none_reason', 'Bitte kurz angeben, warum die Aufnahme nicht erfolgt ist.' );
+			}
 		}
 
-		if ( '' === $protocol_mode ) {
+		if ( '' === $protocol_mode && 'none' !== $certificate ) {
 			$this->add_error( 'protocol_mode', 'Bitte angeben, ob das Zeugniskonferenzprotokoll jetzt erstellt wird oder ob ein bestehendes beiliegt.' );
 		}
 
@@ -277,6 +304,9 @@ class Abmeldung_Student_Form extends Abstract_Form {
 			'av_talk_date'        => $av_talk_date,
 			'new_education_track' => $education_track,
 			'certificate'             => $certificate,
+			'certificate_none_type'   => $cert_none_type,
+			'certificate_issued_date' => $cert_issued_date,
+			'certificate_proof'       => $cert_proof,
 			'certificate_none_reason' => $cert_none_reason,
 			'missed_hours'        => $missed_hours,
 			'missed_ue'           => $missed_ue,

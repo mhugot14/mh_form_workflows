@@ -53,8 +53,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 					<td><?= esc_html( $fd['class_name'] ?? '' ) ?></td>
 					<td><?= (int) $done ?> / <?= (int) $total ?></td>
 					<td>
-						<?php if ( $closed ) : ?>
-							<span class="mh-badge mh-badge-done">Abgeschlossen</span>
+						<?php if ( $closed && ! empty( $fd['owner_done_at'] ) ) : ?>
+							<span class="mh-badge mh-badge-done">Erledigt</span>
+						<?php elseif ( $closed ) : ?>
+							<span class="mh-badge mh-badge-done"><?= $done < $total ? 'Beendet – PDF bereit' : 'PDF bereit' ?></span>
 						<?php else : ?>
 							<span class="mh-badge mh-badge-open">Läuft</span>
 						<?php endif; ?>

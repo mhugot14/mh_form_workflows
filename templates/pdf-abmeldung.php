@@ -23,10 +23,13 @@ $date_fmt = function($field) use ($data) {
     /* Globale Tabellen-Regeln gegen Absturz */
     table { width: 100%; border-collapse: collapse; margin-bottom: 3px; page-break-inside: avoid; }
     tr { page-break-inside: avoid; }
-    td, th { border: 1px solid black; padding: 3px 5px; vertical-align: top; }
+    td, th { border: 1px solid black; padding: 2px 5px; vertical-align: top; }
+    /* Unterschriftszeilen bewusst höher: dort wird von Hand unterschrieben. */
+    table.sign-table td { height: 20px; vertical-align: middle; }
+    table.sign-table tr.bg-gray td { height: auto; }
     
     /* Layout */
-    .header { font-weight: bold; font-size: 14pt; text-align: center; margin-bottom: 15px; margin-top:0; }
+    .header { font-weight: bold; font-size: 14pt; text-align: center; margin-bottom: 8px; margin-top:0; }
     .bg-gray { background-color: #eee; }
     .section-num { font-weight: bold; font-size: 14pt; width: 25px; text-align: center; vertical-align: middle; }
     
@@ -57,7 +60,7 @@ $date_fmt = function($field) use ($data) {
     <div class="header">Abmeldung von Schülerinnen und Schülern</div>
 
     <!-- Stammdaten -->
-    <table style="margin-bottom: 10px;">
+    <table style="margin-bottom: 6px;">
         <tr>
             <td width="45%">Name:<br><b><?= $esc('lastname') ?></b></td>
             <td width="25%">Geburtsdatum:<br><b><?= $date_fmt('dob') ?></b></td>
@@ -73,7 +76,7 @@ $date_fmt = function($field) use ($data) {
         </tr>
     </table>
 
-    <table style="margin-bottom: 10px;">
+    <table style="margin-bottom: 6px;">
         <tr>
             <td width="70%" class="bg-gray"><b>Datum der Abmeldung / Ende Schulverhältnis</b> (Abmeldung bitte anfügen):</td>
             <td><b><?= $date_fmt('date_off') ?></b></td>
@@ -132,16 +135,28 @@ $date_fmt = function($field) use ($data) {
                 <div style="margin-bottom:3px; font-weight:bold;">
                     <?= $chk('perspective', 'exists') ?> Es liegt eine konkrete Anschlussperspektive vor:
                 </div>
-                <div style="margin-left: 20px;">
-                    <div class="check-row"><?= $chk('perspective_detail', 'ausbildung') ?> unterschriebener Ausbildungsvertrag</div>
-                    <div class="check-row"><?= $chk('perspective_detail', 'schule') ?> Aufnahmebestätigung einer anderen Schule</div>
-                    <div class="check-row"><?= $chk('perspective_detail', 'studium') ?> schriftliche Zusage eines Studienplatzes</div>
-                    <div class="check-row"><?= $chk('perspective_detail', 'fsj') ?> schriftliche Zusage eines FSJ, FÖJ oder BFD</div>
-                    <div class="check-row">
-                        <?= $chk('perspective_detail', 'sonstiges') ?> sonstiges: 
-                        <?php if($data['perspective_detail'] === 'sonstiges') echo '<u>' . substr($esc('perspective_other'),0,40) . '</u>'; ?>
-                    </div>
-                </div>
+                <!-- Zweispaltig, um Seite 1 kurz zu halten. "sonstiges" bekommt die volle
+                     Breite, damit Platz zum Ergänzen bleibt. -->
+                <table class="layout-table" style="margin-left: 20px; width: 97%;">
+                    <tr>
+                        <td width="50%" class="check-row"><?= $chk('perspective_detail', 'ausbildung') ?> unterschriebener Ausbildungsvertrag</td>
+                        <td width="50%" class="check-row"><?= $chk('perspective_detail', 'studium') ?> schriftliche Zusage eines Studienplatzes</td>
+                    </tr>
+                    <tr>
+                        <td class="check-row"><?= $chk('perspective_detail', 'schule') ?> Aufnahmebestätigung einer anderen Schule</td>
+                        <td class="check-row"><?= $chk('perspective_detail', 'fsj') ?> schriftliche Zusage eines FSJ, FÖJ oder BFD</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" class="check-row">
+                            <?= $chk('perspective_detail', 'sonstiges') ?> sonstiges:
+                            <?php if ( 'sonstiges' === ( $data['perspective_detail'] ?? '' ) ) : ?>
+                                <u><?= $esc('perspective_other') ?></u>
+                            <?php else : ?>
+                                ..........................................................................................................
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                </table>
             </td>
         </tr>
         <tr>
@@ -162,11 +177,16 @@ $date_fmt = function($field) use ($data) {
     }
     ?>
     <div style="font-weight: bold; margin-top: 8px; margin-bottom: 2px;">
-        Zeugnis:    &nbsp;&nbsp;&nbsp;      <?= 'create' === $prot_mode ? $x : $o ?> Zeugniskonferenzprotokoll liegt bei (mit diesem Formular erstellt)
-        &nbsp;&nbsp;&nbsp;<?= 'existing' === $prot_mode ? $x : $o ?> bestehendes Protokoll liegt bei
+        Zeugnis:    &nbsp;&nbsp;&nbsp;
+        <?php if ( 'none' === ( $data['certificate'] ?? '' ) ) : ?>
+            <span style="font-weight:normal;">Zeugniskonferenzprotokoll entfällt (kein Zeugnis)</span>
+        <?php else : ?>
+            <?= 'create' === $prot_mode ? $x : $o ?> Zeugniskonferenzprotokoll liegt bei (mit diesem Formular erstellt)
+            &nbsp;&nbsp;&nbsp;<?= 'existing' === $prot_mode ? $x : $o ?> bestehendes Protokoll liegt bei
+        <?php endif; ?>
     </div>
     <?php if ( 'existing' === $prot_mode ): ?>
-    <div style="border: 1px solid #000; padding: 4px 6px; margin-bottom: 4px; font-size: 8pt; line-height: 1.3;">
+    <div style="border: 1px solid #000; padding: 2px 6px; margin-bottom: 3px; font-size: 8pt; line-height: 1.2;">
         Ich lege ein bestehendes Zeugniskonferenzprotokoll bei. Konferenzdatum und Zeugnisdatum werden
         daraus ersichtlich. Änderungen sind mit der Abteilungsleitung abgesprochen und von ihr abgezeichnet.
     </div>
@@ -174,44 +194,55 @@ $date_fmt = function($field) use ($data) {
 
     <table class="mb-0">
         <tr>
-            <td rowspan="2" class="section-num">4</td>
-            <td style="padding: 5px;">
-                <table class="layout-table" width="100%">
-                    <tr>
-                        <td width="65%">
-                            <?= $chk('certificate', 'ueberweisung') ?> Überweisungszeugnis gem. § 49 SchulG<br>
-                            <span class="small-text" style="padding-left:15px;">(Der/die SchülerIn wechselt innerhalb derselben Schulstufe die Schule.)</span>
-                        </td>
-                        <td width="35%" style="text-align:right;">
-                           
-                        </td>
-                    </tr>
-                </table>
+            <td rowspan="3" class="section-num">4</td>
+            <td>
+                <?= $chk('certificate', 'ueberweisung') ?> Überweisungszeugnis gem. § 49 SchulG<br>
+                <span class="small-text" style="padding-left:15px;">(Der/die SchülerIn wechselt innerhalb derselben Schulstufe die Schule.)</span>
             </td>
         </tr>
         <tr>
-            <td style="padding: 5px;">
+            <td>
                 <?= $chk('certificate', 'abgang') ?> Abgangszeugnis gem. § 49 SchulG<br>
                 <span class="small-text" style="padding-left:15px;">(Der/die SchülerIn verlässt die Schule/den Bildungsgang <u>nach</u> Erfüllung der Schulpflicht <u>ohne</u> Abschluss.)</span>
             </td>
         </tr>
         <tr>
-            <td style="padding: 5px;">
+            <td>
                 <?= $chk('certificate', 'none') ?> <b>Kein Zeugnis</b>
                 <?php if ( 'none' === ( $data['certificate'] ?? '' ) ) : ?>
+                    <?php
+                    $none_type   = $data['certificate_none_type'] ?? '';
+                    $proof_label = [
+                        'ausbildungsvertrag' => 'Ausbildungsvertrag',
+                        'schulbescheinigung' => 'Schulbescheinigung',
+                        'sekretariat'        => 'Bestätigung des Schulbesuchs durch das Sekretariat der aufnehmenden Schule',
+                    ][ $data['certificate_proof'] ?? '' ] ?? '';
+                    ?>
                     <div style="border:1px solid #000; padding:4px 6px; margin:4px 0 0 15px; font-size:8.5pt; line-height:1.3;">
                         <span style="font-weight:bold;">Begründung:</span>
-                        <?= nl2br( htmlspecialchars( (string) ( $data['certificate_none_reason'] ?? '' ) ) ) ?>
+                        <?php if ( 'gast' === $none_type ) : ?>
+                            Gastschüler*in / Zeugnis bereits erteilt.<br>
+                            Datum des ausgestellten Abschluss- oder Abgangszeugnisses: <b><?= $date_fmt('certificate_issued_date') ?></b>
+                        <?php elseif ( 'andere_schule' === $none_type ) : ?>
+                            Besuch einer anderen Schule seit Beginn des Schuljahres.<br>
+                            Nachweis liegt bei: <b><?= htmlspecialchars( $proof_label ) ?></b>
+                        <?php elseif ( 'keine_aufnahme' === $none_type ) : ?>
+                            Fehlerhafte Aufnahme / Schulverhältnis nicht zustande gekommen.<br>
+                            Grund: <?= nl2br( htmlspecialchars( (string) ( $data['certificate_none_reason'] ?? '' ) ) ) ?>
+                        <?php else : ?>
+                            <?php // Ältere Abmeldungen ohne Fallauswahl: nur Freitext. ?>
+                            <?= nl2br( htmlspecialchars( (string) ( $data['certificate_none_reason'] ?? '' ) ) ) ?>
+                        <?php endif; ?>
                     </div>
                 <?php else : ?>
-                    <br><span class="small-text" style="padding-left:15px;">(Es wird kein Zeugnis erteilt; die Begründung ist anzugeben.)</span>
+                    <span class="small-text">(Begründung ist anzugeben)</span>
                 <?php endif; ?>
             </td>
         </tr>
     </table>
 
     <!-- UNTERSCHRIFTEN -->
-    <table class="no-border" style="margin-top: 15px;">
+    <table class="no-border sign-table" style="margin-top: 10px;">
         <tr class="bg-gray">
             <td width="40%">Ablauf</td>
             <td width="20%">Datum</td>

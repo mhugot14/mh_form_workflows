@@ -356,6 +356,11 @@ class Form_Controller {
 			return [ 'protocol_mode' => 'Die digitale Noteneinsammlung ist nicht möglich, wenn ein bestehendes Zeugniskonferenzprotokoll beigefügt wird — die Noten ergeben sich aus diesem Protokoll.' ];
 		}
 
+		// Ohne Zeugnis keine Zeugniskonferenz - es gibt keine Noten, die man einsammeln könnte.
+		if ( 'none' === ( $valid_data['certificate'] ?? '' ) ) {
+			return [ 'certificate' => 'Die digitale Noteneinsammlung ist nicht möglich, wenn kein Zeugnis erteilt wird.' ];
+		}
+
 		$subjects = $valid_data['subjects'] ?? [];
 
 		if ( empty( $subjects ) ) {
@@ -467,15 +472,21 @@ class Form_Controller {
 			if ( '1' !== ( $item['collect'] ?? '0' ) ) {
 				continue;
 			}
-			$idx = (int) $item['idx'];
-			$this->mail->send_invitation(
+			$idx  = (int) $item['idx'];
+			$sent = $this->mail->send_invitation(
 				(string) $item['recipient_email'],
 				$this->account_repo->get_display_name( (string) $item['teacher_kuerzel'] ),
 				$case,
 				$item,
 				$this->reminder->entry_link( $case_id, $idx )
 			);
-			$this->noten_repo->mark_notified( $case_id, $idx, false );
+			// Nur bei Erfolg als benachrichtigt markieren. Ein Fehlschlag wird am Fach
+			// vermerkt; der Erinnerungs-Cron versucht die Einladung dann erneut.
+			if ( $sent ) {
+				$this->noten_repo->mark_notified( $case_id, $idx, false );
+			} else {
+				$this->noten_repo->mark_mail_failed( $case_id, $idx, $this->mail->get_last_error() );
+			}
 		}
 
 		wp_redirect( $this->reminder->case_link( $case_id ) );
@@ -528,6 +539,15 @@ class Form_Controller {
 			}
 		}
 
+		// Das Abmeldeformular erzeugt das PDF in einem eigenen Fenster. Scheitert dort die
+		// Prüfung, wäre ein zweites Formular im neuen Fenster nur verwirrend - stattdessen
+		// die Fehler auflisten; korrigiert wird im stehengebliebenen Formular-Fenster.
+		$in_window = 'pdf' === ( $_POST['submit_mode'] ?? '' ) && '1' === ( $_POST['pdf_in_window'] ?? '' );
+		if ( $in_window && ( 'check' === $mode || ! $is_valid ) ) {
+			$this->render_pdf_window_errors( $errors, $valid_data );
+			exit;
+		}
+
 		if ( 'check' === $mode || ! $is_valid ) {
 			$is_success = ( $is_valid && 'check' === $mode );
 			$refill_data = array_merge( $raw_data, $valid_data );
@@ -543,6 +563,19 @@ class Form_Controller {
 
 		// LOGIK: Nur speichern, wenn es KEINE Dienstbefreiung ist
 		if ( 'service_leave_v1' !== $form_type_slug ) {
+
+			// Formularsitzung wiedererkennen: wiederholtes Erzeugen aus demselben, noch
+			// offenen Formular aktualisiert dieselbe Einsendung (siehe find_id_by_client_token()).
+			$client_token = sanitize_text_field( wp_unslash( $_POST['client_token'] ?? '' ) );
+			if ( ! preg_match( '/^[a-f0-9-]{36}$/', $client_token ) ) {
+				$client_token = '';
+			}
+			if ( '' !== $client_token ) {
+				$valid_data['client_token'] = $client_token;
+				if ( $submission_id <= 0 ) {
+					$submission_id = $this->repository->find_id_by_client_token( $current_user_id, $form->get_slug(), $client_token );
+				}
+			}
 
 			$db_data = [ 
 				'form_type' => $form->get_slug(), 
@@ -592,6 +625,34 @@ class Form_Controller {
 	}
 
 	/**
+	 * Fehlerseite für das PDF-Fenster: listet, was die Prüfung bemängelt hat.
+	 * Das Formular im anderen Fenster behält alle Eingaben.
+	 */
+	private function render_pdf_window_errors( array $errors, array $valid_data ): void {
+		$items = [];
+		foreach ( $errors as $key => $message ) {
+			if ( 'date_autocorrect' === $key ) {
+				// Konferenz- und Zeugnisdatum werden auf einen Schultag gelegt. Im Formular
+				// sind sie schreibgeschützt - ändern lässt sich nur das Abmeldedatum.
+				$corrected = ! empty( $valid_data['prot_date'] ) ? date_i18n( 'd.m.Y', strtotime( (string) $valid_data['prot_date'] ) ) : '';
+				$message   = 'Das Abmeldedatum fällt nicht auf einen Schultag (Wochenende/Ferien).'
+					. ( '' !== $corrected ? ' Konferenz- und Zeugnisdatum würden auf den ' . $corrected . ' gelegt.' : '' )
+					. ' Bitte das Datum im Formular prüfen – oder dort „Formular nur prüfen“ nutzen, dann wird die Korrektur übernommen.';
+			}
+			$items[] = '<li>' . esc_html( (string) $message ) . '</li>';
+		}
+
+		$html = '<h1>PDF wurde nicht erzeugt</h1>'
+			. '<p>Das Formular hat die Prüfung nicht bestanden:</p>'
+			. '<ul>' . implode( '', $items ) . '</ul>'
+			. '<p>Bitte dieses Fenster schließen, die Angaben im Formular-Fenster korrigieren und das PDF erneut erzeugen. '
+			. 'Deine Eingaben dort sind unverändert.</p>'
+			. '<p><button type="button" class="button" onclick="window.close();">Fenster schließen</button></p>';
+
+		wp_die( $html, 'PDF wurde nicht erzeugt', [ 'response' => 200 ] );
+	}
+
+	/**
 	 * Admin Aktionen
 	 */
 	public function handle_admin_action(): void {
@@ -605,10 +666,34 @@ class Form_Controller {
 			exit;
 		}
 		if ( 'download' === $action ) {
-			$_GET['mh_action'] = 'download';
-			$this->handle_dashboard_action();
+			// Nonce und Berechtigung sind oben geprüft. Früher lief das über
+			// handle_dashboard_action() - das prüfte aber eine andere Nonce und nur den
+			// Ersteller, der Download aus dem Backend schlug deshalb immer fehl.
+			$entry = $this->repository->get_by_id( $id );
+			if ( ! $entry ) wp_die( 'Eintrag nicht gefunden.' );
+			$this->stream_submission_pdf( $entry );
 			exit;
 		}
+	}
+
+	/**
+	 * Erzeugt das PDF einer gespeicherten Einsendung und liefert es aus.
+	 * Die Berechtigungsprüfung liegt beim Aufrufer.
+	 */
+	private function stream_submission_pdf( array $entry ): void {
+		$id         = (int) $entry['id'];
+		$valid_data = $entry['form_data'];
+		$valid_data['entry_id'] = $id;
+		$data = $valid_data;
+		ob_start();
+		if ( 'service_leave_v1' === $entry['form_type'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-service-leave.php';
+		else {
+			include MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php';
+			if ( isset( $valid_data['protocol_attached'] ) && '1' === $valid_data['protocol_attached'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php';
+		}
+		$html = ob_get_clean() . '</body></html>';
+		$filename = sprintf('%s_%d_%s', date('y-m-d', strtotime($entry['created_at'])), $id, sanitize_file_name($valid_data['lastname'] ?? ''));
+		$this->pdf_generator->generate_and_stream( $id, $html, $filename );
 	}
 
 	/**
@@ -629,18 +714,7 @@ class Form_Controller {
 		if ( 'download' === $action ) {
 			$entry = $this->repository->get_by_id( $id );
 			if ( ! $entry || (int)$entry['user_id'] !== $current_user ) wp_die( 'Denied' );
-			$valid_data = $entry['form_data'];
-			$valid_data['entry_id'] = $id;
-			$data = $valid_data;
-			ob_start();
-			if ( 'service_leave_v1' === $entry['form_type'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-service-leave.php';
-			else {
-				include MH_FW_PLUGIN_DIR . 'templates/pdf-abmeldung.php';
-				if ( isset( $valid_data['protocol_attached'] ) && '1' === $valid_data['protocol_attached'] ) include MH_FW_PLUGIN_DIR . 'templates/pdf-protocol.php';
-			}
-			$html = ob_get_clean() . '</body></html>';
-			$filename = sprintf('%s_%d_%s', date('y-m-d', strtotime($entry['created_at'])), $id, sanitize_file_name($valid_data['lastname']));
-			$this->pdf_generator->generate_and_stream( $id, $html, $filename );
+			$this->stream_submission_pdf( $entry );
 			exit;
 		}
 	}

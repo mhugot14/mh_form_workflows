@@ -102,20 +102,29 @@ class Dashboard_Controller {
 
 	/**
 	 * Selbst gestartete Noteneinsammlungen mit Fortschritt.
+	 *
+	 * Abgeschlossene bleiben stehen, bis die Klassenleitung sie als erledigt markiert:
+	 * Gerade dann muss sie ja noch etwas tun - das PDF herunterladen und weitergeben.
 	 */
 	private function collect_noten_owned( int $user_id, bool $show_all ): array {
-		$filters = [ 'status' => 'offen' ];
+		$filters = [];
 		if ( ! $show_all ) {
 			$filters['owner_user_id'] = $user_id;
 		}
 
 		$result = [];
 		foreach ( $this->noten_repo->get_all_cases( $filters ) as $case ) {
+			$is_running = 'offen' === ( $case['status'] ?? '' );
+			if ( ! $is_running && ! empty( $case['form_data']['owner_done_at'] ) ) {
+				continue;
+			}
+
 			$items = $case['form_data']['items'] ?? [];
 			$open  = $this->noten_repo->count_open_items( $case );
 
 			$result[] = [
 				'case'    => $case,
+				'running' => $is_running,
 				'total'   => count( $items ),
 				'open'    => $open,
 				'done'    => count( $items ) - $open,
@@ -123,6 +132,9 @@ class Dashboard_Controller {
 				'link'    => $this->reminder->case_link( (int) $case['id'] ),
 			];
 		}
+
+		// Fertige (PDF wartet) zuerst - dort ist jetzt etwas zu tun.
+		usort( $result, static fn( array $a, array $b ): int => (int) $a['running'] <=> (int) $b['running'] );
 
 		return $result;
 	}
