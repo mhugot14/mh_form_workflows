@@ -26,3 +26,8 @@ wp-config.php
 *.csv
 *.xlsx
 *.xls
+
+# Arbeitsvorlagen (Word/PDF-Originale der Formulare). Lokales Material, nicht
+# versioniert - eine Vorlage enthielt einen echten Schülerdatensatz. Die Regeln
+# daraus stehen im Code (z. B. Nachschreib_Termin_Katalog).
+/Vorlagen_entwicklung/
