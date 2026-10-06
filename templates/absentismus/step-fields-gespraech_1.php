@@ -2,24 +2,32 @@
 /**
  * Feld-Partial: 1. Pädagogisches Gespräch (gespraech_1).
  * Nutzt $val/$err_cls/$chk/$checked aus step-form.php.
+ * Elemente mit .mh-doku-details werden bei externer Dokumentation ausgeblendet
+ * (siehe partial-dokumentation-switch.php).
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
+
+$doku_id_prefix = 'g1';
 ?>
+<div class="mh-doku-scope">
+<?php include MH_FW_PLUGIN_DIR . 'templates/absentismus/partial-dokumentation-switch.php'; ?>
+
 <div class="mh-grid-row mh-grid-3">
 	<div class="mh-input-group">
 		<label>Datum <span class="req">*</span></label>
 		<input type="date" name="datum" class="<?= $err_cls('datum') ?>" value="<?= $val('datum') ?>">
 	</div>
-	<div class="mh-input-group">
+	<div class="mh-input-group mh-doku-details">
 		<label>Uhrzeit von <span class="req">*</span></label>
 		<input type="time" name="uhrzeit_von" class="<?= $err_cls('uhrzeit_von') ?>" value="<?= $val('uhrzeit_von') ?>">
 	</div>
-	<div class="mh-input-group">
+	<div class="mh-input-group mh-doku-details">
 		<label>Uhrzeit bis</label>
 		<input type="time" name="uhrzeit_bis" value="<?= $val('uhrzeit_bis') ?>">
 	</div>
 </div>
 
+<div class="mh-doku-details">
 <div class="mh-input-group" style="margin-bottom:15px;">
 	<label>Ort <span class="req">*</span></label>
 	<div class="radio-group"><input type="radio" name="ort" value="schule" id="ort_schule" <?= $chk('ort','schule') ?>> <label for="ort_schule">Schule</label></div>
@@ -66,4 +74,6 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 <div class="mh-input-group">
 	<label>Überprüfen der Vereinbarungen am <span class="req">*</span></label>
 	<input type="date" name="ueberpruefung_am" class="<?= $err_cls('ueberpruefung_am') ?>" value="<?= $val('ueberpruefung_am') ?>">
+</div>
+</div>
 </div>

@@ -11,6 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 return [
 	'labels' => [
+		'dokumentation'             => 'Dokumentation',
 		'datum'                     => 'Datum',
 		'uhrzeit_von'               => 'Uhrzeit von',
 		'uhrzeit_bis'               => 'Uhrzeit bis',
@@ -68,6 +69,7 @@ return [
 		'ausschulung_grund'         => 'Grund, warum nicht',
 	],
 	'value_labels' => [
+		'dokumentation' => [ 'formular' => 'Im Formular', 'webuntis' => 'Extern in WebUntis', 'handschriftlich' => 'Extern handschriftlich' ],
 		'ort'     => [ 'schule' => 'Schule', 'telefonat' => 'Telefonat' ],
 		'trigger' => [ 'beendigung_53' => 'Mögliche Beendigung nach § 53 SchulG', 'hohe_fehlstunden' => 'Hohe unentschuldigte Fehlstunden' ],
 		'beschluss' => [ 'androhung_entlassung' => 'Androhung der Entlassung', 'entlassung' => 'Entlassung' ],

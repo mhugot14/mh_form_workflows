@@ -773,6 +773,18 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                 zusätzlich als eigenständiges Einzelformular zur Verfügung, falls kein vollständiger Fall
                 geführt werden soll.
             </p>
+            <p>
+                Mindestens <strong>zwei pädagogische Gespräche</strong> sind Voraussetzung für die Mahnung. Nach dem
+                2. Gespräch können im Fall beliebig viele <strong>weitere pädagogische Gespräche</strong> angelegt
+                werden (optional, blockieren den weiteren Prozess nicht). Bei allen Gesprächen kann statt der
+                Protokollierung im Formular angegeben werden, dass das Gespräch bereits in WebUntis oder
+                handschriftlich dokumentiert ist – dann ist nur das Datum Pflicht.
+            </p>
+            <p>
+                Steht eine Schülerin/ein Schüler (noch) nicht in der WebUntis-Klassenliste, kann sie/er nach Wahl der
+                Klasse über „<strong>nicht in der Klassenliste</strong>“ mit Name, Vorname und optional Geburtsdatum
+                manuell erfasst werden. Solche Fälle sind im Fallkopf als „manuell erfasst“ gekennzeichnet.
+            </p>
 
             <table class="mh-shortcode-table">
                 <thead>

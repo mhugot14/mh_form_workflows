@@ -17,7 +17,14 @@ class Absentismus_Step_Gespraech_1_Form extends Abstract_Absentismus_Step_Form {
 		$this->errors = [];
 		$this->data   = [];
 
-		$datum         = $this->sanitize_text( $data['datum'] ?? '' );
+		// Gespräch bereits in WebUntis/handschriftlich dokumentiert → nur Datum.
+		$extern = $this->validate_extern_dokumentation( $data );
+		if ( null !== $extern ) {
+			$this->data = $extern;
+			return empty( $this->errors );
+		}
+
+		$datum        = $this->sanitize_text( $data['datum'] ?? '' );
 		$uhrzeit_von   = $this->sanitize_text( $data['uhrzeit_von'] ?? '' );
 		$uhrzeit_bis   = $this->sanitize_text( $data['uhrzeit_bis'] ?? '' );
 		$ort           = $this->sanitize_text( $data['ort'] ?? '' );
@@ -52,7 +59,8 @@ class Absentismus_Step_Gespraech_1_Form extends Abstract_Absentismus_Step_Form {
 		[ $fehlstunden_gesamt, $fehlstunden_ue ] = $this->validate_fehlstunden_pair( $data, 'fehlstunden_gesamt', 'fehlstunden_unentschuldigt' );
 
 		$this->data = [
-			'datum'                  => $datum,
+			'dokumentation'          => 'formular',
+			'datum'                 => $datum,
 			'uhrzeit_von'            => $uhrzeit_von,
 			'uhrzeit_bis'            => $uhrzeit_bis,
 			'ort'                    => $ort,

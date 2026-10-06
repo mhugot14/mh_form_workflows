@@ -26,6 +26,10 @@ $step_label  = $step_labels[ $step_type ] ?? $step_type;
 // Datei unverändert wiederverwendet werden kann.
 $case_meta = [ 'is_schulpflichtig' => $val( 'is_schulpflichtig' ) ];
 
+// Ohne Fall ergibt "bereits extern dokumentiert" nur ein leeres PDF — Umschalter
+// in partial-dokumentation-switch.php daher hier ausblenden.
+$allow_extern_doku = false;
+
 include MH_FW_PLUGIN_DIR . 'templates/absentismus/partial-form-base-css.php';
 ?>
 

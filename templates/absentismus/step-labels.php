@@ -9,6 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 return [
 	'gespraech_1'   => '1. Pädagogisches Gespräch',
 	'gespraech_2'   => '2. Pädagogisches Gespräch',
+	'gespraech_weiteres' => 'Weiteres Pädagogisches Gespräch',
 	'ordnungsamt'   => 'Zuführung durch das Ordnungsamt',
 	'attestauflage' => 'Attestauflage',
 	'mahnung'       => 'Schriftliche Mahnung / Aufforderung Schulbesuch',

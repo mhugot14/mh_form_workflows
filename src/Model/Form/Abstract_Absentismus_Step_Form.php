@@ -39,6 +39,32 @@ abstract class Abstract_Absentismus_Step_Form extends Abstract_Form {
 		return [ $total, $ue ];
 	}
 
+	/**
+	 * Pädagogische Gespräche (gespraech_1/_2/_weiteres) dürfen statt der
+	 * vollständigen Protokollierung als "bereits extern dokumentiert" (WebUntis
+	 * oder handschriftlich) erfasst werden. Dann ist nur das Gesprächsdatum
+	 * Pflicht; alle übrigen Felder werden weder validiert noch gespeichert.
+	 *
+	 * @return array{dokumentation:string,datum:string}|null Fertige Schritt-Daten
+	 *         bei externer Dokumentation, null bei Dokumentation im Formular.
+	 */
+	protected function validate_extern_dokumentation( array $data ): ?array {
+		$dokumentation = $this->sanitize_text( $data['dokumentation'] ?? 'formular' );
+		if ( ! in_array( $dokumentation, [ 'webuntis', 'handschriftlich' ], true ) ) {
+			return null;
+		}
+
+		$datum = $this->sanitize_text( $data['datum'] ?? '' );
+		if ( empty( $datum ) ) {
+			$this->add_error( 'datum', 'Datum des Gesprächs fehlt.' );
+		}
+
+		return [
+			'dokumentation' => $dokumentation,
+			'datum'         => $datum,
+		];
+	}
+
 	protected function validate_paraphe( array $data, string $field, string $label ): string {
 		$value = $this->sanitize_text( $data[ $field ] ?? '' );
 		if ( empty( $value ) ) {

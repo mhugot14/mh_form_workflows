@@ -11,6 +11,7 @@ use Mh\FormWorkflows\Service\Pdf_Generator;
 use Mh\FormWorkflows\Model\Form\Form_Interface;
 use Mh\FormWorkflows\Model\Form\Absentismus_Step_Gespraech_1_Form;
 use Mh\FormWorkflows\Model\Form\Absentismus_Step_Gespraech_2_Form;
+use Mh\FormWorkflows\Model\Form\Absentismus_Step_Gespraech_Weiteres_Form;
 use Mh\FormWorkflows\Model\Form\Absentismus_Step_Ordnungsamt_Form;
 use Mh\FormWorkflows\Model\Form\Absentismus_Step_Attestauflage_Form;
 use Mh\FormWorkflows\Model\Form\Absentismus_Step_Mahnung_Form;
@@ -63,6 +64,7 @@ class Fall_Controller {
 		return match ( $step_type ) {
 			'gespraech_1'   => new Absentismus_Step_Gespraech_1_Form(),
 			'gespraech_2'   => new Absentismus_Step_Gespraech_2_Form(),
+			'gespraech_weiteres' => new Absentismus_Step_Gespraech_Weiteres_Form(),
 			'ordnungsamt'   => new Absentismus_Step_Ordnungsamt_Form(),
 			'attestauflage' => new Absentismus_Step_Attestauflage_Form(),
 			'mahnung'       => new Absentismus_Step_Mahnung_Form(),
@@ -238,13 +240,28 @@ class Fall_Controller {
 			wp_die( 'Sicherheitsprüfung fehlgeschlagen.' );
 		}
 
-		$student_wu_id = (int) ( $_POST['student_wu_id'] ?? 0 );
-		if ( $student_wu_id <= 0 ) {
-			wp_die( 'Bitte einen Schüler auswählen.' );
+		// Schüler entweder aus der WebUntis-Klassenliste ODER manuell erfasst (nicht
+		// in der Liste vorhanden — dann ohne student_wu_id, nur Name/Geb.-Datum).
+		$is_manual     = isset( $_POST['student_manual'] ) && '1' === $_POST['student_manual'];
+		$student_wu_id = $is_manual ? 0 : (int) ( $_POST['student_wu_id'] ?? 0 );
+		$class_wu_id   = (int) ( $_POST['class_wu_id'] ?? 0 );
+
+		$student_errors = $this->validate_student_selection( $is_manual, $student_wu_id, $class_wu_id );
+		if ( ! empty( $student_errors ) ) {
+			$this->set_state( [ 'data' => $_POST, 'errors' => $student_errors ] );
+			wp_redirect( wp_get_referer() );
+			exit;
 		}
 
 		// Es darf pro Schüler immer nur einen offenen Fall geben.
-		$existing = $this->fall_repo->find_open_case_by_student( $student_wu_id );
+		$existing = $is_manual
+			? $this->fall_repo->find_open_manual_case(
+				$class_wu_id,
+				sanitize_text_field( $_POST['lastname'] ?? '' ),
+				sanitize_text_field( $_POST['firstname'] ?? '' ),
+				sanitize_text_field( $_POST['dob'] ?? '' )
+			)
+			: $this->fall_repo->find_open_case_by_student( $student_wu_id );
 		if ( null !== $existing ) {
 			wp_redirect( $this->case_url( (int) $existing['id'] ) );
 			exit;
@@ -273,14 +290,15 @@ class Fall_Controller {
 			exit;
 		}
 
-		$student = $this->student_repo->get_student_by_wu_id( $student_wu_id );
+		$student = $is_manual ? null : $this->student_repo->get_student_by_wu_id( $student_wu_id );
 
 		$case_meta = [
 			'student_wu_id'     => $student_wu_id,
+			'student_manual'    => $is_manual,
 			'lastname'          => sanitize_text_field( $_POST['lastname'] ?? ( $student['name'] ?? '' ) ),
 			'firstname'         => sanitize_text_field( $_POST['firstname'] ?? ( $student['fore_name'] ?? '' ) ),
 			'dob'               => sanitize_text_field( $_POST['dob'] ?? ( $student['dob'] ?? '' ) ),
-			'class_wu_id'       => (int) ( $_POST['class_wu_id'] ?? 0 ),
+			'class_wu_id'       => $class_wu_id,
 			'class_name'        => sanitize_text_field( $_POST['class_name'] ?? '' ),
 			'teacher'           => sanitize_text_field( $_POST['teacher'] ?? '' ),
 			'is_minor'          => isset( $_POST['is_minor'] ) && '1' === $_POST['is_minor'],
@@ -613,8 +631,15 @@ class Fall_Controller {
 		$form     = $this->get_step_form_instance( $step_type );
 		$is_valid = $form->validate( $_POST );
 
-		if ( ! $is_valid ) {
-			$this->set_state( [ 'data' => $_POST, 'errors' => $form->get_errors() ], '_standalone' );
+		$is_manual      = isset( $_POST['student_manual'] ) && '1' === $_POST['student_manual'];
+		$student_errors = $this->validate_student_selection(
+			$is_manual,
+			$is_manual ? 0 : (int) ( $_POST['student_wu_id'] ?? 0 ),
+			(int) ( $_POST['class_wu_id'] ?? 0 )
+		);
+
+		if ( ! $is_valid || ! empty( $student_errors ) ) {
+			$this->set_state( [ 'data' => $_POST, 'errors' => array_merge( $student_errors, $form->get_errors() ) ], '_standalone' );
 			wp_redirect( wp_get_referer() );
 			exit;
 		}
@@ -652,6 +677,30 @@ class Fall_Controller {
 	// ------------------------------------------------------------------
 	// Helfer
 	// ------------------------------------------------------------------
+
+	/**
+	 * Prüft die Klassen-/Schülerwahl aus partial-student-selector.php — entweder
+	 * ein Schüler aus der Klassenliste oder manuell erfasster Name/Vorname.
+	 *
+	 * @return array<string,string> Feld => Fehlermeldung (leer = gültig)
+	 */
+	private function validate_student_selection( bool $is_manual, int $student_wu_id, int $class_wu_id ): array {
+		$errors = [];
+		if ( $class_wu_id <= 0 ) {
+			$errors['class_wu_id'] = 'Bitte eine Klasse auswählen.';
+		}
+		if ( $is_manual ) {
+			if ( '' === sanitize_text_field( $_POST['lastname'] ?? '' ) ) {
+				$errors['lastname'] = 'Bitte den Nachnamen der Schülerin/des Schülers eingeben.';
+			}
+			if ( '' === sanitize_text_field( $_POST['firstname'] ?? '' ) ) {
+				$errors['firstname'] = 'Bitte den Vornamen der Schülerin/des Schülers eingeben.';
+			}
+		} elseif ( $student_wu_id <= 0 ) {
+			$errors['student_wu_id'] = 'Bitte einen Schüler auswählen oder „nicht in der Klassenliste“ ankreuzen.';
+		}
+		return $errors;
+	}
 
 	private function can_view_case( array $case ): bool {
 		return current_user_can( 'manage_options' ) || (int) $case['user_id'] === get_current_user_id();

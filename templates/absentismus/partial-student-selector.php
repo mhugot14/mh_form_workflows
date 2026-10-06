@@ -5,19 +5,31 @@
  * fall-open.php und standalone-step-form.php, damit dieser Block nur an
  * einer Stelle gepflegt werden muss.
  *
- * Erwartet aus dem Elternscope: $val, $checked (Helfer-Closures), $classes_list.
+ * Erwartet aus dem Elternscope: $val, $checked, $err_cls (Helfer-Closures),
+ * $form_data, $classes_list.
+ *
+ * Steht ein Schüler nicht in der Klassenliste, kann er per Checkbox
+ * "student_manual" mit Name/Vorname/Geburtsdatum manuell erfasst werden
+ * (student_wu_id bleibt dann leer).
  */
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 $current_user     = wp_get_current_user();
 $teacher_default   = trim( $current_user->first_name . ' ' . $current_user->last_name ) ?: $current_user->display_name;
+
+// Manuelle Erfassung, falls der Schüler (noch) nicht in der WebUntis-Klassenliste
+// steht. Beide Feldsätze (versteckt aus der Liste / sichtbar manuell) heißen
+// gleich (lastname/firstname/dob) — der jeweils inaktive wird disabled und
+// damit nicht mitgesendet, sodass die Controller unverändert $_POST['lastname']
+// usw. lesen können.
+$is_manual = '1' === ( $form_data['student_manual'] ?? '' );
 ?>
 <div class="mh-form-section">
 	<h4>Klassen- &amp; Schülerwahl</h4>
 	<div class="mh-grid-row mh-grid-2">
 		<div class="mh-input-group">
 			<label>Klasse <span class="req">*</span></label>
-			<select name="class_wu_id" id="mh_class_select" required>
+			<select name="class_wu_id" id="mh_class_select" class="<?= $err_cls( 'class_wu_id' ) ?>" required>
 				<option value="">-- Bitte wählen --</option>
 				<?php if ( ! empty( $classes_list ) ) : foreach ( $classes_list as $c ) : ?>
 					<option value="<?= (int) $c['wu_id'] ?>" data-name="<?= esc_attr( $c['name'] ) ?>" <?= selected( $val( 'class_wu_id' ), $c['wu_id'] ) ?>>
@@ -27,14 +39,34 @@ $teacher_default   = trim( $current_user->first_name . ' ' . $current_user->last
 			</select>
 			<input type="hidden" name="class_name" id="class_name_hidden" value="<?= $val( 'class_name' ) ?>">
 		</div>
-		<div class="mh-input-group">
+		<div class="mh-input-group" id="mh_student_list_group" style="<?= $is_manual ? 'display:none;' : '' ?>">
 			<label>Schüler*in <span class="req">*</span></label>
-			<select name="student_wu_id" id="mh_student_select" required <?= empty( $val( 'class_wu_id' ) ) ? 'disabled' : '' ?>>
+			<select name="student_wu_id" id="mh_student_select" class="<?= $err_cls( 'student_wu_id' ) ?>" required <?= ( $is_manual || empty( $val( 'class_wu_id' ) ) ) ? 'disabled' : '' ?>>
 				<option value="">-- Erst Klasse wählen --</option>
 			</select>
-			<input type="hidden" name="lastname" id="student_lastname" value="<?= $val( 'lastname' ) ?>">
-			<input type="hidden" name="firstname" id="student_firstname" value="<?= $val( 'firstname' ) ?>">
-			<input type="hidden" name="dob" id="student_dob" value="<?= $val( 'dob' ) ?>">
+			<input type="hidden" name="lastname" id="student_lastname" class="mh-student-list-field" value="<?= $is_manual ? '' : $val( 'lastname' ) ?>" <?= $is_manual ? 'disabled' : '' ?>>
+			<input type="hidden" name="firstname" id="student_firstname" class="mh-student-list-field" value="<?= $is_manual ? '' : $val( 'firstname' ) ?>" <?= $is_manual ? 'disabled' : '' ?>>
+			<input type="hidden" name="dob" id="student_dob" class="mh-student-list-field" value="<?= $is_manual ? '' : $val( 'dob' ) ?>" <?= $is_manual ? 'disabled' : '' ?>>
+		</div>
+	</div>
+
+	<div class="checkbox-group" style="margin-bottom:15px;">
+		<input type="checkbox" name="student_manual" value="1" id="chk_student_manual" <?= $is_manual ? 'checked' : '' ?>>
+		<label for="chk_student_manual">Schüler*in ist <strong>nicht in der Klassenliste</strong> – Daten manuell eingeben</label>
+	</div>
+
+	<div class="mh-grid-row mh-grid-3" id="mh_student_manual_group" style="<?= $is_manual ? '' : 'display:none;' ?>">
+		<div class="mh-input-group">
+			<label>Nachname <span class="req">*</span></label>
+			<input type="text" name="lastname" class="mh-student-manual-field <?= $err_cls( 'lastname' ) ?>" value="<?= $is_manual ? $val( 'lastname' ) : '' ?>" <?= $is_manual ? 'required' : 'disabled' ?>>
+		</div>
+		<div class="mh-input-group">
+			<label>Vorname <span class="req">*</span></label>
+			<input type="text" name="firstname" class="mh-student-manual-field <?= $err_cls( 'firstname' ) ?>" value="<?= $is_manual ? $val( 'firstname' ) : '' ?>" <?= $is_manual ? 'required' : 'disabled' ?>>
+		</div>
+		<div class="mh-input-group">
+			<label>Geburtsdatum</label>
+			<input type="date" name="dob" class="mh-student-manual-field" value="<?= $is_manual ? $val( 'dob' ) : '' ?>" <?= $is_manual ? '' : 'disabled' ?>>
 		</div>
 	</div>
 	<div class="mh-grid-row mh-grid-3">
@@ -68,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function () {
 			studentSelect.innerHTML = '<option value="">-- Erst Klasse wählen --</option>';
 			return;
 		}
-		studentSelect.disabled = false;
+		studentSelect.disabled = document.getElementById('chk_student_manual').checked;
 		studentSelect.innerHTML = '<option value="">Lade Klassenliste...</option>';
 
 		const formData = new FormData();
@@ -104,8 +136,30 @@ document.addEventListener('DOMContentLoaded', function () {
 		}
 	});
 
+	// Umschalten Liste <-> manuelle Eingabe: der jeweils inaktive Feldsatz wird
+	// disabled (wird dann nicht mitgesendet und blockiert kein "required").
+	const chkManual   = document.getElementById('chk_student_manual');
+	const listGroup   = document.getElementById('mh_student_list_group');
+	const manualGroup = document.getElementById('mh_student_manual_group');
+	chkManual.addEventListener('change', function () {
+		const manual = this.checked;
+		listGroup.style.display   = manual ? 'none' : '';
+		manualGroup.style.display = manual ? '' : 'none';
+		studentSelect.disabled = manual || !classSelect.value;
+		document.querySelectorAll('.mh-student-list-field').forEach(function (el) { el.disabled = manual; });
+		document.querySelectorAll('.mh-student-manual-field').forEach(function (el) {
+			el.disabled = !manual;
+			if ('text' === el.type) el.required = manual;
+		});
+		// Zurück zur Liste, aber Klassenliste wurde noch nie geladen (Seite im
+		// manuellen Modus geöffnet) -> jetzt nachladen.
+		if (!manual && classSelect.value && studentSelect.options.length <= 1) {
+			fetchStudents(classSelect.value);
+		}
+	});
+
 	const initialClassId = classSelect.value;
-	if (initialClassId) {
+	if (initialClassId && !chkManual.checked) {
 		fetchStudents(initialClassId, '<?= $val( 'student_wu_id' ) ?>');
 	}
 });
