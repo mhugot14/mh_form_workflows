@@ -8,6 +8,7 @@ use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Service\Mail_Service;
+use Mh\FormWorkflows\Service\Background_Response;
 use Mh\FormWorkflows\Service\Reminder_Service;
 
 /**
@@ -351,29 +352,36 @@ class Noten_Controller {
 
 		$recipient = $this->account_repo->resolve_recipient( (string) $item['teacher_kuerzel'] );
 
-		if ( null === $recipient ) {
-			$this->set_state( [ 'notice' => 'Für ' . $item['teacher_kuerzel'] . ' ist keine Adresse hinterlegt — es wurde nichts gesendet.' ] );
-		} else {
-			// Wurde noch nie erfolgreich eingeladen, ist die Mail eine Einladung, keine Erinnerung.
-			$never_notified = empty( $item['notified_at'] );
-			$link           = $this->reminder->entry_link( $case_id, $idx );
-			$sent           = $never_notified
-				? $this->mail->send_invitation( $recipient['email'], $recipient['name'], $case, $item, $link )
-				: $this->mail->send_reminder( $recipient['email'], $recipient['name'], $case, $item, $link, (int) ( $item['reminder_count'] ?? 0 ) + 1 );
-
-			if ( $sent ) {
-				$this->case_repo->mark_notified( $case_id, $idx, ! $never_notified );
-				$this->set_state( [ 'notice' => ( $never_notified ? 'Einladung' : 'Erinnerung' ) . ' an ' . $recipient['email'] . ' gesendet.' ] );
-			} else {
-				$error = $this->mail->get_last_error();
-				$this->case_repo->mark_mail_failed( $case_id, $idx, $error );
-				$this->set_state( [ 'notice' => 'Versand an ' . $recipient['email'] . ' fehlgeschlagen: ' . $error ] );
-			}
-		}
-
 		// Aus der Admin-Übersicht aufgerufen: dorthin zurück statt auf die Frontend-Seite.
 		$from_admin = isset( $_GET['from'] ) && 'admin' === $_GET['from'] && current_user_can( 'manage_options' );
-		wp_redirect( $from_admin ? $this->admin_url() : $this->reminder->case_link( $case_id ) );
+		$back_url   = $from_admin ? $this->admin_url() : $this->reminder->case_link( $case_id );
+
+		if ( null === $recipient ) {
+			$this->set_state( [ 'notice' => 'Für ' . $item['teacher_kuerzel'] . ' ist keine Adresse hinterlegt — es wurde nichts gesendet.' ] );
+			wp_redirect( $back_url );
+			exit;
+		}
+
+		// Wurde noch nie erfolgreich eingeladen, ist die Mail eine Einladung, keine Erinnerung.
+		$never_notified = empty( $item['notified_at'] );
+		$kind           = $never_notified ? 'Einladung' : 'Erinnerung';
+
+		// Versand erst nach der Weiterleitung: ein langsamer Mailserver hielt sonst den
+		// Tab minutenlang im Ladezustand, obwohl die Mail längst raus war. Das Ergebnis
+		// steht danach am Fach (zuletzt gesendet bzw. Mailfehler).
+		$this->set_state( [ 'notice' => $kind . ' an ' . $recipient['email'] . ' wird gesendet. Ob sie rausging, steht nach dem Neuladen am Fach.' ] );
+		Background_Response::redirect_and_continue( $back_url );
+
+		$link = $this->reminder->entry_link( $case_id, $idx );
+		$sent = $never_notified
+			? $this->mail->send_invitation( $recipient['email'], $recipient['name'], $case, $item, $link )
+			: $this->mail->send_reminder( $recipient['email'], $recipient['name'], $case, $item, $link, (int) ( $item['reminder_count'] ?? 0 ) + 1 );
+
+		if ( $sent ) {
+			$this->case_repo->mark_notified( $case_id, $idx, ! $never_notified, $recipient['email'] );
+		} else {
+			$this->case_repo->mark_mail_failed( $case_id, $idx, $this->mail->get_last_error() );
+		}
 		exit;
 	}
 

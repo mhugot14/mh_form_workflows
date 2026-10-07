@@ -150,6 +150,25 @@ $is_closed = 'abgeschlossen' === ( $case['status'] ?? '' );
 					<?php else : ?>
 						<span class="mh-badge mh-badge-open">Offen</span>
 					<?php endif; ?>
+					<?php
+					// Versandstand: macht nachvollziehbar, ob und wohin die Mail ging -
+					// "nicht angekommen" ist sonst nicht von "nie verschickt" zu unterscheiden.
+					if ( ! $is_done && '1' === (string) ( $item['collect'] ?? '0' ) ) :
+						$mail_error = (string) ( $item['mail_error'] ?? '' );
+						$last_at    = (string) ( $item['last_mail_at'] ?? $item['last_reminder_at'] ?? $item['notified_at'] ?? '' );
+						$last_to    = (string) ( $item['last_mail_to'] ?? '' );
+					?>
+						<div style="font-size:0.8em; color:#555; margin-top:4px; line-height:1.35;">
+							<?php if ( '' !== $mail_error ) : ?>
+								<span style="color:#b32d2e;">Mail fehlgeschlagen: <?= esc_html( $mail_error ) ?></span>
+							<?php elseif ( '' !== $last_at ) : ?>
+								Mail gesendet <?= esc_html( date_i18n( 'd.m. H:i', strtotime( $last_at ) ) ) ?>
+								<?php if ( '' !== $last_to ) : ?><br>an <?= esc_html( $last_to ) ?><?php endif; ?>
+							<?php else : ?>
+								Einladung wird gesendet …
+							<?php endif; ?>
+						</div>
+					<?php endif; ?>
 				</td>
 				<td style="font-size:0.85em;color:#555;">
 					<?= esc_html( $entered ) ?>

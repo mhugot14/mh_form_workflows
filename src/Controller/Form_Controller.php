@@ -19,6 +19,7 @@ use Mh\FormWorkflows\Service\Noten_Feature;
 use Mh\FormWorkflows\Service\Mail_Service;
 use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
+use Mh\FormWorkflows\Service\Background_Response;
 use Mh\FormWorkflows\Service\School_Date_Calculator;
 use Mh\FormWorkflows\Model\Form\Form_Interface;
 use Mh\FormWorkflows\Model\Form\Abmeldung_Student_Form;
@@ -469,30 +470,17 @@ class Form_Controller {
 			wp_die( 'Die Noteneinsammlung konnte nicht angelegt werden (DB-Fehler).' );
 		}
 
-		// Eingeladen wird nur, wo auch wirklich eine Note fehlt.
-		$case = $this->noten_repo->get_by_id( $case_id );
-		foreach ( $case['form_data']['items'] as $item ) {
-			if ( '1' !== ( $item['collect'] ?? '0' ) ) {
-				continue;
-			}
-			$idx  = (int) $item['idx'];
-			$sent = $this->mail->send_invitation(
-				(string) $item['recipient_email'],
-				$this->account_repo->get_display_name( (string) $item['teacher_kuerzel'] ),
-				$case,
-				$item,
-				$this->reminder->entry_link( $case_id, $idx )
-			);
-			// Nur bei Erfolg als benachrichtigt markieren. Ein Fehlschlag wird am Fach
-			// vermerkt; der Erinnerungs-Cron versucht die Einladung dann erneut.
-			if ( $sent ) {
-				$this->noten_repo->mark_notified( $case_id, $idx, false );
-			} else {
-				$this->noten_repo->mark_mail_failed( $case_id, $idx, $this->mail->get_last_error() );
-			}
-		}
+		// Einladungen erst NACH der Weiterleitung verschicken: Mehrere Mails nacheinander
+		// können bei einem langsamen Mailserver lange dauern - die Klassenleitung soll
+		// sofort auf der Fall-Seite landen, und ein Abbruch des Aufrufs darf keine
+		// Einladung verschlucken. Deshalb vorab ein Cron-Einmalereignis als Sicherheitsnetz;
+		// läuft der Versand hier durch, wird es wieder entfernt.
+		wp_schedule_single_event( time() + 3 * MINUTE_IN_SECONDS, Reminder_Service::INVITE_HOOK, [ $case_id ] );
 
-		wp_redirect( $this->reminder->case_link( $case_id ) );
+		Background_Response::redirect_and_continue( $this->reminder->case_link( $case_id ) );
+
+		$this->reminder->send_pending_invitations( $case_id );
+		wp_clear_scheduled_hook( Reminder_Service::INVITE_HOOK, [ $case_id ] );
 		exit;
 	}
 

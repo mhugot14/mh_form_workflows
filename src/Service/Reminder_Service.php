@@ -22,6 +22,15 @@ class Reminder_Service {
 
 	public const LAST_RUN_OPTION = 'mh_fw_noten_last_run';
 
+	/**
+	 * Einmal-Ereignis: Einladungen eines frisch gestarteten Falls versenden. Sicherheitsnetz,
+	 * falls der Versand direkt nach dem Start abbricht (siehe send_pending_invitations()).
+	 */
+	public const INVITE_HOOK = 'mh_fw_noten_send_invitations';
+
+	/** Nach so vielen Sekunden gilt eine Versandsperre als verwaist (Prozess abgebrochen). */
+	private const INVITE_LOCK_TTL = 300;
+
 	public function __construct(
 		private Noten_Fall_Repository $case_repo,
 		private Teacher_Account_Repository $account_repo,
@@ -100,7 +109,7 @@ class Reminder_Service {
 						(int) ( $item['reminder_count'] ?? 0 ) + 1
 					);
 					if ( $sent ) {
-						$this->case_repo->mark_notified( $case_id, $idx, true );
+						$this->case_repo->mark_notified( $case_id, $idx, true, $recipient['email'] );
 						$stats['reminded']++;
 					} else {
 						// Kein mark_notified: die letzte Kontaktaufnahme bleibt alt, der
@@ -129,6 +138,58 @@ class Reminder_Service {
 	}
 
 	/**
+	 * Verschickt alle noch ausstehenden Einladungen eines Falls.
+	 *
+	 * Läuft direkt nach dem Start im Hintergrund (nach der Weiterleitung) und zusätzlich
+	 * als WP-Cron-Einmalereignis, falls jener Prozess abbricht. Beide können gleichzeitig
+	 * laufen - eine Sperre pro Fall verhindert, dass eine Lehrkraft zwei Einladungen bekommt.
+	 * Eingeladen wird nur, wer noch nie benachrichtigt wurde; gescheiterte Versuche
+	 * landen als mail_error am Fach und werden vom täglichen Lauf erneut versucht.
+	 *
+	 * @return int Anzahl erfolgreich versendeter Einladungen.
+	 */
+	public function send_pending_invitations( int $case_id ): int {
+		$lock  = 'mh_fw_invite_lock_' . $case_id;
+		$since = (int) get_option( $lock, 0 );
+
+		if ( $since > 0 && ( time() - $since ) < self::INVITE_LOCK_TTL ) {
+			// Läuft gerade woanders. Später noch einmal nachsehen, statt doppelt zu senden.
+			wp_schedule_single_event( time() + self::INVITE_LOCK_TTL, self::INVITE_HOOK, [ $case_id ] );
+			return 0;
+		}
+		if ( $since > 0 ) {
+			delete_option( $lock ); // verwaist: der sperrende Prozess ist abgebrochen
+		}
+		// add_option() schlägt fehl, wenn die Option schon existiert - das ist die Sperre.
+		if ( ! add_option( $lock, time(), '', false ) ) {
+			return 0;
+		}
+
+		$sent = 0;
+		try {
+			$case = $this->case_repo->get_by_id( $case_id );
+			if ( null === $case || 'offen' !== ( $case['status'] ?? '' ) ) {
+				return 0;
+			}
+
+			foreach ( $case['form_data']['items'] ?? [] as $item ) {
+				if ( '1' !== (string) ( $item['collect'] ?? '0' )
+					|| 'erledigt' === ( $item['status'] ?? 'offen' )
+					|| ! empty( $item['notified_at'] ) ) {
+					continue;
+				}
+				if ( $this->retry_invitation( $case, $item ) ) {
+					$sent++;
+				}
+			}
+		} finally {
+			delete_option( $lock );
+		}
+
+		return $sent;
+	}
+
+	/**
 	 * Holt eine beim Start gescheiterte Einladung nach.
 	 */
 	private function retry_invitation( array $case, array $item ): bool {
@@ -148,7 +209,7 @@ class Reminder_Service {
 			$this->entry_link( $case_id, $idx )
 		);
 		if ( $sent ) {
-			$this->case_repo->mark_notified( $case_id, $idx, false );
+			$this->case_repo->mark_notified( $case_id, $idx, false, $recipient['email'] );
 		} else {
 			$this->case_repo->mark_mail_failed( $case_id, $idx, $this->mail->get_last_error() );
 		}

@@ -223,7 +223,7 @@ class Noten_Fall_Repository {
 	/**
 	 * Hält fest, dass eine Einladung oder Erinnerung rausgegangen ist.
 	 */
-	public function mark_notified( int $case_id, int $idx, bool $is_reminder ): bool {
+	public function mark_notified( int $case_id, int $idx, bool $is_reminder, string $email = '' ): bool {
 		$case = $this->get_by_id( $case_id );
 		if ( null === $case ) {
 			return false;
@@ -241,6 +241,12 @@ class Noten_Fall_Repository {
 				$item['last_reminder_at'] = $now;
 			} else {
 				$item['notified_at'] = $now;
+			}
+			// Wann und wohin zuletzt gesendet wurde - damit sich "Mail nicht angekommen"
+			// in der Fall-Ansicht nachvollziehen lässt.
+			$item['last_mail_at'] = $now;
+			if ( '' !== $email ) {
+				$item['last_mail_to'] = $email;
 			}
 			// Ein erfolgreicher Versand hebt einen früheren Fehler auf.
 			$item['mail_error']    = '';
