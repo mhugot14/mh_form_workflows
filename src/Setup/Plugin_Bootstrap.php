@@ -21,6 +21,7 @@ use Mh\FormWorkflows\Repository\Noten_Fall_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
 use Mh\FormWorkflows\Repository\Nachschreib_Termin_Repository;
 use Mh\FormWorkflows\Service\Mail_Service;
+use Mh\FormWorkflows\Service\Dashboard_Link;
 use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
 use Mh\FormWorkflows\Service\School_Date_Calculator;
@@ -221,6 +222,8 @@ class Plugin_Bootstrap {
 		// Erinnerungen. WP-Cron feuert nur bei Seitenaufrufen — für verlässliche Fristen
 		// sollte auf dem Server ein echter Cron-Job wp-cron.php aufrufen.
 		add_action( Reminder_Service::CRON_HOOK, [ $this->reminder_service, 'run' ] );
+		// Sicherheitsnetz für die Einladungen beim Start einer Einsammlung (Einmalereignis).
+		add_action( Reminder_Service::INVITE_HOOK, [ $this->reminder_service, 'send_pending_invitations' ] );
 		add_action( 'init', function (): void {
 			if ( ! wp_next_scheduled( Reminder_Service::CRON_HOOK ) ) {
 				wp_schedule_event( time() + HOUR_IN_SECONDS, 'daily', Reminder_Service::CRON_HOOK );
@@ -260,6 +263,28 @@ class Plugin_Bootstrap {
 		foreach ( array_keys( Fall_Controller::STANDALONE_SHORTCODES ) as $shortcode_tag ) {
 			add_shortcode( $shortcode_tag, [ $this->fall_controller, 'render_standalone_step_form' ] );
 		}
+
+		// Rückweg zum Dashboard über jeder Plugin-Seite. Zentral statt in jedem Template,
+		// damit auch künftige Seiten ihn bekommen. Das Dashboard selbst ist ausgenommen.
+		$back_link_tags = array_merge(
+			[
+				'mh_form_workflow',
+				'mh_my_submissions',
+				'mh_noten_eingabe',
+				'mh_noten_liste',
+				'mh_noten_fall',
+				Nachschreib_Controller::SHORTCODE,
+				'mh_absentismus_fall',
+				'mh_absentismus_liste',
+			],
+			array_keys( Fall_Controller::STANDALONE_SHORTCODES )
+		);
+		add_filter( 'do_shortcode_tag', static function ( $output, $tag ) use ( $back_link_tags ) {
+			if ( ! is_string( $output ) || ! in_array( $tag, $back_link_tags, true ) ) {
+				return $output;
+			}
+			return Dashboard_Link::back_link_html() . $output;
+		}, 10, 2 );
 	}
 
 	/**
@@ -307,17 +332,7 @@ class Plugin_Bootstrap {
 			[ $this->noten_controller, 'render_admin_overview' ]
 		);
 
-		// Unterpunkt 3: Einstellungen
-		add_submenu_page(
-			'mh-form-admin-help',
-			'Einstellungen',
-			'Einstellungen',
-			'manage_options',
-			'mh-form-workflows-settings',
-			[ $this, 'render_settings_page' ]
-		);
-
-		// Unterpunkt 4: Absentismus-Fälle (verlinkt auf die konfigurierte Frontend-Seite,
+		// Unterpunkt 3: Absentismus-Fälle (verlinkt auf die konfigurierte Frontend-Seite,
 		// keine eigene wp-admin-Ansicht, um die Fall-Übersicht nicht doppelt zu bauen).
 		add_submenu_page(
 			'mh-form-admin-help',
@@ -326,6 +341,16 @@ class Plugin_Bootstrap {
 			'manage_options',
 			'mh-form-absentismus-list',
 			[ $this, 'render_absentismus_liste_placeholder' ]
+		);
+
+		// Unterpunkt 4: Einstellungen - bewusst als letzter Punkt.
+		add_submenu_page(
+			'mh-form-admin-help',
+			'Einstellungen',
+			'Einstellungen',
+			'manage_options',
+			'mh-form-workflows-settings',
+			[ $this, 'render_settings_page' ]
 		);
 	}
 
@@ -697,7 +722,8 @@ class Plugin_Bootstrap {
 		register_block_type( 'mh/form-workflow', [
 			'api_version'     => 3,
 			'render_callback' => function( $attributes ) {
-				return $this->form_controller->render_form( $attributes );
+				// Der Block läuft nicht über do_shortcode_tag - Rückweg deshalb hier.
+				return Dashboard_Link::back_link_html() . $this->form_controller->render_form( $attributes );
 			}
 		]);
 	}
