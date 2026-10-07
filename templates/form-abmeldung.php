@@ -77,6 +77,24 @@ if ( isset( $form_errors['date_autocorrect'] ) ) {
     .mh-success-box { background: #fff; border-left: 5px solid #46b450; padding: 20px; margin-bottom: 30px; }
     .mh-warning-box { background: #fff8e5; border-left: 5px solid #e5a912; padding: 20px; margin-bottom: 30px; }
     .mh-error-field { border-color: #d63638 !important; background-color: #fff5f5 !important; }
+
+    /* Inline-Prüfung: Fehler direkt am Feld statt in einem eigenen Fenster */
+    .mh-form-wrapper .mh-error-field { box-shadow: 0 0 0 1px #d63638 !important; }
+    .mh-form-wrapper .mh-group-error { border: 2px solid #d63638 !important; background-color: #fff5f5 !important; }
+    .mh-form-wrapper .mh-field-error { display: block !important; margin: 5px 0 0 0 !important; color: #b32d2e !important; font-size: 0.85em !important; font-weight: bold !important; line-height: 1.4 !important; }
+    .mh-form-wrapper .mh-field-error::before { content: "⚠ "; }
+    .mh-form-wrapper .mh-field-warning { display: block !important; margin: 5px 0 0 0 !important; color: #8a6d3b !important; font-size: 0.85em !important; font-weight: bold !important; line-height: 1.4 !important; }
+    .mh-validation-status { margin-top: 15px; padding: 12px 16px; border-radius: 4px; line-height: 1.45; }
+    .mh-validation-status:empty { display: none !important; }
+    .mh-validation-status.is-error { background: #fff5f5; border-left: 5px solid #d63638; color: #8a1f1f; }
+    .mh-validation-status.is-success { background: #f0f8f0; border-left: 5px solid #46b450; color: #1e5e20; }
+    .mh-validation-status.is-busy { background: #f0f6fb; border-left: 5px solid #0073aa; color: #1d3f5e; }
+    .mh-validation-status ul { margin: 6px 0 0 20px !important; padding: 0 !important; }
+    .mh-validation-status button { margin-top: 8px; }
+    .btn-group button[disabled] { opacity: 0.6; cursor: wait !important; }
+    .mh-date-hint { margin: -5px 0 15px 0; padding: 10px 14px; background: #fff8e5; border-left: 4px solid #e5a912; color: #6b4f12; font-size: 0.9em; line-height: 1.45; }
+    .mh-form-wrapper .mh-input-group input.mh-date-corrected { border: 2px solid #e5a912 !important; background-color: #fff8e5 !important; color: #6b4f12 !important; }
+    .mh-date-hint.is-loading { background: #f0f6fb; border-left-color: #0073aa; color: #1d3f5e; }
     
     .mh-sub-group { margin-left: 28px; padding: 15px; border-left: 3px solid #ddd; background: #fff; margin-bottom: 15px; margin-top: 5px; }
     .req { color: #d63638; font-weight: bold; margin-left: 3px; }
@@ -226,7 +244,7 @@ details.mh-help-notice-box[open] summary::before {
         </div>
     <?php endif; ?>
 
-    <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST" id="mh-abmeldung-form">
+    <form action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" method="POST" id="mh-abmeldung-form" novalidate>
         <input type="hidden" name="action" value="mh_submit_form">
         <input type="hidden" name="form_type" value="abmeldung_student_v1">
         <input type="hidden" name="submission_id" value="<?= $val('id') ?>">
@@ -470,11 +488,14 @@ details.mh-help-notice-box[open] summary::before {
             <div class="mh-grid-row mh-grid-3" style="margin-top:20px;">
                 <div class="mh-input-group">
                     <label>Konferenzdatum <span class="req">*</span><span class="mh-info-icon" data-tooltip="Das Konferenzdatum wird der Einfachheit halber auf das Zeugnisdatum gesetzt. Es sollte ein Schultag sein.">?</span></label>
-                    <input type="date" name="prot_date" id="field_prot_date" readonly value="<?= $val('prot_date') ?>" style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>">
-                    <?php if ( ! empty( $form_data['prot_was_corrected'] ) ): ?><div style="font-size:0.8em; color:#b7791f; margin-top:3px; font-weight:bold;">ℹ️ Korrigiert auf Schultag.</div><?php endif; ?>
+                    <input type="date" name="prot_date" id="field_prot_date" readonly value="<?= $val('prot_date') ?>" class="<?= ! empty( $form_data['prot_was_corrected'] ) ? 'mh-date-corrected' : '' ?>">
                 </div>
-                <div class="mh-input-group"><label>Ausgabedatum <span class="req">*</span><span class="mh-info-icon" data-tooltip="Dieses wird automatisch berechnet. Es ist der letzte Schultag, ausgehend vom Abmeldedatum.">?</span></label><input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly value="<?= $val('prot_issue_date') ?>" style="<?= !empty($form_data['prot_was_corrected']) ? 'border: 2px solid #e5a912; background-color:#fff8e5;' : '' ?>"></div>
+                <div class="mh-input-group"><label>Ausgabedatum <span class="req">*</span><span class="mh-info-icon" data-tooltip="Dieses wird automatisch berechnet. Es ist der letzte Schultag, ausgehend vom Abmeldedatum.">?</span></label><input type="date" name="prot_issue_date" id="field_prot_issue_date" readonly value="<?= $val('prot_issue_date') ?>" class="<?= ! empty( $form_data['prot_was_corrected'] ) ? 'mh-date-corrected' : '' ?>"></div>
                 <div class="mh-input-group"><label>Vorsitzende/r <span class="req">*</span><span class="mh-info-icon" data-tooltip="Der/die Vorsitzende ist in der Regel die Abteilungsleitung des Bildungsgangs.">?</span></label><input type="text" name="prot_chair" value="<?= $val('prot_chair') ?>"></div>
+            </div>
+            <?php // Erklärung, wenn Konferenz-/Zeugnisdatum vom Abmeldedatum abweicht. Wird per JS bei jeder Datumsänderung neu gesetzt. ?>
+            <div id="prot_date_hint" class="mh-date-hint" style="<?= ! empty( $form_data['prot_was_corrected'] ) ? '' : 'display:none;' ?>">
+                <?php if ( ! empty( $form_data['prot_was_corrected'] ) ) : ?>ℹ️ Konferenz- und Zeugnisdatum wurden auf den letzten Schultag vor dem Abmeldedatum gelegt.<?php endif; ?>
             </div>
             
             <div class="mh-grid-row mh-grid-2">
@@ -609,7 +630,7 @@ details.mh-help-notice-box[open] summary::before {
             <div class="mh-input-group"><label>Beschlussfassung / Bemerkungen:<span class="mh-info-icon" data-tooltip="Sollten Fächer mit NB bewertet werden, brauchen wir auf jeden Fall eine Bemerkung.">?</span></label><textarea name="prot_remarks" style="width:100%; height:80px;"><?= $val('prot_remarks') ?></textarea></div>            
         </div>
 		
-		<div style="margin: 20px 0; padding: 15px; background: #fff; border: 1px solid #ccc; border-radius: 4px;">
+		<div id="notice_block" style="margin: 20px 0; padding: 15px; background: #fff; border: 1px solid #ccc; border-radius: 4px;">
 			<div class="radio-group">
 				<input type="checkbox" name="notice_accepted" value="1" id="chk_notice" required <?= $chk('notice_accepted', '1') ?>>
 				<label for="chk_notice" style="font-weight:bold;">
@@ -628,6 +649,7 @@ details.mh-help-notice-box[open] summary::before {
             </button>
             <?php endif; ?>
         </div>
+        <div id="mh_validation_status" class="mh-validation-status" role="alert" aria-live="assertive"></div>
         <?php if ( $noten_enabled ) : ?>
         <p id="collect_hint" style="font-size:0.9em; color:#555; margin-top:10px; display:none;">
             <strong>Noten automatisch einsammeln <span style="color:#1b5e20;">(BETA)</span>:</strong> Dieses Verfahren ist
@@ -822,9 +844,102 @@ document.addEventListener('DOMContentLoaded', function() {
     const dateOffInput = document.getElementById('field_date_off'); 
     const protDateInput = document.getElementById('field_prot_date'); 
     const protIssueInput = document.getElementById('field_prot_issue_date'); 
-    if(dateOffInput && protDateInput) {
-        if(dateOffInput.value && !protDateInput.value) { protDateInput.value = dateOffInput.value; protIssueInput.value = dateOffInput.value; }
-        dateOffInput.addEventListener('change', function() { protDateInput.value = this.value; protIssueInput.value = this.value; });
+    const protDateHint = document.getElementById('prot_date_hint');
+
+    // Konferenz- und Zeugnisdatum müssen auf einen Schultag fallen. Statt das erst beim
+    // Absenden zu bemängeln, werden sie schon bei der Eingabe des Abmeldedatums auf den
+    // letzten Schultag gelegt - mit Erklärung, falls sie vom Abmeldedatum abweichen.
+    // Gerechnet wird auf dem Server (Feiertage und Ferien NRW), und zwar nur, wenn das
+    // Protokoll hier erstellt wird: sonst werden beide Felder gar nicht gebraucht.
+    let schoolDayRequest  = 0;
+    let lastSyncedDateOff = null;
+
+    function protocolActive() {
+        const wrap = document.getElementById('protocol_wrapper');
+        return !!wrap && !wrap.classList.contains('mh-hidden');
+    }
+
+    function setProtDates(value, corrected) {
+        [protDateInput, protIssueInput].forEach(inp => {
+            if (!inp) return;
+            inp.value = value;
+            // Klasse statt Inline-Style: das Formular-CSS setzt Rahmen mit !important.
+            inp.classList.toggle('mh-date-corrected', !!corrected);
+        });
+    }
+
+    function showDateHint(text, loading) {
+        if (!protDateHint) return;
+        protDateHint.textContent   = text || '';
+        protDateHint.style.display = text ? '' : 'none';
+        protDateHint.classList.toggle('is-loading', !!loading);
+    }
+
+    function syncProtocolDates(force) {
+        if (!dateOffInput || !protDateInput) return;
+        const raw = dateOffInput.value;
+
+        if (!raw) {
+            schoolDayRequest++;
+            setProtDates('', false);
+            showDateHint('');
+            lastSyncedDateOff = null;
+            return;
+        }
+        if (!protocolActive()) {
+            // Vorläufig übernehmen; gerechnet wird, sobald das Protokoll aufgeklappt wird.
+            schoolDayRequest++;
+            setProtDates(raw, false);
+            showDateHint('');
+            lastSyncedDateOff = null;
+            return;
+        }
+        if (!force && raw === lastSyncedDateOff) return;
+        lastSyncedDateOff = raw;
+
+        const req = ++schoolDayRequest;
+        showDateHint('Schultag wird geprüft …', true);
+
+        const fd = new FormData();
+        fd.append('action', 'mh_school_day');
+        fd.append('date', raw);
+        fd.append('nonce', '<?php echo wp_create_nonce("mh_form_nonce"); ?>');
+
+        fetch('<?php echo admin_url("admin-ajax.php"); ?>', { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(res => {
+                if (req !== schoolDayRequest) return; // inzwischen neueres Datum eingegeben
+                if (!res || !res.success) {
+                    setProtDates(raw, false);
+                    showDateHint('');
+                    lastSyncedDateOff = null;
+                    return;
+                }
+                setProtDates(res.data.date, res.data.changed);
+                showDateHint(res.data.changed ? 'ℹ️ ' + res.data.explanation : '');
+            })
+            .catch(err => {
+                if (req !== schoolDayRequest) return;
+                console.error('Fehler bei der Schultag-Prüfung:', err);
+                // Ohne Antwort das Datum unverändert übernehmen - der Server korrigiert
+                // spätestens bei der Prüfung vor dem Absenden.
+                setProtDates(raw, false);
+                showDateHint('');
+                lastSyncedDateOff = null;
+            });
+    }
+
+    if (dateOffInput && protDateInput) {
+        if (dateOffInput.value && !protDateInput.value) setProtDates(dateOffInput.value, false);
+        dateOffInput.addEventListener('change', () => syncProtocolDates());
+
+        // Wird das Protokoll erst später gewählt (oder wieder ein Zeugnis), jetzt rechnen.
+        // setTimeout: erst nachdem die Toggles den Bereich auf-/zugeklappt haben.
+        document.querySelectorAll('input[name="protocol_mode"], input[name="certificate"]').forEach(r => {
+            r.addEventListener('change', () => setTimeout(() => syncProtocolDates(), 0));
+        });
+        // Beim Laden (auch im Bearbeiten-Modus) nach der ersten Toggle-Runde prüfen.
+        setTimeout(() => syncProtocolDates(), 150);
     }
 
     // 8. ALLGEMEINE TOGGLES
@@ -873,7 +988,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // updateProtocolMode() gleich mitlaufen lassen: die Zeugniswahl beeinflusst über die
     // Protokoll-Auswahl auch den Hinweistext und den Einsammel-Knopf.
-    triggers.forEach(r => r.addEventListener('change', () => { updateToggles(); updateProtocolMode(); }));
+    // Ein Radio meldet nur sein eigenes Anwählen, nicht das Abwählen. Deshalb hören wir
+    // auf ALLE Radios einer Gruppe, in der es einen Auslöser gibt - sonst bliebe z. B.
+    // das Feld "sonstiges" offen und Pflicht, wenn danach "FSJ" gewählt wird.
+    const triggerGroups = new Set(Array.from(triggers).filter(t => t.type === 'radio').map(t => t.name));
+    const toggleListeners = new Set(triggers);
+    triggerGroups.forEach(name => document.querySelectorAll('input[type="radio"][name="' + name + '"]').forEach(r => toggleListeners.add(r)));
+    toggleListeners.forEach(r => r.addEventListener('change', () => {
+        updateToggles();
+        updateProtocolMode();
+        if (typeof pruneInactiveErrors === 'function') pruneInactiveErrors();
+    }));
     setTimeout(() => { updateToggles(); updateProtocolMode(); }, 100);
 
     // 8b. PROTOKOLL-MODUS
@@ -1150,6 +1275,383 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(r => r.json())
         .then(data => { if (data.success && data.data) fillSubjectRows(data.data); })
         .catch(err => console.error("Fehler bei der Fächer-Vorbelegung:", err));
+    }
+
+    // ---------------------------------------------------------------
+    // INLINE-PRÜFUNG
+    // Jeder der drei Knöpfe (prüfen, PDF, Noteneinsammlung) lässt das Formular zuerst
+    // per AJAX gegen dieselben Regeln prüfen wie der echte Submit. Fehler erscheinen
+    // rot direkt am Feld; abgeschickt wird erst, wenn nichts mehr bemängelt wird.
+    // So öffnet sich nie ein PDF-Fenster, das nur eine Fehlerliste enthält.
+    // ---------------------------------------------------------------
+    const mhForm      = document.getElementById('mh-abmeldung-form');
+    const statusBox   = document.getElementById('mh_validation_status');
+    const submitBtns  = mhForm.querySelectorAll('button[type="submit"]');
+    const ajaxUrl     = '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
+    const subjTableEl = document.querySelector('.mh-subject-table');
+
+    let activeErrors      = [];   // { anchor, msgEl, isGroup }
+    let bypassValidation  = false;
+    let validationBusy    = false;
+    let lastClickedButton = null;
+    // Nach einem blockierten PDF-Fenster: geprüfter Formularstand, damit der zweite
+    // Klick ohne erneute (asynchrone) Prüfung direkt öffnen darf.
+    let pdfReadySnapshot  = null;
+
+    submitBtns.forEach(b => b.addEventListener('click', () => { lastClickedButton = b; }));
+
+    // Gruppen (Radio-Auswahlen, Tabelle): Fehler am Container statt an einem Einzelfeld.
+    const GROUP_ANCHORS = {
+        reason:                () => document.getElementById('r_wechsel').closest('.mh-form-section'),
+        compulsory:            () => document.getElementById('c_full').closest('.mh-form-section'),
+        perspective:           () => document.getElementById('section_perspective'),
+        perspective_detail:    () => document.getElementById('perspective_details_wrap'),
+        certificate:           () => document.getElementById('z_ab').closest('.mh-form-section'),
+        certificate_none_type: () => document.getElementById('cert_none_wrap'),
+        certificate_proof:     () => document.getElementById('cert_none_schule_wrap'),
+        protocol_mode:         () => document.getElementById('prot_mode_block'),
+        notice_accepted:       () => document.getElementById('notice_block'),
+    };
+    // Fehler rund um die Fächertabelle stehen direkt unter der Tabelle.
+    const TABLE_KEYS = ['subjects', 'subjects_teacher', 'subjects_address', 'collect_disabled'];
+
+    // Ohne gewählte Schüler*in zeigt der Fehler auf die Auswahl - die Namensfelder
+    // sind dann schreibgeschützt und ließen sich gar nicht korrigieren.
+    function studentFieldAnchor(field) {
+        return studentSelect.value === '' ? studentSelect : field;
+    }
+
+    const FIELD_ANCHORS = {
+        lastname:         () => studentFieldAnchor(f_last),
+        firstname:        () => studentFieldAnchor(f_first),
+        dob:              () => studentFieldAnchor(f_dob),
+        class_name:       () => classSelect,
+        prot_type:        () => classSelect,
+        teacher:          () => mhForm.querySelector('input[name="teacher"]'),
+        date_off:         () => dateOffInput,
+        date_autocorrect: () => dateOffInput,
+        // Konferenzdatum ist schreibgeschützt und folgt dem Abmeldedatum.
+        prot_date:        () => dateOffInput,
+    };
+
+    function isVisible(el) {
+        return !!el && el.offsetParent !== null && !el.closest('.mh-hidden');
+    }
+
+    function friendlyMessage(key, msg) {
+        if (studentSelect.value === '' && ['lastname', 'firstname', 'dob'].includes(key)) {
+            return 'Bitte eine Schüler*in auswählen (oder „Manueller Eintrag“).';
+        }
+        if (key === 'prot_type') return 'Bitte die Klasse auswählen – davon hängt die Protokollart ab.';
+        return msg;
+    }
+
+    function resolveAnchor(key) {
+        if (TABLE_KEYS.includes(key) && subjTableEl) return { el: subjTableEl, isGroup: true, after: true };
+        if (GROUP_ANCHORS[key]) return { el: GROUP_ANCHORS[key](), isGroup: true, after: false };
+        if (FIELD_ANCHORS[key]) return { el: FIELD_ANCHORS[key](), isGroup: false, after: true };
+        const byName = mhForm.querySelector('[name="' + CSS.escape(key) + '"]');
+        if (!byName) return null;
+        if (byName.type === 'radio' || byName.type === 'checkbox') {
+            return { el: byName.closest('.mh-sub-group, .mh-input-group, .mh-form-section'), isGroup: true, after: false };
+        }
+        return { el: byName, isGroup: false, after: true };
+    }
+
+    function addMessage(anchor, text, cssClass) {
+        const existing = activeErrors.find(a => a.anchor === anchor.el && a.msgEl && a.msgEl.className === cssClass);
+        // Pro Feld nur eine Meldung. Die erste gewinnt - die Server-Meldungen kommen
+        // zuerst und sind konkreter als das allgemeine "Bitte ausfüllen" des Browsers.
+        if (existing) return existing;
+        const msg = document.createElement('div');
+        msg.className = cssClass;
+        msg.textContent = text;
+        if (anchor.after) anchor.el.insertAdjacentElement('afterend', msg);
+        else anchor.el.appendChild(msg);
+        const entry = { anchor: anchor.el, msgEl: msg, isGroup: anchor.isGroup };
+        activeErrors.push(entry);
+        return entry;
+    }
+
+    function markField(el, isGroup) {
+        el.classList.add(isGroup ? 'mh-group-error' : 'mh-error-field');
+        if (!isGroup) el.setAttribute('aria-invalid', 'true');
+    }
+
+    function clearEntry(entry) {
+        entry.anchor.classList.remove('mh-group-error', 'mh-error-field');
+        entry.anchor.removeAttribute('aria-invalid');
+        if (entry.msgEl) entry.msgEl.remove();
+    }
+
+    function clearAllErrors() {
+        activeErrors.forEach(clearEntry);
+        activeErrors = [];
+        // Auch serverseitig beim Neuladen gesetzte Markierungen entfernen.
+        mhForm.querySelectorAll('.mh-error-field').forEach(el => el.classList.remove('mh-error-field'));
+        setStatus('', '');
+    }
+
+    function setStatus(type, html) {
+        statusBox.className = 'mh-validation-status' + (type ? ' is-' + type : '');
+        statusBox.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    // Einfache Browser-Prüfung (Pflichtfelder in aufgeklappten Unterbereichen usw.).
+    // Ergänzt nur, was der Server nicht ohnehin schon gemeldet hat.
+    function collectClientErrors() {
+        const errs = {};
+        Array.from(mhForm.elements).forEach(el => {
+            if (!el.name || el.disabled || el.type === 'hidden' || el.type === 'submit' || el.tagName === 'BUTTON') return;
+            if (el.closest('.mh-hidden') || el.checkValidity()) return;
+            const key = el.name;
+            if (errs[key]) return;
+            if (el.validity.valueMissing) {
+                errs[key] = el.type === 'radio' ? 'Bitte eine Auswahl treffen.'
+                          : el.type === 'checkbox' ? 'Bitte bestätigen.'
+                          : 'Bitte ausfüllen.';
+            } else {
+                errs[key] = el.validationMessage || 'Ungültige Eingabe.';
+            }
+        });
+        return errs;
+    }
+
+    function showErrors(errors, badTeachers) {
+        const unplaced = [];
+        Object.keys(errors).forEach(key => {
+            const text   = friendlyMessage(key, String(errors[key]));
+            const anchor = resolveAnchor(key);
+            if (!anchor || !anchor.el || !isVisible(anchor.el)) { unplaced.push(text); return; }
+            markField(anchor.el, anchor.isGroup);
+            addMessage(anchor, text, 'mh-field-error');
+        });
+
+        // In der Tabelle zusätzlich die betroffenen Lehrkraft-Felder markieren.
+        if (subjTableEl && (errors.subjects_teacher || errors.subjects_address)) {
+            subjTableEl.querySelectorAll('tbody tr').forEach(row => {
+                const grade   = row.querySelector('select[name="subj_grade[]"]');
+                const teacher = row.querySelector('select[name="subj_teacher[]"]');
+                if (!grade || !teacher || grade.value !== COLLECT_MARKER) return;
+                const missing = errors.subjects_teacher && teacher.value === '';
+                const noMail  = (badTeachers || []).includes(teacher.value);
+                if (missing || noMail) {
+                    markField(teacher, false);
+                    teacher.title = missing ? 'Lehrkraft fehlt' : 'Keine E-Mail-Adresse hinterlegt';
+                    activeErrors.push({ anchor: teacher, msgEl: null, isGroup: false });
+                }
+            });
+        }
+        return unplaced;
+    }
+
+    function firstErrorElement() {
+        const marked = mhForm.querySelectorAll('.mh-error-field, .mh-group-error');
+        return Array.from(marked).find(isVisible) || null;
+    }
+
+    function jumpToFirstError() {
+        const first = firstErrorElement();
+        if (!first) return;
+        first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const focusable = first.matches('input, select, textarea') ? first : first.querySelector('input:not([disabled]), select:not([disabled]), textarea:not([disabled])');
+        if (focusable) setTimeout(() => focusable.focus({ preventScroll: true }), 350);
+    }
+
+    function reportErrors(errors, badTeachers) {
+        const unplaced = showErrors(errors, badTeachers);
+        // Gezählt werden die markierten Stellen, nicht die Rohmeldungen (mehrere
+        // Meldungen können auf dasselbe Feld zeigen).
+        const count = activeErrors.filter(en => en.msgEl).length + unplaced.length;
+        let html = '<strong>❌ Das Formular wurde nicht abgeschickt.</strong> '
+            + (count === 1 ? 'Ein Feld ist' : count + ' Angaben sind') + ' noch nicht in Ordnung – die betroffenen Stellen sind rot markiert.';
+        if (unplaced.length) html += '<ul>' + unplaced.map(t => '<li>' + escapeHtml(t) + '</li>').join('') + '</ul>';
+        html += '<br><button type="button" class="button" id="mh_jump_first_error">Zum ersten Fehler springen</button>';
+        setStatus('error', html);
+        const jumpBtn = document.getElementById('mh_jump_first_error');
+        if (jumpBtn) jumpBtn.addEventListener('click', jumpToFirstError);
+        jumpToFirstError();
+    }
+
+    // Vom Server korrigiertes Konferenz-/Zeugnisdatum sofort übernehmen: der nächste
+    // Klick geht dann ohne Korrektur durch.
+    // (Normalerweise schon bei der Eingabe passiert - das hier greift nur, wenn die
+    // Schultag-Prüfung bei der Eingabe nicht durchkam.)
+    function applyCorrectedDate(dateStr) {
+        if (!dateStr || !protDateInput) return;
+        setProtDates(dateStr, true);
+        lastSyncedDateOff = dateOffInput ? dateOffInput.value : null;
+        showDateHint('ℹ️ Konferenz- und Zeugnisdatum wurden auf den letzten Schultag vor dem Abmeldedatum gelegt: '
+            + dateStr.split('-').reverse().join('.') + '.');
+    }
+
+    function formSnapshot() {
+        const fd = new FormData(mhForm);
+        return JSON.stringify(Array.from(fd.entries()));
+    }
+
+    function setBusy(busy) {
+        validationBusy = busy;
+        submitBtns.forEach(b => { b.disabled = busy; });
+    }
+
+    function submitForReal(submitter, target) {
+        const originalTarget = submitter.getAttribute('formtarget');
+        if (target) submitter.setAttribute('formtarget', target);
+        bypassValidation = true;
+        // Gesperrte Knöpfe werden nicht als submitter akzeptiert.
+        submitter.disabled = false;
+        if (typeof mhForm.requestSubmit === 'function') {
+            mhForm.requestSubmit(submitter);
+        } else {
+            // Ältere Browser: Modus von Hand mitgeben.
+            let hidden = mhForm.querySelector('input[type="hidden"][name="submit_mode"]');
+            if (!hidden) { hidden = document.createElement('input'); hidden.type = 'hidden'; hidden.name = 'submit_mode'; mhForm.appendChild(hidden); }
+            hidden.value = submitter.value;
+            mhForm.target = target || originalTarget || '';
+            mhForm.submit();
+            hidden.remove();
+            mhForm.target = '';
+        }
+        if (originalTarget === null) submitter.removeAttribute('formtarget');
+        else submitter.setAttribute('formtarget', originalTarget);
+    }
+
+    function openPdf(submitter) {
+        // Das PDF-Fenster wird erst NACH erfolgreicher Prüfung geöffnet.
+        const name = 'mh_pdf_' + Date.now();
+        const win  = window.open('', name);
+        if (!win) {
+            pdfReadySnapshot = formSnapshot();
+            setStatus('error', '<strong>Das Formular ist in Ordnung, aber der Browser hat das PDF-Fenster blockiert.</strong> '
+                + 'Bitte noch einmal auf „Prüfen &amp; PDF erstellen“ klicken – oder Pop-ups für diese Seite erlauben.');
+            return;
+        }
+        try {
+            win.document.write('<p style="font-family:sans-serif;padding:20px;">PDF wird erzeugt …</p>');
+        } catch (e) { /* egal - das PDF ersetzt den Inhalt ohnehin */ }
+        pdfReadySnapshot = null;
+        submitForReal(submitter, name);
+        setStatus('success', '<strong>✅ Prüfung erfolgreich.</strong> Das PDF öffnet sich in einem neuen Fenster; dieses Formular bleibt offen und kann weiter geändert werden.');
+    }
+
+    mhForm.addEventListener('submit', function(e) {
+        if (bypassValidation) { bypassValidation = false; return; }
+        e.preventDefault();
+        if (validationBusy) return;
+
+        const submitter = e.submitter || lastClickedButton || mhForm.querySelector('button[value="check"]');
+        const mode      = submitter ? submitter.value : 'check';
+
+        // Zweiter Klick nach blockiertem Fenster: unveränderter, schon geprüfter Stand
+        // wird direkt (noch innerhalb des Klicks) geöffnet.
+        if (mode === 'pdf' && pdfReadySnapshot !== null && pdfReadySnapshot === formSnapshot()) {
+            openPdf(submitter);
+            return;
+        }
+        pdfReadySnapshot = null;
+
+        clearAllErrors();
+        const clientErrors = collectClientErrors();
+
+        const fd = new FormData(mhForm);
+        fd.set('action', 'mh_validate_form');
+        fd.set('submit_mode', mode);
+
+        setBusy(true);
+        setStatus('busy', 'Formular wird geprüft …');
+
+        fetch(ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
+            .then(r => r.json())
+            .then(res => {
+                setBusy(false);
+                if (res && !res.success && res.data && res.data.message) {
+                    // Bekannter Grund (z. B. abgelaufene Sitzung): im Formular anzeigen.
+                    setStatus('error', '<strong>❌ ' + escapeHtml(res.data.message) + '</strong>');
+                    return;
+                }
+                if (!res || !res.success || !res.data) {
+                    // Keine verwertbare Antwort (z. B. "0" = Endpunkt nicht erreichbar):
+                    // die Inline-Prüfung darf das Absenden nie blockieren. Dann wie früher
+                    // normal abschicken - der Server prüft beim Absenden ohnehin selbst.
+                    setStatus('', '');
+                    submitForReal(submitter, null);
+                    return;
+                }
+                const data   = res.data;
+                // Server-Meldungen zuerst (Reihenfolge = Vorrang am selben Feld), dann nur
+                // die Browser-Befunde, die der Server nicht selbst gemeldet hat.
+                const errors = Object.assign({}, data.errors || {});
+                Object.keys(clientErrors).forEach(k => { if (!(k in errors)) errors[k] = clientErrors[k]; });
+
+                applyCorrectedDate(data.corrected_date);
+
+                if (Object.keys(errors).length) {
+                    reportErrors(errors, data.bad_teachers);
+                    return;
+                }
+
+                if (mode === 'pdf') {
+                    openPdf(submitter);
+                } else if (mode === 'collect') {
+                    setStatus('busy', 'Prüfung erfolgreich – die Noteneinsammlung wird gestartet …');
+                    submitForReal(submitter, null);
+                    // Die Formulardaten sind beim Absenden schon übernommen; ein zweiter
+                    // Klick würde nur einen Doppelstart versuchen.
+                    setBusy(true);
+                } else {
+                    setStatus('success', '<strong>✅ Prüfung erfolgreich.</strong> Das Formular ist vollständig ausgefüllt.');
+                }
+            })
+            .catch(err => {
+                console.error('Fehler bei der Formularprüfung:', err);
+                setBusy(false);
+                setStatus('error', '<strong>❌ Die Prüfung konnte nicht durchgeführt werden</strong> (Verbindungsproblem). Bitte erneut versuchen.');
+            });
+    });
+
+    // Sobald ein markiertes Feld geändert wird, verschwindet seine Fehlermeldung.
+    function clearErrorsFor(target) {
+        activeErrors = activeErrors.filter(entry => {
+            if (entry.anchor === target || entry.anchor.contains(target)) { clearEntry(entry); return false; }
+            return true;
+        });
+        target.classList.remove('mh-error-field');
+        if (!activeErrors.some(en => en.msgEl && en.msgEl.className === 'mh-field-error') && statusBox.classList.contains('is-error')) {
+            setStatus('', '');
+        }
+    }
+    // Fehler an Feldern, die durch eine andere Auswahl inaktiv geworden sind (gesperrt
+    // oder zugeklappt), sind gegenstandslos und verschwinden.
+    function pruneInactiveErrors() {
+        activeErrors = activeErrors.filter(entry => {
+            const el = entry.anchor;
+            const inactive = !el.isConnected
+                || (!entry.isGroup && el.disabled)
+                || !!el.closest('.mh-hidden')
+                || el.closest('.toggle-target[style*="opacity: 0.4"]') !== null;
+            if (inactive) { clearEntry(entry); return false; }
+            return true;
+        });
+        if (!activeErrors.some(en => en.msgEl && en.msgEl.className === 'mh-field-error') && statusBox.classList.contains('is-error')) {
+            setStatus('', '');
+        }
+    }
+
+    mhForm.addEventListener('input', e => clearErrorsFor(e.target));
+    mhForm.addEventListener('change', e => clearErrorsFor(e.target));
+
+    // Nach einem Neuladen mit Fehlern (Fallback ohne AJAX) dieselbe Darstellung nutzen.
+    const initialErrors = <?= wp_json_encode( (object) $form_errors ) ?>;
+    if (Object.keys(initialErrors).length) {
+        // Erst nach Toggles und Schülerliste markieren, sonst gelten Bereiche als verborgen.
+        setTimeout(() => showErrors(initialErrors, []), 400);
     }
 
 });

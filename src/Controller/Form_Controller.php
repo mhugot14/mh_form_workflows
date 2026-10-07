@@ -19,6 +19,7 @@ use Mh\FormWorkflows\Service\Noten_Feature;
 use Mh\FormWorkflows\Service\Mail_Service;
 use Mh\FormWorkflows\Service\Reminder_Service;
 use Mh\FormWorkflows\Service\Pdf_Generator;
+use Mh\FormWorkflows\Service\School_Date_Calculator;
 use Mh\FormWorkflows\Model\Form\Form_Interface;
 use Mh\FormWorkflows\Model\Form\Abmeldung_Student_Form;
 use Mh\FormWorkflows\Model\Form\Service_Leave_Form;
@@ -343,7 +344,7 @@ class Form_Controller {
 	 *
 	 * @return array<string,string> Fehler für die Rückgabe ins Formular.
 	 */
-	private function check_collect_preconditions( array $valid_data ): array {
+	private function check_collect_preconditions( array $valid_data, array &$bad_teachers = [] ): array {
 		// Abgeschaltet heisst: keine NEUEN Einsammlungen. Laufende Fälle bleiben
 		// unberührt, die laufen über den Noten_Controller weiter.
 		if ( ! Noten_Feature::is_enabled() ) {
@@ -387,6 +388,8 @@ class Form_Controller {
 			}
 			if ( null === $this->account_repo->resolve_recipient( $kuerzel ) ) {
 				$missing_address[] = $name . ' (' . $kuerzel . ')';
+				// Für die Inline-Prüfung: die betroffenen Lehrkraft-Felder rot markieren.
+				$bad_teachers[]    = $kuerzel;
 			}
 		}
 
@@ -494,20 +497,19 @@ class Form_Controller {
 	}
 
 	/**
-	 * POST-Verarbeitung
+	 * Gemeinsame Prüfung für den echten Submit und die Inline-Prüfung per AJAX.
+	 *
+	 * Beide Wege MÜSSEN dieselben Regeln anwenden - sonst meldet das Formular "alles in
+	 * Ordnung" und der Submit scheitert trotzdem. Deshalb liegt die komplette Prüfkette
+	 * (Model-Validierung, Datumskorrektur, Vorbedingungen der Noteneinsammlung) hier.
+	 *
+	 * @return array{form: Form_Interface, is_valid: bool, valid_data: array, errors: array<string,string>, mode: string, bad_teachers: string[]}
 	 */
-	public function handle_submission(): void {
-		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'mh_form_submit' ) ) {
-			wp_die( 'Sicherheitsprüfung fehlgeschlagen.' );
-		}
+	private function evaluate_submission( array $post, string $mode ): array {
+		$form = $this->get_form_instance( sanitize_text_field( $post['form_type'] ?? '' ) );
 
-		$form_type_slug = sanitize_text_field( $_POST['form_type'] ?? '' );
-		$form = $this->get_form_instance( $form_type_slug );
-		$mode = $_POST['submit_mode'] ?? 'check';
-		
-		$is_valid = $form->validate( $_POST );
-		$raw_data   = $_POST; 
-		$valid_data = $form->get_data(); 
+		$is_valid   = $form->validate( $post );
+		$valid_data = $form->get_data();
 		$errors     = $form->get_errors();
 
 		// Ist das Verfahren abgeschaltet, darf keine Zeile als "einzusammeln" gespeichert
@@ -530,14 +532,121 @@ class Form_Controller {
 		// Start der digitalen Noteneinsammlung: Ohne zugeordnete Lehrkraft mit
 		// erreichbarer Adresse gäbe es keinen Empfänger — dann lieber gar nicht
 		// starten, statt einen Prozess anzulegen, der still auf niemanden wartet.
-		if ( 'collect' === $mode && $is_valid ) {
-			$collect_errors = $this->check_collect_preconditions( $valid_data );
+		// Geprüft wird auch bei sonstigen Fehlern, damit alle Mängel auf einmal
+		// angezeigt werden statt nacheinander.
+		$bad_teachers = [];
+		if ( 'collect' === $mode ) {
+			$collect_errors = $this->check_collect_preconditions( $valid_data, $bad_teachers );
 			if ( ! empty( $collect_errors ) ) {
 				$errors   = array_merge( $errors, $collect_errors );
 				$mode     = 'check';
 				$is_valid = false;
 			}
 		}
+
+		return [
+			'form'         => $form,
+			'is_valid'     => $is_valid,
+			'valid_data'   => $valid_data,
+			'errors'       => $errors,
+			'mode'         => $mode,
+			'bad_teachers' => array_values( array_unique( $bad_teachers ) ),
+		];
+	}
+
+	/**
+	 * AJAX-Endpunkt: Prüft das Formular, ohne etwas zu speichern oder zu erzeugen.
+	 *
+	 * Das Formular ruft das vor jedem Absenden auf und zeigt die Fehler direkt an den
+	 * Feldern an. Erst wenn hier nichts mehr bemängelt wird, schickt es wirklich ab -
+	 * so öffnet sich kein PDF-Fenster, das nur eine Fehlerliste enthält.
+	 */
+	public function ajax_validate_form(): void {
+		if ( ! check_ajax_referer( 'mh_form_submit', '_wpnonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Die Sitzung ist abgelaufen. Bitte die Seite neu laden (Eingaben vorher sichern).' ] );
+		}
+
+		$mode = sanitize_key( $_POST['submit_mode'] ?? 'check' );
+		if ( ! in_array( $mode, [ 'check', 'pdf', 'collect' ], true ) ) {
+			$mode = 'check';
+		}
+
+		$result     = $this->evaluate_submission( $_POST, $mode );
+		$valid_data = $result['valid_data'];
+		$errors     = $result['errors'];
+
+		// Die Datumskorrektur ist kein Eingabefehler im eigentlichen Sinn: das Formular
+		// übernimmt das korrigierte Datum sofort, und der nächste Klick geht durch.
+		$corrected_date = ! empty( $valid_data['prot_was_corrected'] ) ? (string) ( $valid_data['prot_date'] ?? '' ) : '';
+		if ( isset( $errors['date_autocorrect'] ) ) {
+			$errors['date_autocorrect'] = 'Das Abmeldedatum fällt nicht auf einen Schultag (Wochenende/Ferien).'
+				. ( '' !== $corrected_date ? ' Konferenz- und Zeugnisdatum wurden deshalb auf den ' . date_i18n( 'd.m.Y', strtotime( $corrected_date ) ) . ' gelegt.' : '' )
+				. ' Bitte prüfen und dann erneut auf „Prüfen & PDF erstellen“ klicken.';
+		}
+
+		wp_send_json_success( [
+			'valid'          => $result['is_valid'],
+			'errors'         => $errors,
+			'corrected_date' => $corrected_date,
+			'bad_teachers'   => $result['bad_teachers'],
+		] );
+	}
+
+	/**
+	 * AJAX-Endpunkt: Konferenz- und Zeugnisdatum zum eingegebenen Abmeldedatum.
+	 *
+	 * Beide müssen auf einen Schultag fallen. Das Formular setzt sie schon bei der
+	 * Eingabe und erklärt eine Verschiebung, statt erst beim Absenden zu meckern.
+	 * Dieselbe Rechnung wendet das Model beim Absenden an.
+	 */
+	public function ajax_school_day(): void {
+		if ( ! check_ajax_referer( 'mh_form_nonce', 'nonce', false ) ) {
+			wp_send_json_error( 'Sicherheits-Check fehlgeschlagen.' );
+		}
+
+		$date = sanitize_text_field( wp_unslash( $_POST['date'] ?? '' ) );
+		if ( ! preg_match( '/^\d{4}-\d{2}-\d{2}$/', $date ) ) {
+			wp_send_json_error( 'Ungültiges Datum.' );
+		}
+
+		$calc      = new School_Date_Calculator();
+		$corrected = $calc->get_previous_school_day( $date );
+		$changed   = $corrected !== $date;
+
+		$explanation = '';
+		if ( $changed ) {
+			$explanation = sprintf(
+				'Der %s ist %s und damit kein Schultag. Konferenz- und Zeugnisdatum wurden deshalb auf den letzten Schultag davor gelegt: %s.',
+				date_i18n( 'd.m.Y', strtotime( $date ) ),
+				$calc->get_non_school_reason_ymd( $date ),
+				date_i18n( 'l, d.m.Y', strtotime( $corrected ) )
+			);
+		}
+
+		wp_send_json_success( [
+			'date'        => $corrected,
+			'changed'     => $changed,
+			'explanation' => $explanation,
+		] );
+	}
+
+	/**
+	 * POST-Verarbeitung
+	 */
+	public function handle_submission(): void {
+		if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( $_POST['_wpnonce'], 'mh_form_submit' ) ) {
+			wp_die( 'Sicherheitsprüfung fehlgeschlagen.' );
+		}
+
+		$form_type_slug = sanitize_text_field( $_POST['form_type'] ?? '' );
+
+		$result     = $this->evaluate_submission( $_POST, (string) ( $_POST['submit_mode'] ?? 'check' ) );
+		$form       = $result['form'];
+		$mode       = $result['mode'];
+		$is_valid   = $result['is_valid'];
+		$raw_data   = $_POST;
+		$valid_data = $result['valid_data'];
+		$errors     = $result['errors'];
 
 		// Das Abmeldeformular erzeugt das PDF in einem eigenen Fenster. Scheitert dort die
 		// Prüfung, wäre ein zweites Formular im neuen Fenster nur verwirrend - stattdessen

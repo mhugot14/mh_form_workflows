@@ -193,6 +193,8 @@ class Plugin_Bootstrap {
         });
 		add_action('wp_ajax_mh_get_students', [$this->form_controller, 'ajax_get_students']);
 		add_action('wp_ajax_mh_get_subject_rows', [$this->form_controller, 'ajax_get_subject_rows']);
+		add_action('wp_ajax_mh_validate_form', [$this->form_controller, 'ajax_validate_form']);
+		add_action('wp_ajax_mh_school_day', [$this->form_controller, 'ajax_school_day']);
 
 		add_shortcode( 'mh_form_workflow', [ $this->form_controller, 'render_form' ] );
 		add_shortcode( 'mh_my_submissions', [ $this->form_controller, 'render_dashboard' ] );

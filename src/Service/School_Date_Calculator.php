@@ -61,6 +61,27 @@ class School_Date_Calculator {
 	}
 
 	/**
+	 * Warum ist das Datum kein Schultag? Für Erklärungen im Formular.
+	 *
+	 * @return string Leer bei einem Schultag, sonst z. B. "ein Samstag", "ein Feiertag", "in den Schulferien".
+	 */
+	public function get_non_school_reason_ymd( string $date_str ): string {
+		try {
+			$date = new DateTime( $date_str, new DateTimeZone( 'Europe/Berlin' ) );
+		} catch ( \Exception $e ) {
+			return '';
+		}
+
+		return match ( true ) {
+			6 === (int) $date->format( 'N' )        => 'ein Samstag',
+			7 === (int) $date->format( 'N' )        => 'ein Sonntag',
+			$this->is_public_holiday( $date )       => 'ein Feiertag',
+			$this->is_school_holiday_nrw( $date )   => 'in den Schulferien',
+			default                                 => '',
+		};
+	}
+
+	/**
 	 * Prüft logisch: Ist heute Schule?
 	 */
 	private function is_school_day( DateTime $date ): bool {
