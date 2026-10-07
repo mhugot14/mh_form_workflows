@@ -11,6 +11,7 @@
  * @var array                      $classes_list
  * @var array                      $teachers_list
  * @var array                      $subjects_list
+ * @var array<string,array>        $subject_lists Fächer je Bildungsgang, Stundentafel zuerst
  * @var string                     $own_kuerzel
  * @var array                      $my_entries
  * @var string                     $page_url
@@ -43,7 +44,19 @@ foreach ( $teachers_list as $t ) {
 }
 ksort( $teacher_names );
 
-$render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerzel, $err, $cur_typ, $katalog, $teacher_names ): void {
+// Fächer-Vorschläge: je Bildungsgang eine eigene <datalist> (Stundentafel zuerst), die
+// beim Wählen der Klasse ans Fach-Feld gehängt wird. Ohne Bildungsgang die allgemeine Liste.
+$subject_list_ids = [];
+foreach ( array_keys( $subject_lists ) as $n => $track_key ) {
+	$subject_list_ids[ $track_key ] = 'mh-ns-subjects-' . $n;
+}
+$subject_list_for = static fn( string $track_key ): string => $subject_list_ids[ $track_key ] ?? 'mh-ns-subjects';
+$class_lists      = [];
+foreach ( $classes_list as $c ) {
+	$class_lists[ (string) $c['wu_id'] ] = $subject_list_for( (string) ( $c['track_key'] ?? '' ) );
+}
+
+$render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerzel, $err, $cur_typ, $katalog, $teacher_names, $subject_list_for, $class_lists ): void {
 	$name       = static fn( string $f ): string => 'rows[' . $i . '][' . $f . ']';
 	$v          = static fn( string $f, string $def = '' ): string => esc_attr( (string) ( $row[ $f ] ?? $def ) );
 	$class_id   = (string) ( $row['class_wu_id'] ?? '' );
@@ -70,7 +83,7 @@ $render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerz
 					<select class="js-class" name="<?= $name( 'class_wu_id' ) ?>">
 						<option value="">– wählen –</option>
 						<?php foreach ( $classes_list as $c ) : ?>
-							<option value="<?= (int) $c['wu_id'] ?>" data-name="<?= esc_attr( $c['name'] ) ?>"><?= esc_html( $c['name'] ) ?></option>
+							<option value="<?= (int) $c['wu_id'] ?>" data-name="<?= esc_attr( $c['name'] ) ?>" data-subjects="<?= esc_attr( $subject_list_for( (string) ( $c['track_key'] ?? '' ) ) ) ?>"><?= esc_html( $c['name'] ) ?></option>
 						<?php endforeach; ?>
 						<option value="0" data-manual="1">andere Klasse …</option>
 					</select>
@@ -93,7 +106,7 @@ $render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerz
 
 			<div class="mh-ns-field mh-ns-f-subject<?= $e( 'subject' ) ?>">
 				<label>Fach</label>
-				<input type="text" class="js-subject" name="<?= $name( 'subject' ) ?>" value="<?= $v( 'subject' ) ?>" list="mh-ns-subjects" placeholder="z. B. E" autocomplete="off">
+				<input type="text" class="js-subject" name="<?= $name( 'subject' ) ?>" value="<?= $v( 'subject' ) ?>" list="<?= esc_attr( $class_lists[ $class_id ] ?? 'mh-ns-subjects' ) ?>" placeholder="z. B. E" autocomplete="off">
 			</div>
 
 			<div class="mh-ns-field mh-ns-f-teacher<?= $e( 'teacher' ) ?>">
@@ -288,6 +301,13 @@ $render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerz
 				<option value="<?= esc_attr( $s['short_name'] ) ?>"><?= esc_html( $s['display_name'] ) ?></option>
 			<?php endforeach; ?>
 		</datalist>
+		<?php foreach ( $subject_lists as $track_key => $list ) : ?>
+			<datalist id="<?= esc_attr( $subject_list_for( (string) $track_key ) ) ?>">
+				<?php foreach ( $list as $s ) : ?>
+					<option value="<?= esc_attr( $s['short_name'] ) ?>"><?= esc_html( $s['display_name'] ) ?></option>
+				<?php endforeach; ?>
+			</datalist>
+		<?php endforeach; ?>
 		<datalist id="mh-ns-aids">
 			<?php foreach ( Nachschreib_Termin_Katalog::HILFSMITTEL_VORSCHLAEGE as $a ) : ?>
 				<option value="<?= esc_attr( $a ) ?>"></option>
@@ -616,6 +636,13 @@ $render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerz
 		sel.dataset.value = '';
 	}
 
+	/** Fach-Vorschläge passend zum Bildungsgang der gewählten Klasse. */
+	function syncSubjects(row) {
+		const classSel = row.querySelector('.js-class');
+		const opt = classSel.tagName === 'SELECT' ? classSel.options[classSel.selectedIndex] : null;
+		row.querySelector('.js-subject').setAttribute('list', (opt && opt.dataset.subjects) || 'mh-ns-subjects');
+	}
+
 	function initRow(row) {
 		const classSel  = row.querySelector('.js-class');
 		const className = row.querySelector('.js-class-name');
@@ -632,6 +659,7 @@ $render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerz
 				if (!manual) className.value = opt && classSel.value ? (opt.dataset.name || '') : '';
 				else { className.value = ''; className.focus(); }
 				last.value = ''; first.value = '';
+				syncSubjects(row);
 				loadStudents(row, classSel.value);
 			});
 		} else {
@@ -681,6 +709,7 @@ $render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerz
 		if (classSel.tagName !== 'SELECT') return;
 		if (classId && classId !== '0') {
 			classSel.value = classId;
+			syncSubjects(row);
 			if (classSel.value === classId) {
 				loadStudents(row, classId, studId === '' && hasName ? '0' : studId);
 				return;
@@ -726,6 +755,7 @@ $render_row = static function ( $i, array $row ) use ( $classes_list, $own_kuerz
 			row.querySelector('.js-class-name').value = prev.querySelector('.js-class-name').value;
 			if (pClass.tagName === 'SELECT') {
 				nClass.value = pClass.value;
+				syncSubjects(row);
 				setManual(row.querySelector('.mh-ns-f-class'), pClass.value === '0');
 				loadStudents(row, pClass.value).then(() => {
 					const s = row.querySelector('.js-student');

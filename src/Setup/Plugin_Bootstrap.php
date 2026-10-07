@@ -149,6 +149,7 @@ class Plugin_Bootstrap {
 			$class_repo,
 			$teacher_repo,
 			$subject_repo,
+			$track_subject_repo,
 			$account_repo,
 			$ns_katalog,
 			new Nachschreib_Slot_Provider( $ns_katalog, $ns_calendar, $ns_termine, $submission_repo ),

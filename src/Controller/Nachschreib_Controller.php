@@ -13,6 +13,7 @@ use Mh\FormWorkflows\Repository\Subject_Repository;
 use Mh\FormWorkflows\Repository\Submission_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Account_Repository;
 use Mh\FormWorkflows\Repository\Teacher_Repository;
+use Mh\FormWorkflows\Repository\Track_Subject_Repository;
 use Mh\FormWorkflows\Service\Nachschreib_Slot_Provider_Interface;
 use Mh\FormWorkflows\Service\Nachschreib_Termin_Katalog;
 use Mh\FormWorkflows\Service\Pdf_Generator;
@@ -45,6 +46,7 @@ class Nachschreib_Controller {
 		private Class_Repository $class_repo,
 		private Teacher_Repository $teacher_repo,
 		private Subject_Repository $subject_repo,
+		private Track_Subject_Repository $track_subject_repo,
 		private Teacher_Account_Repository $account_repo,
 		private Nachschreib_Termin_Katalog $katalog,
 		private Nachschreib_Slot_Provider_Interface $slots,
@@ -148,12 +150,51 @@ class Nachschreib_Controller {
 		$classes_list  = $this->class_repo->get_real_classes();
 		$teachers_list = $this->teacher_repo->get_all_teachers();
 		$subjects_list = $this->subject_repo->get_all_subjects();
+		$subject_lists = $this->build_subject_lists( $classes_list, $subjects_list );
 		$own_kuerzel   = $this->account_repo->get_kuerzel_for_user( $user_id )[0] ?? '';
 		$my_entries    = $this->get_my_entries( $user_id );
 
 		ob_start();
 		include MH_FW_PLUGIN_DIR . 'templates/nachschreib/form.php';
 		return ob_get_clean() ?: '';
+	}
+
+	/**
+	 * Fächer-Vorschläge je Bildungsgang: erst die Fächer der Stundentafel (in deren
+	 * Reihenfolge), dann alle übrigen Fächer als Notausgang (Wiederholer, Fachwechsler).
+	 * Nur für Bildungsgänge, die an einer der angebotenen Klassen hängen.
+	 *
+	 * @return array<string,array<int,array{short_name:string,display_name:string}>> track_key => Fächer
+	 */
+	private function build_subject_lists( array $classes_list, array $subjects_list ): array {
+		$track_keys = array_unique( array_filter( array_map(
+			static fn( array $c ): string => (string) ( $c['track_key'] ?? '' ),
+			$classes_list
+		) ) );
+
+		$lists = [];
+		foreach ( $track_keys as $track_key ) {
+			$list = [];
+			$seen = [];
+			foreach ( $this->track_subject_repo->get_subjects_for_track( $track_key ) as $s ) {
+				$short = (string) $s['short_name'];
+				if ( '' === $short || isset( $seen[ $short ] ) ) {
+					continue;
+				}
+				$seen[ $short ] = true;
+				$list[]         = [ 'short_name' => $short, 'display_name' => (string) ( $s['display_name'] ?? '' ) ];
+			}
+			if ( empty( $list ) ) {
+				continue; // Bildungsgang ohne Stundentafel: die allgemeine Liste genügt.
+			}
+			foreach ( $subjects_list as $s ) {
+				if ( ! isset( $seen[ (string) $s['short_name'] ] ) ) {
+					$list[] = $s;
+				}
+			}
+			$lists[ $track_key ] = $list;
+		}
+		return $lists;
 	}
 
 	/**
