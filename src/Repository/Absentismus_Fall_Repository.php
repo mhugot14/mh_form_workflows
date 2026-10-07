@@ -49,6 +49,9 @@ class Absentismus_Fall_Repository {
 	 *                (für Bedingungen, die nicht nur "Typ X wurde gemacht", sondern
 	 *                ein konkretes Ergebnis dieses Schritts voraussetzen).
 	 *   condition:   Klartext-Beschreibung des Vergehens/Anlasses für die Anzeige.
+	 *   applicable_when: optional — wie beim Typ (s. u.), aber nur für diese
+	 *                Variante (z. B. Teilkonferenz: Vorbedingung Mahnung nur bei
+	 *                Schulpflicht).
 	 *   locked_hint: optionaler, vorformulierter Hinweistext für den gesperrten
 	 *                Zustand (überschreibt den generischen "X muss festgeschrieben
 	 *                werden"-Text, z. B. wenn step_match gesetzt ist).
@@ -92,10 +95,14 @@ class Absentismus_Fall_Repository {
 				[ 'requires' => [ 'mahnung' ], 'condition' => 'weitere unentschuldigte Fehlstunden (allgemeine Eskalation)' ],
 			],
 		],
+		// Schulpflichtige: Teilkonferenz erst nach der schriftlichen Mahnung (Verweis).
+		// Nicht mehr Schulpflichtige: Einladung zur Teilkonferenz direkt aufgrund der
+		// 20 UE in 30 Tagen möglich — ein vorheriger Verweis ist nicht erforderlich.
 		'teilkonferenz' => [
 			'repeatable' => false, 'applicable_when' => null,
 			'variants' => [
-				[ 'requires' => [ 'mahnung' ], 'condition' => '20 unentschuldigte Fehlstunden innerhalb von 30 Tagen' ],
+				[ 'requires' => [ 'mahnung' ], 'applicable_when' => 'is_schulpflichtig', 'condition' => '20 unentschuldigte Fehlstunden innerhalb von 30 Tagen' ],
+				[ 'requires' => [], 'applicable_when' => '!is_schulpflichtig', 'condition' => '20 unentschuldigte Fehlstunden innerhalb von 30 Tagen (nicht schulpflichtig, kein vorheriger Verweis nötig)' ],
 			],
 		],
 		'ordnungsamt'   => [
@@ -257,6 +264,10 @@ class Absentismus_Fall_Repository {
 			}
 
 			foreach ( $rule['variants'] as $variant ) {
+				if ( ! empty( $variant['applicable_when'] ) && ! $this->condition_met( $variant['applicable_when'], $case['form_data'] ?? [] ) ) {
+					continue; // diese Variante gilt für den Fall nicht (z. B. schulpflichtig-Status)
+				}
+
 				$missing = array_values( array_diff( $variant['requires'], $finalized_types ) );
 
 				$step_match_ok = true;

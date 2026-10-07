@@ -68,6 +68,12 @@ $format_step_field = function ( string $field, $value ) use ( $field_meta ): ?ar
 	return [ 'label' => $label, 'value' => $display ];
 };
 
+// Anzeigename zu einer User-ID (für die Admin-Angabe "angelegt/festgeschrieben von").
+$user_name = static function ( $user_id ): string {
+	$user = get_userdata( (int) $user_id );
+	return $user ? $user->display_name : 'Unbekannt';
+};
+
 $nonce_url = fn( array $params, string $nonce_action ) => wp_nonce_url(
 	add_query_arg( $params, admin_url( 'admin-post.php' ) ),
 	$nonce_action
@@ -358,8 +364,14 @@ $nonce_url = fn( array $params, string $nonce_action ) => wp_nonce_url(
 			</h4>
 			<div class="mh-step-meta">
 				Angelegt am <?= esc_html( date( 'd.m.Y H:i', strtotime( $step['created_at'] ) ) ) ?>
+				<?php if ( $is_admin && ! empty( $step['created_by'] ) ) : ?>
+					von <strong><?= esc_html( $user_name( $step['created_by'] ) ) ?></strong>
+				<?php endif; ?>
 				<?php if ( ! $is_draft && ! empty( $step['finalized_at'] ) ) : ?>
 					&nbsp;·&nbsp; Festgeschrieben am <?= esc_html( date( 'd.m.Y H:i', strtotime( $step['finalized_at'] ) ) ) ?>
+					<?php if ( $is_admin && ! empty( $step['finalized_by'] ) ) : ?>
+						von <strong><?= esc_html( $user_name( $step['finalized_by'] ) ) ?></strong>
+					<?php endif; ?>
 				<?php endif; ?>
 				<?php if ( in_array( $step['data']['dokumentation'] ?? '', [ 'webuntis', 'handschriftlich' ], true ) ) : ?>
 					&nbsp;·&nbsp; <strong><?= esc_html( $field_meta['value_labels']['dokumentation'][ $step['data']['dokumentation'] ] ) ?> dokumentiert</strong>

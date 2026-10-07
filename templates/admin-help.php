@@ -829,7 +829,7 @@ $mh_version      = defined( 'MH_FW_VERSION' ) ? MH_FW_VERSION : '';
                     <tr><td>2. Pädagogisches Gespräch</td><td><code>[mh_absentismus_gespraech_2]</code></td><td>weitere ca. 10 unentschuldigte Fehlstunden nach dem 1. Gespräch</td></tr>
                     <tr><td>Schriftliche Mahnung / Aufforderung Schulbesuch</td><td><code>[mh_absentismus_mahnung]</code></td><td>weiterhin unentschuldigte Fehlstunden nach dem 2. Gespräch</td></tr>
                     <tr><td>Einleitung Bußgeldverfahren / Anhörung</td><td><code>[mh_absentismus_bussgeld]</code></td><td>weitere Eskalation nach der Mahnung</td></tr>
-                    <tr><td>Teilkonferenz</td><td><code>[mh_absentismus_teilkonferenz]</code></td><td>20 unentschuldigte Fehlstunden innerhalb von 30 Tagen</td></tr>
+                    <tr><td>Teilkonferenz</td><td><code>[mh_absentismus_teilkonferenz]</code></td><td>20 unentschuldigte Fehlstunden innerhalb von 30 Tagen – bei Schulpflicht nach der Mahnung (Verweis), bei <u>nicht mehr</u> schulpflichtigen Schüler*innen direkt ohne vorherigen Verweis</td></tr>
                     <tr><td>Zuführung durch das Ordnungsamt</td><td><code>[mh_absentismus_ordnungsamt]</code></td><td>3 Tage in Folge unentschuldigt gefehlt (nur schulpflichtige Schüler*innen)</td></tr>
                     <tr><td>Beendigung Schulverhältnis § 47 Abs. 1 Nr. 8 SchulG</td><td><code>[mh_absentismus_beendigung_47]</code></td><td>15 Tage in Folge unentschuldigt <em>oder</em> Teilkonferenz-Beschluss „Entlassung“ (nur <u>nicht mehr</u> schulpflichtige Schüler*innen)</td></tr>
                     <tr><td>Attestauflage</td><td><code>[mh_absentismus_attestauflage]</code></td><td>begründete Zweifel an einer krankheitsbedingten (entschuldigten) Abwesenheit</td></tr>
